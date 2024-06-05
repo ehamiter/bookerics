@@ -4,6 +4,28 @@ from typing import Dict, List
 
 DB_PATH = "bookerics.db"
 
+# def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
+#     connection = sqlite3.connect(DB_PATH)
+#     cursor = connection.cursor()
+#     cursor.execute(query, params)
+#     rows = cursor.fetchall()
+#     connection.close()
+
+#     bookmarks = []
+#     for row in rows:
+#         title, url, description, tags_json = row
+#         try:
+#             tags = json.loads(tags_json) if tags_json else []
+#             if tags == [""]:
+#                 tags = []
+#         except json.JSONDecodeError:
+#             tags = []
+#         bookmarks.append(
+#             {"title": title, "url": url, "description": description, "tags": tags}
+#         )
+
+#     return bookmarks
+
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -13,41 +35,60 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
 
     bookmarks = []
     for row in rows:
-        title, url, description, tags_json = row
-        try:
-            tags = json.loads(tags_json) if tags_json else []
-            if tags == [""]:
+        if len(row) == 4:
+            title, url, description, tags_json = row
+            try:
+                tags = json.loads(tags_json) if tags_json else []
+                if tags == [""]:
+                    tags = []
+            except json.JSONDecodeError:
                 tags = []
-        except json.JSONDecodeError:
-            tags = []
-        bookmarks.append(
-            {"title": title, "url": url, "description": description, "tags": tags}
-        )
+            bookmarks.append(
+                {"title": title, "url": url, "description": description, "tags": tags}
+            )
+        else:
+            print(f"Unexpected row format: {row}")
 
     return bookmarks
 
+
 def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
-    if not kind:
+    if kind == "all":
         query = "SELECT title, url, description, tags FROM bookmarks;"
-    if kind == "random":
+    elif kind == "random":
         query = "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1;"
     elif kind == "untagged":
         query = "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]';"
     elif kind == "oldest":
         query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;"
+    else:
+        query = "SELECT 0 FROM bookmarks;"
     return fetch_data(query)
+
+# def search_bookmarks(query: str) -> List[Dict[str, str]]:
+#     search_query = f"%{query}%"
+#     query = f"""
+#     SELECT title, url, description, tags
+#     FROM bookmarks
+#     WHERE title LIKE '{search_query}'
+#     OR url LIKE '{search_query}'
+#     OR description LIKE '{search_query}'
+#     OR tags LIKE '{search_query}';
+#     """
+#     return fetch_data(query)
 
 def search_bookmarks(query: str) -> List[Dict[str, str]]:
     search_query = f"%{query}%"
-    query = f"""
+    sql_query = """
     SELECT title, url, description, tags
     FROM bookmarks
-    WHERE title LIKE '{search_query}'
-    OR url LIKE '{search_query}'
-    OR description LIKE '{search_query}'
-    OR tags LIKE '{search_query}';
+    WHERE title LIKE ?
+    OR url LIKE ?
+    OR description LIKE ?
+    OR tags LIKE ?;
     """
-    return fetch_data(query)
+    return fetch_data(sql_query, (search_query, search_query, search_query, search_query))
+
 
 def verify_table_structure(table_name: str):
     connection = sqlite3.connect(DB_PATH)

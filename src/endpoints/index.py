@@ -8,7 +8,7 @@ from ludic.html import div
 
 @app.get("/")
 async def index():
-    bookmarks = fetch_bookmarks(kind=None)
+    bookmarks = fetch_bookmarks(kind="all")
     return Page(NavMenu(), SearchBar(), BookmarkList(bookmarks=bookmarks))
 
 @app.get("/oldest")
