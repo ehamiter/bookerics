@@ -17,6 +17,9 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
                 name="viewport",
                 content="width=device-width, initial-scale=1, shrink-to-fit=no",
             ),
+            meta(name="description", content="Bookmarks, but for Erics."),
+            meta(name="keywords", content="bookmarks, eric hamiter, web, python, ludic, software"),
+            meta(name="author", content="Eric Hamiter"),
             title(self.attrs.get("title", "Ludic App")),
         ]
 

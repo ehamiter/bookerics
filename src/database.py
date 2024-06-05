@@ -38,16 +38,6 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
     return fetch_data(query)
 
 
-# def fetch_random_bookmark() -> Dict[str, str]:
-#     query = "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1"
-#     bookmarks = fetch_data(query)
-#     return bookmarks[0] if bookmarks else {}
-
-# def fetch_untagged_bookmarks() -> List[Dict[str, str]]:
-#     query = "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]'"
-#     return fetch_data(query)
-
-
 def verify_table_structure(table_name: str):
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
