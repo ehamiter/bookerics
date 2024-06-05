@@ -1,14 +1,12 @@
-from dataclasses import dataclass, field
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 
 from ludic.html import style
-from ludic.web import LudicApp
 from ludic.styles import themes
-from ludic.styles.themes import Fonts, Colors
+from ludic.styles.themes import Colors, Fonts
 from ludic.styles.types import Color
-
+from ludic.web import LudicApp
 from ludic.web.routing import Mount
 from starlette.staticfiles import StaticFiles
 
@@ -38,6 +36,7 @@ class BookericsTheme(themes.LightTheme):
         )
     )
 
+
 bookerics_theme = BookericsTheme()
 themes.set_default_theme(bookerics_theme)
 
@@ -55,5 +54,5 @@ app = LudicApp(
 )
 
 
-import src.endpoints.index as _  # noqa
 import src.endpoints.errors as _  # noqa
+import src.endpoints.index as _  # noqa

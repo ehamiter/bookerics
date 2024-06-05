@@ -1,18 +1,14 @@
 from typing import override
 
-from ludic.attrs import Attrs
+from ludic.attrs import Attrs, GlobalAttrs
 from ludic.base import NoChildren
-from ludic.catalog.forms import InputField
-from ludic.catalog.layouts import Box, Cluster
 from ludic.catalog.buttons import ButtonPrimary
-
-from ludic.catalog.typography import Paragraph, Link
-from ludic.html import b, style
-from ludic.catalog.layouts import Stack, Switcher
+from ludic.catalog.forms import InputField
 from ludic.catalog.headers import H4
-
+from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
+from ludic.catalog.typography import Link, Paragraph
+from ludic.html import b, style
 from ludic.types import Component, NoChildren
-from ludic.attrs import GlobalAttrs
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):
@@ -21,7 +17,7 @@ class NavMenu(Component[NoChildren, GlobalAttrs]):
         return Cluster(
             Link("bookerics", to="/"),
             Link("random", to="/random"),
-            Link("untagged", to="/untagged")
+            Link("untagged", to="/untagged"),
         )
 
 
@@ -37,10 +33,14 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
 
     def render_bookmark(self, bookmark):
         return Box(
-            H4(bookmark['title']),
-            Link(bookmark['url'], to=bookmark['url'], target="_blank"),
-            Paragraph(bookmark['description']) if bookmark.get('description') else "",
-            Stack(self.render_tags(bookmark['tags']) if bookmark.get('tags') else Cluster(ButtonPrimary("none", classes=["warning small"])))
+            H4(Link(bookmark["title"], to=bookmark["url"], target="_blank")),
+            b(bookmark["url"]),
+            Paragraph(bookmark["description"]) if bookmark.get("description") else "",
+            Stack(
+                self.render_tags(bookmark["tags"])
+                if bookmark.get("tags")
+                else Cluster(ButtonPrimary("none", classes=["warning small"]))
+            ),
         )
 
     @override
