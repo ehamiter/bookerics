@@ -4,28 +4,6 @@ from typing import Dict, List
 
 DB_PATH = "bookerics.db"
 
-# def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
-#     connection = sqlite3.connect(DB_PATH)
-#     cursor = connection.cursor()
-#     cursor.execute(query, params)
-#     rows = cursor.fetchall()
-#     connection.close()
-
-#     bookmarks = []
-#     for row in rows:
-#         title, url, description, tags_json = row
-#         try:
-#             tags = json.loads(tags_json) if tags_json else []
-#             if tags == [""]:
-#                 tags = []
-#         except json.JSONDecodeError:
-#             tags = []
-#         bookmarks.append(
-#             {"title": title, "url": url, "description": description, "tags": tags}
-#         )
-
-#     return bookmarks
-
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -65,29 +43,17 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
         query = "SELECT 0 FROM bookmarks;"
     return fetch_data(query)
 
-# def search_bookmarks(query: str) -> List[Dict[str, str]]:
-#     search_query = f"%{query}%"
-#     query = f"""
-#     SELECT title, url, description, tags
-#     FROM bookmarks
-#     WHERE title LIKE '{search_query}'
-#     OR url LIKE '{search_query}'
-#     OR description LIKE '{search_query}'
-#     OR tags LIKE '{search_query}';
-#     """
-#     return fetch_data(query)
-
 def search_bookmarks(query: str) -> List[Dict[str, str]]:
     search_query = f"%{query}%"
-    sql_query = """
+    query = f"""
     SELECT title, url, description, tags
     FROM bookmarks
-    WHERE title LIKE ?
-    OR url LIKE ?
-    OR description LIKE ?
-    OR tags LIKE ?;
+    WHERE title LIKE '{search_query}'
+    OR url LIKE '{search_query}'
+    OR description LIKE '{search_query}'
+    OR tags LIKE '{search_query}';
     """
-    return fetch_data(sql_query, (search_query, search_query, search_query, search_query))
+    return fetch_data(query)
 
 
 def verify_table_structure(table_name: str):

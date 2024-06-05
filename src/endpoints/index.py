@@ -16,12 +16,10 @@ async def oldest():
     bookmarks = fetch_bookmarks(kind="oldest")
     return Page(NavMenu(), SearchBar(), BookmarkList(bookmarks=bookmarks))
 
-
 @app.get("/random")
 async def random_bookmark():
     bookmarks = fetch_bookmarks(kind="random")
     return Page(NavMenu(), SearchBar(), BookmarkList(bookmarks=bookmarks))
-
 
 @app.get("/untagged")
 async def untagged_bookmarks():
@@ -32,4 +30,4 @@ async def untagged_bookmarks():
 async def search(request: Request):
     query = request.query_params.get("query", "")
     bookmarks = search_bookmarks(query)
-    return Page(NavMenu(), SearchBar(), BookmarkList(bookmarks=bookmarks))
+    return BookmarkList(bookmarks=bookmarks)
