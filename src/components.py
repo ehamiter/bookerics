@@ -15,7 +15,8 @@ class NavMenu(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Cluster:
         return Cluster(
-            Link("bookerics", to="/"),
+            Link("newest", to="/"),
+            Link("oldest", to="/oldest"),
             Link("random", to="/random"),
             Link("untagged", to="/untagged"),
         )
@@ -76,5 +77,10 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
         return InputField(
             type="search",
             placeholder="Search bookerics",
+            hx_get="/search",
+            hx_trigger="input changed delay:500ms",
+            hx_target="#search-results",
+            hx_swap="innerHTML",
+            name="query",
             **self.attrs,
         )

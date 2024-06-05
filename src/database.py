@@ -4,7 +4,6 @@ from typing import Dict, List
 
 DB_PATH = "bookerics.db"
 
-
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -27,16 +26,28 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
 
     return bookmarks
 
-
 def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
     if not kind:
-        query = "SELECT title, url, description, tags FROM bookmarks"
+        query = "SELECT title, url, description, tags FROM bookmarks;"
     if kind == "random":
-        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1"
+        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1;"
     elif kind == "untagged":
-        query = "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]'"
+        query = "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]';"
+    elif kind == "oldest":
+        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;"
     return fetch_data(query)
 
+def search_bookmarks(query: str) -> List[Dict[str, str]]:
+    search_query = f"%{query}%"
+    query = f"""
+    SELECT title, url, description, tags
+    FROM bookmarks
+    WHERE title LIKE '{search_query}'
+    OR url LIKE '{search_query}'
+    OR description LIKE '{search_query}'
+    OR tags LIKE '{search_query}';
+    """
+    return fetch_data(query)
 
 def verify_table_structure(table_name: str):
     connection = sqlite3.connect(DB_PATH)
@@ -45,7 +56,6 @@ def verify_table_structure(table_name: str):
     columns = cursor.fetchall()
     connection.close()
     return columns
-
 
 if __name__ == "__main__":
     table_name = "bookmarks"

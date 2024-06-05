@@ -25,7 +25,7 @@ class BookericsTheme(themes.LightTheme):
 
     colors: Colors = field(
         default_factory=lambda: Colors(
-            primary=Color("#c2e7fd"),
+            primary=Color("#0096ff"),
             secondary=Color("#fefefe"),
             success=Color("#c9ffad"),
             info=Color("#fff080"),

@@ -4,7 +4,7 @@ from typing import override
 from ludic.attrs import GlobalAttrs
 from ludic.catalog.layouts import Center, Stack
 from ludic.catalog.pages import Body, HtmlHeadAttrs, HtmlPage
-from ludic.html import head, link, meta, style, title
+from ludic.html import head, link, meta, style, title, div
 from ludic.types import AnyChildren, BaseElement, Component
 
 
@@ -38,15 +38,15 @@ class Page(Component[AnyChildren, GlobalAttrs]):
     def render(self) -> HtmlPage:
         return HtmlPage(
             CustomHead(
-                meta(charset="utf-8"),
                 link(rel="icon", href="/static/favicon.png"),
                 title="bookerics",
             ),
             Body(
                 Center(
                     Stack(*self.children, **self.attrs),
+                    div(id="search-results"),
                     style={
-                        "padding-block": self.theme.sizes.xxl,
+                        "padding-block": self.theme.sizes.s,
                     },
                 ),
                 htmx_version="latest",
