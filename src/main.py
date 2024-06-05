@@ -5,10 +5,9 @@ from contextlib import asynccontextmanager
 
 from ludic.html import style
 from ludic.web import LudicApp
-from ludic.styles import themes, types
+from ludic.styles import themes
 from ludic.styles.themes import Fonts, Colors
 from ludic.styles.types import Color
-from ludic.types import Attrs
 
 from ludic.web.routing import Mount
 from starlette.staticfiles import StaticFiles

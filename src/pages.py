@@ -1,11 +1,10 @@
 from typing import override
 
 from ludic.attrs import GlobalAttrs
-from ludic.catalog.forms import InputField
 from ludic.catalog.layouts import Center, Stack
 from ludic.catalog.pages import Body, Head, HtmlPage
-from ludic.html import meta, link, style
-from ludic.types import Component, NoChildren, AnyChildren
+from ludic.html import meta, link
+from ludic.types import Component, AnyChildren
 
 
 class Page(Component[AnyChildren, GlobalAttrs]):
@@ -26,34 +25,4 @@ class Page(Component[AnyChildren, GlobalAttrs]):
                 ),
                 htmx_version="latest",
             ),
-        )
-
-
-class SearchBar(Component[NoChildren, GlobalAttrs]):
-    classes = ["search-bar"]
-    styles = style.use(
-        lambda theme: {
-            ".search-bar": {
-                "input": {
-                    "background-color": theme.colors.light.lighten(1),
-                    "border": f"1px solid {theme.colors.light.darken(5)}",
-                    "color": theme.colors.dark,
-                },
-                "input::placeholder": {
-                    "color": theme.colors.dark.lighten(7),
-                },
-                "input:focus": {
-                    "border-color": theme.colors.dark.lighten(5),
-                    "outline": "none",
-                },
-            },
-        }
-    )
-
-    @override
-    def render(self) -> InputField:
-        return InputField(
-            type="search",
-            placeholder="Search bookerics",
-            **self.attrs,
         )
