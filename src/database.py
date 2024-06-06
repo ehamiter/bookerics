@@ -59,7 +59,13 @@ def search_bookmarks(query: str) -> List[Dict[str, str]]:
 
 
 def fetch_unique_tags() -> List[str]:
-    query = "SELECT DISTINCT json_each.value FROM bookmarks, json_each(bookmarks.tags);"
+    query = """
+    SELECT DISTINCT json_each.value
+    FROM bookmarks, json_each(bookmarks.tags)
+    WHERE json_each.value IS NOT NULL
+    AND json_each.value != ''
+    AND json_each.value != '[""]';
+    """
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute(query)
