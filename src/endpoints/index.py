@@ -35,8 +35,9 @@ async def search(request: Request):
 
 @app.get("/tags")
 async def tags():
+    bookmarks = fetch_bookmarks(kind="all")
     tags = fetch_unique_tags()
-    return Page(TagCloud(tags=tags))
+    return Page(NavMenu(bookmark_count=len(bookmarks)), SearchBar(), TagCloud(tags=tags))
 
 @app.get("/tags/{tag}")
 async def bookmarks_by_tag(tag: str):

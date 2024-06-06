@@ -46,11 +46,14 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             H4(Link(bookmark["title"], to=bookmark["url"], target="_blank")),
             b(bookmark["url"]),
             Paragraph(bookmark["description"]) if bookmark.get("description") else "",
-            Stack(
-                self.render_tags(bookmark["tags"])
-                if bookmark.get("tags")
-                else Cluster(ButtonPrimary("none", classes=["warning small"]))
-            ),
+            Box(
+                Cluster(
+                    self.render_tags(bookmark["tags"])
+                    if bookmark.get("tags")
+                    else Cluster(ButtonPrimary("none", classes=["warning small"])),
+                ),
+                classes=["no-border no-inline-padding"],
+            )
         )
 
     @override

@@ -48,7 +48,7 @@ class Page(Component[AnyChildren, GlobalAttrs]):
                     div(
                         Stack(*self.children, **self.attrs),
                         id="results-container",
-                        style={"padding-block": self.theme.sizes.s},
+                        style={"padding-block": self.theme.sizes.xs},
                     ),
                 ),
                 htmx_version="latest",
