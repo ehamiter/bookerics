@@ -87,7 +87,7 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
             placeholder="Search bookerics",
             hx_get="/search",
             hx_trigger="input changed delay:500ms",
-            hx_target="#results-container",
+            hx_target="#results-containerdom",
             hx_swap="innerHTML",
             name="query",
             **self.attrs,
