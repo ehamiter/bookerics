@@ -2,7 +2,8 @@ from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.html import div
 from starlette.requests import Request
 
-from src.components import BookmarkList, NavMenu, SearchBar, TagCloud, BookmarkCountResults
+from src.components import (BookmarkCountResults, BookmarkList, NavMenu,
+                            SearchBar, TagCloud)
 from src.database import (fetch_bookmarks, fetch_bookmarks_by_tag,
                           fetch_unique_tags, search_bookmarks)
 from src.main import app
@@ -52,9 +53,7 @@ async def untagged_bookmarks():
 @app.get("/tags")
 async def tags():
     tags = fetch_unique_tags()
-    return Page(
-        NavMenu(), SearchBar(), TagCloud(tags=tags)
-    )
+    return Page(NavMenu(), SearchBar(), TagCloud(tags=tags))
 
 
 @app.get("/tags/{tag}")

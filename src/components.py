@@ -14,10 +14,10 @@ from ludic.types import Component, NoChildren
 class NavMenu(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Cluster:
-        if self.attrs.get('bookmark_count', False):
-            print('yep!')
-            bookmark_count = int(self.attrs['bookmark_count'])
-            bookericz = 'bookeric' if bookmark_count == 1 else 'bookerics'
+        if self.attrs.get("bookmark_count", False):
+            print("yep!")
+            bookmark_count = int(self.attrs["bookmark_count"])
+            bookericz = "bookeric" if bookmark_count == 1 else "bookerics"
             bookmark_result = f"{bookmark_count:,} {bookericz}"
         else:
             bookmark_result = "bookerics"
@@ -77,12 +77,13 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
             **self.attrs,
         )
 
+
 class BookmarkCountResults(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Stack:
-        if self.attrs.get('bookmark_count', False):
-            bookmark_count = int(self.attrs['bookmark_count'])
-            bookericz = 'bookeric' if bookmark_count == 1 else 'bookerics'
+        if self.attrs.get("bookmark_count", False):
+            bookmark_count = int(self.attrs["bookmark_count"])
+            bookericz = "bookeric" if bookmark_count == 1 else "bookerics"
             bookmark_count = f"{bookmark_count:,} {bookericz}"
         else:
             bookmark_count = ""
@@ -130,4 +131,3 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Switcher:
         return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]])
-
