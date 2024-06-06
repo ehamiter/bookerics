@@ -7,7 +7,7 @@ from ludic.catalog.forms import InputField
 from ludic.catalog.headers import H4
 from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.catalog.typography import Link, Paragraph
-from ludic.html import b, style
+from ludic.html import b, style, div
 from ludic.types import Component, NoChildren
 
 
@@ -87,7 +87,7 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
             placeholder="Search bookerics",
             hx_get="/search",
             hx_trigger="input changed delay:500ms",
-            hx_target="#search-results",
+            hx_target="#results-container",
             hx_swap="innerHTML",
             name="query",
             **self.attrs,

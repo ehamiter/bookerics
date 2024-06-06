@@ -43,12 +43,12 @@ class Page(Component[AnyChildren, GlobalAttrs]):
             ),
             Body(
                 Center(
-                    Stack(*self.children, **self.attrs),
-                    style={
-                        "padding-block": self.theme.sizes.s,
-                    },
+                    div(
+                        Stack(*self.children, **self.attrs),
+                        style={"padding-block": self.theme.sizes.s},
+                        id="results-container",
+                    )
                 ),
-                div(id="search-results"),
                 htmx_version="latest",
             ),
         )
