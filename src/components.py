@@ -2,12 +2,12 @@ from typing import override
 
 from ludic.attrs import Attrs, GlobalAttrs
 from ludic.base import NoChildren
-from ludic.catalog.buttons import ButtonPrimary, ButtonLink
+from ludic.catalog.buttons import ButtonLink, ButtonPrimary
 from ludic.catalog.forms import InputField
 from ludic.catalog.headers import H4
-from ludic.catalog.layouts import Box, Cluster, Stack, Switcher, Grid
+from ludic.catalog.layouts import Box, Cluster, Grid, Stack, Switcher
 from ludic.catalog.typography import Link, Paragraph
-from ludic.html import b, style, div
+from ludic.html import b, div, style
 from ludic.types import Component, NoChildren
 
 
@@ -23,10 +23,7 @@ class NavMenu(Component[NoChildren, GlobalAttrs]):
                 Link("random", to="/random"),
                 Link("untagged", to="/untagged"),
             ),
-            Cluster(
-                Link("tags", to="/tags"),
-                Paragraph(bookmark_count)
-            ),
+            Cluster(Link("tags", to="/tags"), Paragraph(bookmark_count)),
             classes=["justify-space-between"],
         )
 
@@ -38,7 +35,10 @@ class BookmarkListAttrs(Attrs):
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags):
         return Cluster(
-            *[ButtonLink(tag, to=f"/tags/{tag}",classes=["info small"]) for tag in tags],
+            *[
+                ButtonLink(tag, to=f"/tags/{tag}", classes=["info small"])
+                for tag in tags
+            ],
         )
 
     def render_bookmark(self, bookmark):
@@ -53,7 +53,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                     else Cluster(ButtonPrimary("none", classes=["warning small"])),
                 ),
                 classes=["no-border no-inline-padding"],
-            )
+            ),
         )
 
     @override
@@ -86,6 +86,10 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
         }
     )
 
+    def __init__(self, query="", **kwargs):
+        super().__init__(**kwargs)
+        self.query = query
+
     @override
     def render(self) -> InputField:
         return InputField(
@@ -96,9 +100,10 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
             hx_target="#results-container",
             hx_swap="innerHTML",
             name="query",
+            id="query",
+            value=self.query,
             **self.attrs,
         )
-
 
 
 class TagCloud(Component[NoChildren, GlobalAttrs]):
@@ -106,8 +111,6 @@ class TagCloud(Component[NoChildren, GlobalAttrs]):
     def render(self) -> div:
         tags = self.attrs.get("tags", [])
         return Cluster(
-            *[
-                Link(tag, to=f"/tags/{tag}", class_="tag") for tag in tags
-            ],
-            class_="tag-cloud"
+            *[Link(tag, to=f"/tags/{tag}", class_="tag") for tag in tags],
+            class_="tag-cloud",
         )

@@ -4,6 +4,7 @@ from typing import Dict, List
 
 DB_PATH = "bookerics.db"
 
+
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -43,6 +44,7 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
         query = "SELECT 0 FROM bookmarks;"
     return fetch_data(query)
 
+
 def search_bookmarks(query: str) -> List[Dict[str, str]]:
     search_query = f"%{query}%"
     query = f"""
@@ -65,6 +67,7 @@ def fetch_unique_tags() -> List[str]:
     connection.close()
     return [row[0] for row in rows]
 
+
 def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, str]]:
     query = """
     SELECT title, url, description, tags
@@ -81,6 +84,7 @@ def verify_table_structure(table_name: str):
     columns = cursor.fetchall()
     connection.close()
     return columns
+
 
 if __name__ == "__main__":
     table_name = "bookmarks"

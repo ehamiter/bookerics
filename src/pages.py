@@ -4,7 +4,7 @@ from typing import override
 from ludic.attrs import GlobalAttrs
 from ludic.catalog.layouts import Center, Stack
 from ludic.catalog.pages import Body, HtmlHeadAttrs, HtmlPage
-from ludic.html import head, link, meta, style, title, div, script
+from ludic.html import div, head, link, meta, script, style, title
 from ludic.types import AnyChildren, BaseElement, Component
 
 
@@ -18,7 +18,10 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
                 content="width=device-width, initial-scale=1, shrink-to-fit=no",
             ),
             meta(name="description", content="Bookmarks, but for Erics."),
-            meta(name="keywords", content="bookmarks, eric hamiter, web, python, ludic, software"),
+            meta(
+                name="keywords",
+                content="bookmarks, eric hamiter, web, python, ludic, software",
+            ),
             meta(name="author", content="Eric Hamiter"),
             # script(src="https://unpkg.com/hyperscript.org", defer=True),
             script(src="/static/js/custom.js", defer=True),
