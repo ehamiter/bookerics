@@ -1,5 +1,5 @@
-from src.components import BookmarkList, NavMenu, SearchBar
-from src.database import fetch_bookmarks, search_bookmarks
+from src.components import BookmarkList, NavMenu, SearchBar, TagCloud
+from src.database import fetch_bookmarks, search_bookmarks, fetch_unique_tags, fetch_bookmarks_by_tag
 from src.main import app
 from src.pages import Page
 from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
@@ -32,3 +32,14 @@ async def search(request: Request):
     query = request.query_params.get("query", "")
     bookmarks = search_bookmarks(query)
     return Stack(NavMenu(bookmark_count=len(bookmarks)), SearchBar(), BookmarkList(bookmarks=bookmarks))
+
+@app.get("/tags")
+async def tags():
+    tags = fetch_unique_tags()
+    return Page(TagCloud(tags=tags))
+
+@app.get("/tags/{tag}")
+async def bookmarks_by_tag(tag: str):
+    bookmarks = fetch_bookmarks_by_tag(tag)
+    return Page(NavMenu(bookmark_count=len(bookmarks)), SearchBar(), BookmarkList(bookmarks=bookmarks))
+

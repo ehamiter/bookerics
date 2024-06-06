@@ -56,6 +56,24 @@ def search_bookmarks(query: str) -> List[Dict[str, str]]:
     return fetch_data(query)
 
 
+def fetch_unique_tags() -> List[str]:
+    query = "SELECT DISTINCT json_each.value FROM bookmarks, json_each(bookmarks.tags);"
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    connection.close()
+    return [row[0] for row in rows]
+
+def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, str]]:
+    query = """
+    SELECT title, url, description, tags
+    FROM bookmarks
+    WHERE ? IN (SELECT value FROM json_each(bookmarks.tags));
+    """
+    return fetch_data(query, (tag,))
+
+
 def verify_table_structure(table_name: str):
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
