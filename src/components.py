@@ -64,10 +64,12 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
     styles = style.use(
         lambda theme: {
             ".search-bar": {
+                "width": "100%",
                 "input": {
                     "background-color": theme.colors.light.lighten(1),
                     "border": f"1px solid {theme.colors.light.darken(5)}",
                     "color": theme.colors.dark,
+                    "max-inline-size": "none",
                 },
                 "input::placeholder": {
                     "color": theme.colors.dark.lighten(7),
@@ -87,7 +89,7 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
             placeholder="Search bookerics",
             hx_get="/search",
             hx_trigger="input changed delay:500ms",
-            hx_target="#results-containerdom",
+            hx_target="#results-container",
             hx_swap="innerHTML",
             name="query",
             **self.attrs,

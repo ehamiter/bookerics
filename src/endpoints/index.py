@@ -2,6 +2,7 @@ from src.components import BookmarkList, NavMenu, SearchBar
 from src.database import fetch_bookmarks, search_bookmarks
 from src.main import app
 from src.pages import Page
+from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from starlette.requests import Request
 from ludic.html import div
 
@@ -30,4 +31,4 @@ async def untagged_bookmarks():
 async def search(request: Request):
     query = request.query_params.get("query", "")
     bookmarks = search_bookmarks(query)
-    return Page(NavMenu(bookmark_count=len(bookmarks)), SearchBar(), BookmarkList(bookmarks=bookmarks))
+    return Stack(NavMenu(bookmark_count=len(bookmarks)), SearchBar(), BookmarkList(bookmarks=bookmarks))
