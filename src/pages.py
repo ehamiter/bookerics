@@ -44,11 +44,11 @@ class Page(Component[AnyChildren, GlobalAttrs]):
             Body(
                 Center(
                     Stack(*self.children, **self.attrs),
-                    div(id="search-results"),
                     style={
                         "padding-block": self.theme.sizes.s,
                     },
                 ),
+                div(id="search-results"),
                 htmx_version="latest",
             ),
         )

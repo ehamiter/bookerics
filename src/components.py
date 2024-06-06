@@ -14,11 +14,19 @@ from ludic.types import Component, NoChildren
 class NavMenu(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Cluster:
+        bookmark_count = f"{int(self.attrs['bookmark_count']):,}"
+
         return Cluster(
-            Link("newest", to="/"),
-            Link("oldest", to="/oldest"),
-            Link("random", to="/random"),
-            Link("untagged", to="/untagged"),
+            Cluster(
+                Link("newest", to="/"),
+                Link("oldest", to="/oldest"),
+                Link("random", to="/random"),
+                Link("untagged", to="/untagged"),
+            ),
+            Cluster(
+                Paragraph(bookmark_count)
+            ),
+            classes=["justify-space-between"],
         )
 
 
