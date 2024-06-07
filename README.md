@@ -2,6 +2,8 @@
 
 bookmarks, but for Erics
 
+![screenshot](screenshot.png)
+
 ## Running the App
 
 Using Poetry (recommended):
