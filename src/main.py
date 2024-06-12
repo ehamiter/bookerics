@@ -4,12 +4,12 @@ from dataclasses import dataclass, field
 
 from ludic.html import style
 from ludic.styles import themes
-from ludic.styles.themes import Colors, Fonts, Switcher, Sizes
+from ludic.styles.themes import Colors, Fonts, Sizes, Switcher
 from ludic.styles.types import Color, Size, SizeClamp
 from ludic.web import LudicApp
 from ludic.web.routing import Mount
-from starlette.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 
 from src.database import load_db_on_startup
 
@@ -42,6 +42,7 @@ class BookericsTheme(themes.Theme):
 
 bookerics_theme = BookericsTheme()
 themes.set_default_theme(bookerics_theme)
+
 
 @asynccontextmanager
 async def lifespan(_: LudicApp) -> AsyncIterator[None]:

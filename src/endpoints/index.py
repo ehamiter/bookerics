@@ -1,13 +1,18 @@
 from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
+from ludic.catalog.typography import CodeBlock
 from ludic.html import div
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, JSONResponse
 
-from src.components import BookmarkList, NavMenu, SearchBar, TagCloud
-from src.database import (schedule_upload_to_s3, fetch_bookmarks, fetch_bookmarks_by_tag,
-                          fetch_unique_tags, search_bookmarks, create_bookmark)
+from src.components import (BookmarkList, NavMenu, SearchBar, TableStructure,
+                            TagCloud)
+from src.database import (create_bookmark, fetch_bookmarks,
+                          fetch_bookmarks_by_tag, fetch_unique_tags,
+                          schedule_upload_to_s3, search_bookmarks,
+                          verify_table_structure)
 from src.main import app
 from src.pages import Page
+from src.utils import logger
 
 
 @app.get("/")
@@ -52,7 +57,7 @@ async def untagged_bookmarks():
 
 @app.get("/tags")
 async def tags():
-    bookmarks = fetch_bookmarks(kind="all")
+    bookmarks = fetch_bookmarks(kind="newest")
     tags = fetch_unique_tags()
     return Page(
         NavMenu(bookmark_count=len(bookmarks)), SearchBar(), TagCloud(tags=tags)
@@ -79,15 +84,11 @@ async def search(request: Request):
         BookmarkList(bookmarks=bookmarks),
     )
 
+
 @app.get("/update")
-async def index():
+async def update():
     schedule_upload_to_s3()
-    bookmarks = fetch_bookmarks(kind="newest")
-    return Page(
-        NavMenu(bookmark_count=len(bookmarks)),
-        SearchBar(),
-        BookmarkList(bookmarks=bookmarks),
-    )
+    return JSONResponse({"status": "success", "message": "File uploaded to S3"})
 
 
 @app.post("/add")
@@ -101,5 +102,25 @@ async def add_bookmark(request: Request):
 
     if title and url:
         create_bookmark(title, url, description, tags)
-        return JSONResponse({"status": "success", "message": "Bookmark saved!"}, status_code=201)
-    return JSONResponse({"status": "error", "message": "Title and URL are required!"}, status_code=400)
+        return JSONResponse(
+            {"status": "success", "message": "Bookmark saved!"}, status_code=201
+        )
+    return JSONResponse(
+        {"status": "error", "message": "Title and URL are required!"}, status_code=400
+    )
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse("static/favicon.png")
+
+
+@app.get("/verify")
+async def verify():
+    structure = verify_table_structure()
+    bookmarks = fetch_bookmarks(kind="newest")
+    return Page(
+        NavMenu(bookmark_count=len(bookmarks)),
+        SearchBar(),
+        TableStructure(structure=structure),
+    )

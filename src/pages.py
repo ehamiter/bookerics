@@ -9,6 +9,7 @@ from ludic.types import AnyChildren, BaseElement, Component
 
 from src.database import BOOKMARK_NAME
 
+
 class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
     @override
     def render(self) -> head:

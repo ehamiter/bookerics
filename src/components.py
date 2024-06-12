@@ -1,15 +1,17 @@
+from textwrap import dedent
 from typing import override
 
 from ludic.attrs import Attrs, GlobalAttrs
 from ludic.base import NoChildren
 from ludic.catalog.buttons import ButtonLink, ButtonPrimary
 from ludic.catalog.forms import InputField
-from ludic.catalog.headers import H4, WithAnchor, WithAnchorAttrs
-from ludic.catalog.layouts import Box, Cluster, Grid, Stack, Switcher
+from ludic.catalog.headers import H1, H2, H3, H4, WithAnchor, WithAnchorAttrs
+from ludic.catalog.layouts import Box, Center, Cluster, Grid, Stack, Switcher
 from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
                                     MessageWarning)
-from ludic.catalog.typography import Code, Link, Paragraph
-from ludic.html import b, i, div, style, h5, h6, small
+from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
+                                      Paragraph)
+from ludic.html import a, b, div, h5, h6, i, small, style
 from ludic.types import Component, ComponentStrict, NoChildren
 
 from src.database import BOOKMARK_NAME
@@ -22,11 +24,14 @@ class NavMenu(Component[NoChildren, GlobalAttrs]):
             bookmark_count = int(self.attrs["bookmark_count"])
             bookericz = BOOKMARK_NAME if bookmark_count == 1 else f"{BOOKMARK_NAME}s"
             bookmark_result = f"{bookmark_count:,} {bookericz}"
+            link_display = HiddenLink(
+                bookmark_result, to="/update", title="Backup on S3 now"
+            )
         else:
-            bookmark_result = f"{BOOKMARK_NAME}s"
+            link_display = f"{BOOKMARK_NAME}s"
 
         return Cluster(
-            bookmark_result,
+            link_display,
             Cluster(
                 Link("newest", to="/"),
                 Link("oldest", to="/oldest"),
@@ -81,6 +86,47 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
         )
 
 
+class HiddenLinkAttrs(Attrs):
+    to: str
+
+
+class HiddenLink(Component[str, LinkAttrs]):
+    """Hidden Link component"""
+
+    @override
+    def render(self) -> a:
+        return a(
+            *self.children,
+            href=self.attrs["to"],
+            title=self.attrs["title"],
+            classes=["hidden-link"],
+            style={
+                "color": "inherit",  # Inherit the color from the parent element
+                "text-decoration": "none",  # Remove underline
+                "cursor": "alias",  # Change cursor to text (same as normal text cursor)
+                "outline": "none",  # Remove outline on focus
+            },
+        )
+
+
+class TableStructure(Component[NoChildren, GlobalAttrs]):
+    @override
+    def render(self) -> Center:
+        structure = self.attrs.get("structure", [])
+        return Center(
+            Stack(
+                H4("Table Structure"),
+                CodeBlock(
+                    f"""
+[
+ {',\n '.join([str(col) for col in structure])}
+]
+"""
+                ),
+            ),
+        )
+
+
 class TagCloud(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Cluster:
@@ -88,6 +134,7 @@ class TagCloud(Component[NoChildren, GlobalAttrs]):
         return Cluster(
             *[ButtonLink(tag, to=f"/tags/{tag}", classes="info small") for tag in tags]
         )
+
 
 class H5(ComponentStrict[str, WithAnchorAttrs]):
     @override
@@ -119,7 +166,9 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
         return Box(
             H5(Link(bookmark["title"], to=bookmark["url"], classes=["external"])),
             Paragraph(bookmark["url"]),
-            Paragraph(bookmark["description"]) if bookmark.get("description") else Paragraph(i("Add a description… \n")),
+            Paragraph(bookmark["description"])
+            if bookmark.get("description")
+            else Paragraph(i("Add a description… \n")),
             Box(
                 Cluster(
                     self.render_tags(bookmark["tags"])

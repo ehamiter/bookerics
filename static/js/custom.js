@@ -19,3 +19,17 @@ document.addEventListener('keydown', function(event) {
         document.getElementById('query').blur();
     }
 });
+
+document.querySelector('.hidden-link').addEventListener('click', function(event) {
+    event.preventDefault();
+    fetch('/update')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Failed to update: ' + data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+});

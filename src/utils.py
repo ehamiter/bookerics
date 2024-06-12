@@ -6,6 +6,7 @@ GREEN = "\033[32m"
 YELLOW = "\033[33m"
 RED = "\033[31m"
 
+
 class CustomFormatter(logging.Formatter):
     def format(self, record):
         level_name = record.levelname
@@ -27,6 +28,7 @@ class CustomFormatter(logging.Formatter):
 
         return super().format(record)
 
+
 # Create a logger
 logger = logging.getLogger("customLogger")
 logger.setLevel(logging.INFO)
@@ -36,7 +38,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 
 # Create formatter with dynamic spacing
-formatter = CustomFormatter('%(levelname)s%(message)s')
+formatter = CustomFormatter("%(levelname)s%(message)s")
 
 # Add formatter to ch
 ch.setFormatter(formatter)
