@@ -4,7 +4,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from src.components import BookmarkList, NavMenu, SearchBar, TagCloud
-from src.database import (BOOKMARK_NAME, fetch_bookmarks, fetch_bookmarks_by_tag,
+from src.database import (schedule_upload_to_s3, fetch_bookmarks, fetch_bookmarks_by_tag,
                           fetch_unique_tags, search_bookmarks, create_bookmark)
 from src.main import app
 from src.pages import Page
@@ -76,6 +76,16 @@ async def search(request: Request):
     return Stack(
         NavMenu(bookmark_count=len(bookmarks)),
         SearchBar(query=query),
+        BookmarkList(bookmarks=bookmarks),
+    )
+
+@app.get("/update")
+async def index():
+    schedule_upload_to_s3()
+    bookmarks = fetch_bookmarks(kind="newest")
+    return Page(
+        NavMenu(bookmark_count=len(bookmarks)),
+        SearchBar(),
         BookmarkList(bookmarks=bookmarks),
     )
 
