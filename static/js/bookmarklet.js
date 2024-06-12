@@ -1,5 +1,6 @@
 javascript:(function(){
-    const apiURL = "http://localhost:8000/add";
+    const apiURL = "http://localhost:8080/add";
+    // const apiURL = "https://bookerics.com/add";
     const title = encodeURIComponent(document.title);
     const metaDescription = document.querySelector("meta[name='description']");
     const description = metaDescription ? encodeURIComponent(metaDescription.content) : '';

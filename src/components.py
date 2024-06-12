@@ -12,7 +12,7 @@ from ludic.catalog.typography import Code, Link, Paragraph
 from ludic.html import b, i, div, style, h5, h6, small
 from ludic.types import Component, ComponentStrict, NoChildren
 
-from src.main import BOOKMARK_NAME
+from src.database import BOOKMARK_NAME
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):

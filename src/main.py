@@ -11,7 +11,7 @@ from ludic.web.routing import Mount
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
-BOOKMARK_NAME = "bookeric"  # change to your name for the ultimate in personalizatiom
+from src.database import load_db_on_startup
 
 
 @dataclass
@@ -43,9 +43,9 @@ class BookericsTheme(themes.Theme):
 bookerics_theme = BookericsTheme()
 themes.set_default_theme(bookerics_theme)
 
-
 @asynccontextmanager
 async def lifespan(_: LudicApp) -> AsyncIterator[None]:
+    load_db_on_startup()
     style.load(cache=True)
     yield
 

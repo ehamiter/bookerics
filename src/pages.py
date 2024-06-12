@@ -7,7 +7,7 @@ from ludic.catalog.pages import Body, HtmlHeadAttrs, HtmlPage
 from ludic.html import div, head, link, meta, script, style, title
 from ludic.types import AnyChildren, BaseElement, Component
 
-from src.main import BOOKMARK_NAME
+from src.database import BOOKMARK_NAME
 
 class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
     @override

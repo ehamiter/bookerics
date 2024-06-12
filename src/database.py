@@ -1,9 +1,39 @@
+import os
 from datetime import datetime
 import json
 import sqlite3
+import asyncio
 from typing import Dict, List
+import boto3
+import aioboto3
 
-DB_PATH = "bookerics.db"
+
+BOOKMARK_NAME = "bookeric"  # change to your name for the ultimate in personalizatiom
+
+# DB setup
+S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
+S3_KEY = f"{BOOKMARK_NAME}s.db"
+DB_PATH = f"/tmp/{BOOKMARK_NAME}s.db"
+# DB_PATH = "/Users/eric/Downloads/bookerics.db"
+
+
+def download_file_from_s3(bucket_name, s3_key, local_path):
+    s3 = boto3.client('s3')
+    try:
+        s3.download_file(bucket_name, s3_key, local_path)
+        print(f"Downloaded {s3_key} from bucket {bucket_name} to {local_path}")
+    except Exception as e:
+        print(f"Error downloading file from S3: {e}")
+
+def load_db_on_startup():
+    print("Bookerics starting up…")
+
+    # Download the database file from S3
+    if not os.path.exists(DB_PATH):
+        download_file_from_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
+
+    print('Database loaded!')
+
 
 
 # GETs
@@ -44,18 +74,16 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
 
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
-    if kind == "newest":
-        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at DESC;"
-    elif kind == "oldest":
-        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;"
-    elif kind == "random":
-        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1;"
-    elif kind == "untagged":
-        query = "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]';"
-    else:
-        query = "SELECT 0 FROM bookmarks;"
-    return fetch_data(query)
+    queries = {
+        "newest": "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at DESC;",
+        "oldest": "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;",
+        "random": "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1;",
+        "untagged": "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC;",
+    }
 
+    query = queries.get(kind, queries["newest"])
+
+    return fetch_data(query)
 
 def search_bookmarks(query: str) -> List[Dict[str, str]]:
     search_query = f"%{query}%"
@@ -71,13 +99,28 @@ def search_bookmarks(query: str) -> List[Dict[str, str]]:
 
 
 def fetch_unique_tags() -> List[str]:
+    # by tag frequency
     query = """
-    SELECT DISTINCT json_each.value
+    SELECT json_each.value, COUNT(*) as frequency
     FROM bookmarks, json_each(bookmarks.tags)
     WHERE json_each.value IS NOT NULL
-    AND json_each.value != ''
-    AND json_each.value != '[""]';
+      AND json_each.value != ''
+      AND json_each.value != '[""]'
+    GROUP BY json_each.value
+    ORDER BY frequency DESC;
     """
+
+    # by newness
+    # query = """
+    # SELECT DISTINCT json_each.value
+    # FROM bookmarks, json_each(bookmarks.tags)
+    # WHERE json_each.value IS NOT NULL
+    #   AND json_each.value != ''
+    #   AND json_each.value != '[""]'
+    # ORDER BY bookmarks.created_at DESC;
+    # """
+
+    # execute it
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute(query)
@@ -90,11 +133,21 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, str]]:
     query = """
     SELECT title, url, description, tags
     FROM bookmarks
-    WHERE ? IN (SELECT value FROM json_each(bookmarks.tags));
+    WHERE ? IN (SELECT value FROM json_each(bookmarks.tags))
+    ORDER BY created_at DESC;
     """
     return fetch_data(query, (tag,))
 
 # POSTs
+
+async def upload_file_to_s3(bucket_name, s3_key, local_path):
+    session = aioboto3.Session()
+    async with session.client('s3') as s3:
+        try:
+            await s3.upload_file(local_path, bucket_name, s3_key)
+            print(f"Uploaded {local_path} to bucket {bucket_name} with key {s3_key}")
+        except Exception as e:
+            print(f"Error uploading file to S3: {e}")
 
 def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> None:
     tags_json = json.dumps(tags)
@@ -105,6 +158,25 @@ def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> 
     """
     execute_query(query, (title, url, description, tags_json, current_timestamp, current_timestamp))
 
+    # Schedule the upload of the database file to S3 asynchronously
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        asyncio.create_task(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
+    else:
+        asyncio.run(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
+
+# async def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> None:
+#     tags_json = json.dumps(tags)
+#     current_timestamp = datetime.utcnow().isoformat()
+#     query = """
+#     INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at)
+#     VALUES (?, ?, ?, ?, ?, ?)
+#     """
+#     # Save it locally
+#     await execute_query(query, (title, url, description, tags_json, current_timestamp, current_timestamp))
+
+#     # Upload the database file asynchronously to S3 in the background
+#     await upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
 
 # utils
 

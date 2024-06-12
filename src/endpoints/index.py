@@ -4,9 +4,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from src.components import BookmarkList, NavMenu, SearchBar, TagCloud
-from src.database import (fetch_bookmarks, fetch_bookmarks_by_tag,
+from src.database import (BOOKMARK_NAME, fetch_bookmarks, fetch_bookmarks_by_tag,
                           fetch_unique_tags, search_bookmarks, create_bookmark)
-from src.main import app, BOOKMARK_NAME
+from src.main import app
 from src.pages import Page
 
 
@@ -86,7 +86,7 @@ async def add_bookmark(request: Request):
     title = data.get("title")
     url = data.get("url")
     description = data.get("description", "Add a description…")
-    # TODO: auto-suggest appropriate existing tags
+    # TODO: suggest tags automatically
     tags = data.get("tags", [])
 
     if title and url:
