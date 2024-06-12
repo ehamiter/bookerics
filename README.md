@@ -9,7 +9,7 @@ bookmarks, but for Erics
 Using Poetry (recommended):
 
 ```
-poetry install
+poetry install --no-root
 poetry run uvicorn --reload src.main:app
 ```
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import sqlite3
 from typing import Dict, List
@@ -5,7 +6,18 @@ from typing import Dict, List
 DB_PATH = "bookerics.db"
 
 
+# GETs
+
+def execute_query(query: str, params: tuple = ()) -> None:
+    # executes query and ends-- used for POSTing and no expected response
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute(query, params)
+    connection.commit()
+    connection.close()
+
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
+    # executes query and fetches bookmarks-- used for retrieval
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute(query, params)
@@ -32,14 +44,14 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, str]]:
 
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
-    if kind == "all":
-        query = "SELECT title, url, description, tags FROM bookmarks;"
+    if kind == "newest":
+        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at DESC;"
+    elif kind == "oldest":
+        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;"
     elif kind == "random":
         query = "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1;"
     elif kind == "untagged":
         query = "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]';"
-    elif kind == "oldest":
-        query = "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;"
     else:
         query = "SELECT 0 FROM bookmarks;"
     return fetch_data(query)
@@ -82,6 +94,19 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, str]]:
     """
     return fetch_data(query, (tag,))
 
+# POSTs
+
+def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> None:
+    tags_json = json.dumps(tags)
+    current_timestamp = datetime.utcnow().isoformat()
+    query = """
+    INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """
+    execute_query(query, (title, url, description, tags_json, current_timestamp, current_timestamp))
+
+
+# utils
 
 def verify_table_structure(table_name: str):
     connection = sqlite3.connect(DB_PATH)

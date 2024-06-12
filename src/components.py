@@ -4,23 +4,26 @@ from ludic.attrs import Attrs, GlobalAttrs
 from ludic.base import NoChildren
 from ludic.catalog.buttons import ButtonLink, ButtonPrimary
 from ludic.catalog.forms import InputField
-from ludic.catalog.headers import H4
+from ludic.catalog.headers import H4, WithAnchor, WithAnchorAttrs
 from ludic.catalog.layouts import Box, Cluster, Grid, Stack, Switcher
-from ludic.catalog.typography import Link, Paragraph
-from ludic.html import b, div, style
-from ludic.types import Component, NoChildren
+from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
+                                    MessageWarning)
+from ludic.catalog.typography import Code, Link, Paragraph
+from ludic.html import b, i, div, style, h5, h6, small
+from ludic.types import Component, ComponentStrict, NoChildren
+
+from src.main import BOOKMARK_NAME
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Cluster:
         if self.attrs.get("bookmark_count", False):
-            print("yep!")
             bookmark_count = int(self.attrs["bookmark_count"])
-            bookericz = "bookeric" if bookmark_count == 1 else "bookerics"
+            bookericz = BOOKMARK_NAME if bookmark_count == 1 else f"{BOOKMARK_NAME}s"
             bookmark_result = f"{bookmark_count:,} {bookericz}"
         else:
-            bookmark_result = "bookerics"
+            bookmark_result = f"{BOOKMARK_NAME}s"
 
         return Cluster(
             bookmark_result,
@@ -66,7 +69,7 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
     def render(self) -> InputField:
         return InputField(
             type="search",
-            placeholder="Search bookerics",
+            placeholder=f"Search {BOOKMARK_NAME}s",
             hx_get="/search",
             hx_trigger="input changed delay:500ms",
             hx_target="#results-container",
@@ -78,19 +81,6 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
         )
 
 
-class BookmarkCountResults(Component[NoChildren, GlobalAttrs]):
-    @override
-    def render(self) -> Stack:
-        if self.attrs.get("bookmark_count", False):
-            bookmark_count = int(self.attrs["bookmark_count"])
-            bookericz = "bookeric" if bookmark_count == 1 else "bookerics"
-            bookmark_count = f"{bookmark_count:,} {bookericz}"
-        else:
-            bookmark_count = ""
-
-        return Stack(bookmark_count)
-
-
 class TagCloud(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Cluster:
@@ -98,6 +88,18 @@ class TagCloud(Component[NoChildren, GlobalAttrs]):
         return Cluster(
             *[ButtonLink(tag, to=f"/tags/{tag}", classes="info small") for tag in tags]
         )
+
+class H5(ComponentStrict[str, WithAnchorAttrs]):
+    @override
+    def render(self) -> h5 | WithAnchor:
+        header = h5(*self.children, **self.attrs_for(h5))
+        anchor = self.attrs.get("anchor")
+        if anchor:
+            return WithAnchor(header, anchor=anchor)
+        elif self.theme.headers.h5.anchor and anchor is not False:
+            return WithAnchor(header)
+        else:
+            return header
 
 
 class BookmarkListAttrs(Attrs):
@@ -115,9 +117,9 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
 
     def render_bookmark(self, bookmark):
         return Box(
-            H4(Link(bookmark["title"], to=bookmark["url"], target="_blank")),
-            b(bookmark["url"]),
-            Paragraph(bookmark["description"]) if bookmark.get("description") else "",
+            H5(Link(bookmark["title"], to=bookmark["url"], classes=["external"])),
+            Paragraph(bookmark["url"]),
+            Paragraph(bookmark["description"]) if bookmark.get("description") else Paragraph(i("Add a description… \n")),
             Box(
                 Cluster(
                     self.render_tags(bookmark["tags"])

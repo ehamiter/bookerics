@@ -7,6 +7,7 @@ from ludic.catalog.pages import Body, HtmlHeadAttrs, HtmlPage
 from ludic.html import div, head, link, meta, script, style, title
 from ludic.types import AnyChildren, BaseElement, Component
 
+from src.main import BOOKMARK_NAME
 
 class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
     @override
@@ -23,9 +24,9 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
                 content="bookmarks, eric hamiter, web, python, ludic, software",
             ),
             meta(name="author", content="Eric Hamiter"),
-            # script(src="https://unpkg.com/hyperscript.org", defer=True),
+            script(src="/static/js/htmx.min.js", defer=True),
             script(src="/static/js/custom.js", defer=True),
-            title(self.attrs.get("title", "Ludic App")),
+            title(self.attrs.get("title", "bookerics")),
         ]
 
         if favicon := self.attrs.get("favicon"):
@@ -44,7 +45,7 @@ class Page(Component[AnyChildren, GlobalAttrs]):
         return HtmlPage(
             CustomHead(
                 link(rel="icon", href="/static/favicon.png"),
-                title="bookerics",
+                title=f"{BOOKMARK_NAME}s",
             ),
             Body(
                 Center(
@@ -54,6 +55,5 @@ class Page(Component[AnyChildren, GlobalAttrs]):
                         style={"padding-block": self.theme.sizes.xs},
                     ),
                 ),
-                htmx_version="latest",
             ),
         )
