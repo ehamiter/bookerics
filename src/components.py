@@ -101,10 +101,10 @@ class HiddenLink(Component[str, LinkAttrs]):
             title=self.attrs["title"],
             classes=["hidden-link"],
             style={
-                "color": "inherit",  # Inherit the color from the parent element
-                "text-decoration": "none",  # Remove underline
-                "cursor": "alias",  # Change cursor to text (same as normal text cursor)
-                "outline": "none",  # Remove outline on focus
+                "color": "inherit",
+                "text-decoration": "none",
+                "cursor": "alias",
+                "outline": "none",
             },
         )
 
@@ -114,15 +114,12 @@ class TableStructure(Component[NoChildren, GlobalAttrs]):
     def render(self) -> Center:
         structure = self.attrs.get("structure", [])
         return Center(
-            Stack(
-                H4("Table Structure"),
-                CodeBlock(
-                    f"""
+            CodeBlock(
+            f"""
 [
  {',\n '.join([str(col) for col in structure])}
 ]
 """
-                ),
             ),
         )
 

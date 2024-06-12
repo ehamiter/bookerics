@@ -115,8 +115,8 @@ async def favicon():
     return FileResponse("static/favicon.png")
 
 
-@app.get("/verify")
-async def verify():
+@app.get("/table")
+async def table_structure():
     structure = verify_table_structure()
     bookmarks = fetch_bookmarks(kind="newest")
     return Page(
