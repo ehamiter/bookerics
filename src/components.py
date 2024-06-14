@@ -119,6 +119,22 @@ class BookericLink(Component[str, LinkAttrs]):
         )
 
 
+class ImagePlaceholder(img):
+    void_element = True
+    html_name = "img"
+    classes = ["image-placeholder"]
+    styles = style.use(
+        lambda theme: {
+            ".image-placeholder": {
+                "margin-top": "1em",
+                "border": "1px groove #a3d3f641",
+                "border-radius": "4px",
+                "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
+                "background": "#85acc934",
+            }
+        }
+    )
+
 class TableStructure(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Center:
@@ -141,24 +157,6 @@ class TagCloud(Component[NoChildren, GlobalAttrs]):
         return Cluster(
             *[ButtonLink(tag, to=f"/tags/{tag}", classes="info small") for tag in tags]
         )
-
-
-class ImagePlaceholder(img):
-    void_element = True
-    html_name = "img"
-    classes = ["image-placeholder"]
-    styles = style.use(
-        lambda theme: {
-            ".image-placeholder": {
-                "margin": "1.25em 0.25em 0.25em 0.25em",
-                "border": "1px groove #a3d3f641",
-                "border-radius": "4px",
-                "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
-                "height": "200px",
-                "background": "#85acc934",
-            }
-        }
-    )
 
 
 class Switcher(div):
@@ -223,6 +221,9 @@ class BookmarkBox(div):
                 "background-color": theme.colors.light.lighten(1),
                 "box-shadow": "rgba(149, 157, 165, 0.2) 0px 8px 24px;",
             },
+            ".bookmark-box .bookeric-link.external:hover": {
+                "text-decoration": "underline !important",
+            },
             ".bookmark-box p.url, .bookmark-box * p.url": {
                 "margin": "0.75em 0",
                 "font-size": "0.88em",
@@ -233,22 +234,18 @@ class BookmarkBox(div):
                 "font-size": "1em",
                 "color": "#10140d",
             },
-            ".bookmark-box .bookeric-link.external:hover": {
-                "text-decoration": "underline !important",
+            ".bookmark-box p.image-url, .bookmark-box * p.image-url": {
+                "text-align": "center",
+                "font-size": "14px",
+                "margin": "2px auto",
+                "color": "#5c744a",
+                "font-style": "italic",
             },
-            # Image layout css
-            # ".bookmark-box p.url, .bookmark-box * p.url": {
-            #     "text-align": "center",
-            #     "font-size": "14px",
-            #     "margin": "2px auto",
-            #     "color": "fern",
-            #     "font-style": "italic",
-            # },
-            # ".bookmark-box p.description, .bookmark-box * p.description": {
-            #     "color": "#111111",
-            #     "margin": "1em .25em",
-            #     "font-size": "1em",
-            # },
+            ".bookmark-box p.image-description, .bookmark-box * p.image-description": {
+                "color": "#10140d",
+                "margin": "1em .25em",
+                "font-size": "1em",
+            },
         }
     )
 
@@ -262,6 +259,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             ],
         )
 
+    # Layout for not showing image previews
     def render_bookmark(self, bookmark) -> BookmarkBox:
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
@@ -279,18 +277,23 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             ),
         )
 
+    @override
+    def render(self) -> Switcher:
+        return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]])
+
     # Layout for showing image previews
     # def render_bookmark(self, bookmark) -> BookmarkBox:
+    #     thumbnail_api_url = 'https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get'
     #     return BookmarkBox(
     #         BookericLink(bookmark["title"], to=bookmark["url"]),
     #         Switcher(
-    #             ImagePlaceholder(),
-    #             Paragraph(bookmark["url"], classes=["url"]),
+    #             Link(ImagePlaceholder(src=f'{thumbnail_api_url}?url={bookmark["url"]}&width=480'),to=bookmark["url"]),
+    #             Paragraph(bookmark["url"], classes=["image-url"]),
     #             classes=["no-gap"],
     #         ),
-    #         Paragraph(bookmark["description"], classes=["description"])
+    #         Paragraph(bookmark["description"], classes=["image-description"])
     #         if bookmark.get("description")
-    #         else Paragraph(i("Add a description… \n", classes=["description"])),
+    #         else Paragraph(i("Add a description… \n", classes=["image-description"])),
     #         Box(
     #             Cluster(
     #                 self.render_tags(bookmark["tags"])
@@ -301,6 +304,6 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
     #         ),
     #     )
 
-    @override
-    def render(self) -> Switcher:
-        return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]])
+    # @override
+    # def render(self) -> Switcher:
+    #     return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]][:3])
