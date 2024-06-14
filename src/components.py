@@ -11,7 +11,7 @@ from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
                                     MessageWarning)
 from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
                                       Paragraph)
-from ludic.html import a, b, div, h5, h6, i, img, small, style
+from ludic.html import a, b, div, h6, i, img, small, style
 from ludic.types import Component, ComponentStrict, NoChildren
 
 from src.database import BOOKMARK_NAME
@@ -87,8 +87,6 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
 
 
 class HiddenLink(Component[str, LinkAttrs]):
-    """Hidden Link component"""
-
     @override
     def render(self) -> a:
         return a(
@@ -100,6 +98,22 @@ class HiddenLink(Component[str, LinkAttrs]):
                 "color": "inherit",
                 "text-decoration": "none",
                 "cursor": "alias",
+                "outline": "none",
+            },
+        )
+
+class BookericLink(Component[str, LinkAttrs]):
+    @override
+    def render(self) -> a:
+        return a(
+            *self.children,
+            href=self.attrs["to"],
+            classes=["bookeric-link external"],
+            style={
+                "font-weight": "normal",
+                "font-size": "1rem",
+                "color": "#0086e5",
+                "text-decoration": "none",
                 "outline": "none",
             },
         )
@@ -129,19 +143,6 @@ class TagCloud(Component[NoChildren, GlobalAttrs]):
         )
 
 
-class H5(ComponentStrict[str, WithAnchorAttrs]):
-    @override
-    def render(self) -> h5 | WithAnchor:
-        header = h5(*self.children, **self.attrs_for(h5))
-        anchor = self.attrs.get("anchor")
-        if anchor:
-            return WithAnchor(header, anchor=anchor)
-        elif self.theme.headers.h5.anchor and anchor is not False:
-            return WithAnchor(header)
-        else:
-            return header
-
-
 class ImagePlaceholder(img):
     void_element = True
     html_name = "img"
@@ -149,7 +150,7 @@ class ImagePlaceholder(img):
     styles = style.use(
         lambda theme: {
             ".image-placeholder": {
-                "margin": "1em 0 0 0",
+                "margin": "1.25em 0.25em 0.25em 0.25em",
                 "border": "1px groove #a3d3f641",
                 "border-radius": "4px",
                 "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
@@ -192,7 +193,7 @@ class BookmarkBox(div):
     styles = style.use(
         lambda theme: {
             ".bookmark-box": {
-                "padding": theme.sizes.m,
+                "padding": theme.sizes.l,
                 "color": theme.colors.dark,
                 "transition": "background-color 0.3s ease, box-shadow 0.3s ease",
             },
@@ -222,6 +223,9 @@ class BookmarkBox(div):
                 "background-color": theme.colors.light.lighten(1),
                 "box-shadow": "rgba(149, 157, 165, 0.2) 0px 8px 24px;",
             },
+            ".bookeric-link.external:hover": {
+                "text-decoration": "underline",
+            },
             ".bookmark-box p.url, .bookmark-box * p.url": {
                 "text-align": "center",
                 "font-size": "14px",
@@ -237,9 +241,6 @@ class BookmarkBox(div):
         }
     )
 
-class BookmarkListAttrs(Attrs):
-    bookmarks: list
-
 
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags) -> Cluster:
@@ -252,7 +253,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
 
     def render_bookmark(self, bookmark) -> BookmarkBox:
         return BookmarkBox(
-            H5(Link(bookmark["title"], to=bookmark["url"], classes=["external"])),
+            BookericLink(bookmark["title"], to=bookmark["url"]),
             Switcher(
                 ImagePlaceholder(),
                 Paragraph(bookmark["url"], classes=["url"]),
