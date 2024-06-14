@@ -13,42 +13,9 @@
         button { margin-top: 15px; padding: 10px; background-color: hsl(207deg 44% 49%); color: #f8f8f8; border: none; cursor: pointer; max-width: 250px; }
         button:hover { background-color: hsl(207deg 44% 49%); }
     </style>
-    <script>
-        function saveBookmark() {
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "http://localhost:8080/add", true);
-            xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    const response = JSON.parse(xhr.responseText);
-                    if (xhr.status === 201) {
-                        window.close();
-                    } else {
-                        alert("Error: " + response.message);
-                    }
-                }
-            };
-            xhr.send(JSON.stringify({
-                title: document.getElementById("title").value,
-                description: document.getElementById("description").value,
-                url: document.getElementById("url").value,
-                tags: document.getElementById("tags").value.split(" ")
-            }));
-        }
-        document.addEventListener("DOMContentLoaded", function() {
-            const t = encodeURIComponent(document.title);
-            const n = document.querySelector("meta[name='description']");
-            const o = n ? encodeURIComponent(n.content) : '';
-            const c = encodeURIComponent(window.location.href);
-            document.getElementById("title").value = decodeURIComponent(t);
-            document.getElementById("description").value = decodeURIComponent(o);
-            document.getElementById("url").value = decodeURIComponent(c);
-            document.getElementById("description").value ? document.getElementById("tags").focus() : document.getElementById("description").focus();
-        });
-    </script>
 </head>
 <body>
-    <form id="bookmarkForm">
+    <form action="http://localhost:8080/add" method="post">
         <label for="title">Title:</label>
         <input type="text" id="title" name="title">
         <label for="description">Description:</label>
@@ -57,7 +24,16 @@
         <input type="text" id="url" name="url">
         <label for="tags">Tags (separate by spaces):</label>
         <input type="text" id="tags" name="tags">
-        <button type="button" onclick="saveBookmark()">Save</button>
+        <button type="submit">Save</button>
     </form>
+    <script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            document.getElementById('title').value = decodeURIComponent(urlParams.get('title') || '');
+            document.getElementById('description').value = decodeURIComponent(urlParams.get('description') || '');
+            document.getElementById('url').value = decodeURIComponent(urlParams.get('url') || '');
+            document.getElementById('tags').value = decodeURIComponent(urlParams.get('tags') || '');
+        };
+    </script>
 </body>
 </html>
