@@ -117,6 +117,8 @@ async def add_bookmark(request: Request):
     return JSONResponse(
         {"status": "error", "message": "Title and URL are required!"}, status_code=400
     )
+
+
 # @app.post("/add")
 # async def add_bookmark(request: Request):
 #     data = await request.json()

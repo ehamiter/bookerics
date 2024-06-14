@@ -6,7 +6,8 @@ from ludic.base import NoChildren
 from ludic.catalog.buttons import ButtonLink, ButtonPrimary
 from ludic.catalog.forms import InputField
 from ludic.catalog.headers import H1, H2, H3, H4, WithAnchor, WithAnchorAttrs
-from ludic.catalog.layouts import Box, Center, Cluster, Cover, Grid, Stack, Switcher
+from ludic.catalog.layouts import (Box, Center, Cluster, Cover, Grid, Stack,
+                                   Switcher)
 from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
                                     MessageWarning)
 from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
@@ -102,6 +103,7 @@ class HiddenLink(Component[str, LinkAttrs]):
             },
         )
 
+
 class BookericLink(Component[str, LinkAttrs]):
     @override
     def render(self) -> a:
@@ -135,13 +137,14 @@ class ImagePlaceholder(img):
         }
     )
 
+
 class TableStructure(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Center:
         structure = self.attrs.get("structure", [])
         return Center(
             CodeBlock(
-            f"""
+                f"""
 [
  {',\n '.join([str(col) for col in structure])}
 ]
@@ -185,6 +188,7 @@ class Switcher(div):
             },
         }
     )
+
 
 class BookmarkBox(div):
     classes = ["bookmark-box"]
@@ -271,7 +275,9 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 Cluster(
                     self.render_tags(bookmark["tags"])
                     if bookmark.get("tags")
-                    else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
+                    else Cluster(
+                        ButtonLink("none", to="/untagged", classes=["warning small"])
+                    ),
                 ),
                 classes=["no-border no-inline-padding"],
             ),
