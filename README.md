@@ -4,6 +4,12 @@ bookmarks, but for Erics
 
 ![screenshot](screenshot.png)
 
+
+## This is a continual work in progress.
+
+Things will definitely break in here, but if you want to tinker around with it, be my guest.
+
+
 ## Running the App
 
 Using Poetry (recommended):
