@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Save Bookeric</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f8f8; }
+        form { display: flex; flex-direction: column; }
+        label { margin-top: 10px; }
+        input, textarea { min-width: 400px; padding: 8px; margin-top: 5px; }
+        textarea { min-height: 100px; }
+        button { margin-top: 15px; padding: 10px; background-color: hsl(207deg 44% 49%); color: #f8f8f8; border: none; cursor: pointer; max-width: 250px; }
+        button:hover { background-color: hsl(207deg 44% 49%); }
+    </style>
+    <script>
+        function saveBookmark() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "http://localhost:8080/add", true);
+            xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    const response = JSON.parse(xhr.responseText);
+                    if (xhr.status === 201) {
+                        window.close();
+                    } else {
+                        alert("Error: " + response.message);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({
+                title: document.getElementById("title").value,
+                description: document.getElementById("description").value,
+                url: document.getElementById("url").value,
+                tags: document.getElementById("tags").value.split(" ")
+            }));
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            const t = encodeURIComponent(document.title);
+            const n = document.querySelector("meta[name='description']");
+            const o = n ? encodeURIComponent(n.content) : '';
+            const c = encodeURIComponent(window.location.href);
+            document.getElementById("title").value = decodeURIComponent(t);
+            document.getElementById("description").value = decodeURIComponent(o);
+            document.getElementById("url").value = decodeURIComponent(c);
+            document.getElementById("description").value ? document.getElementById("tags").focus() : document.getElementById("description").focus();
+        });
+    </script>
+</head>
+<body>
+    <form id="bookmarkForm">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title">
+        <label for="description">Description:</label>
+        <textarea id="description" name="description"></textarea>
+        <label for="url">URL:</label>
+        <input type="text" id="url" name="url">
+        <label for="tags">Tags (separate by spaces):</label>
+        <input type="text" id="tags" name="tags">
+        <button type="button" onclick="saveBookmark()">Save</button>
+    </form>
+</body>
+</html>
