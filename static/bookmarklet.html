@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Save Bookeric</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f8f8; }
+        form { display: flex; flex-direction: column; }
+        label { margin-top: 10px; }
+        input, textarea { min-width: 400px; padding: 8px; margin-top: 5px; }
+        textarea { min-height: 100px; }
+        button { margin-top: 15px; padding: 10px; background-color: hsl(207deg 44% 49%); color: #f8f8f8; border: none; cursor: pointer; max-width: 250px; }
+        button:hover { background-color: hsl(207deg 44% 49%); }
+    </style>
+</head>
+<body>
+    <form id="bookmarkForm" action="http://localhost:8080/add" method="post">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title">
+        <label for="description">Description:</label>
+        <textarea id="description" name="description"></textarea>
+        <label for="url">URL:</label>
+        <input type="text" id="url" name="url">
+        <label for="tags">Tags (separate by spaces):</label>
+        <input type="text" id="tags" name="tags">
+        <button type="submit">Save</button>
+    </form>
+    <script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            document.getElementById('title').value = decodeURIComponent(urlParams.get('title') || '');
+            document.getElementById('description').value = decodeURIComponent(urlParams.get('description') || '');
+            document.getElementById('url').value = decodeURIComponent(urlParams.get('url') || '');
+            document.getElementById('tags').value = decodeURIComponent(urlParams.get('tags') || '');
+
+            document.getElementById('bookmarkForm').onsubmit = async function(event) {
+                event.preventDefault();
+                const form = event.target;
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.status === "success") {
+                    window.close();
+                } else {
+                    alert("Error: " + result.message);
+                }
+            };
+        };
+    </script>
+</body>
+</html>
