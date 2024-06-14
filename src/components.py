@@ -268,52 +268,52 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
         )
 
     # Layout for not showing image previews
-    def render_bookmark(self, bookmark) -> BookmarkBox:
-        return BookmarkBox(
-            BookericLink(bookmark["title"], to=bookmark["url"]),
-            Paragraph(bookmark["url"], classes=["url"]),
-            Paragraph(bookmark["description"], classes=["description"])
-            if bookmark.get("description")
-            else Paragraph(i("Add a description… \n", classes=["description"])),
-            Box(
-                Cluster(
-                    self.render_tags(bookmark["tags"])
-                    if bookmark.get("tags")
-                    else Cluster(
-                        ButtonLink("none", to="/untagged", classes=["warning small"])
-                    ),
-                ),
-                classes=["no-border no-inline-padding"],
-            ),
-        )
-
-    @override
-    def render(self) -> Switcher:
-        return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]])
-
-    # Layout for showing image previews
     # def render_bookmark(self, bookmark) -> BookmarkBox:
-    #     thumbnail_api_url = 'https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get'
     #     return BookmarkBox(
     #         BookericLink(bookmark["title"], to=bookmark["url"]),
-    #         Switcher(
-    #             Link(ImagePlaceholder(src=f'{thumbnail_api_url}?url={bookmark["url"]}&width=480'),to=bookmark["url"]),
-    #             Paragraph(bookmark["url"], classes=["image-url"]),
-    #             classes=["no-gap"],
-    #         ),
-    #         Paragraph(bookmark["description"], classes=["image-description"])
+    #         Paragraph(bookmark["url"], classes=["url"]),
+    #         Paragraph(bookmark["description"], classes=["description"])
     #         if bookmark.get("description")
-    #         else Paragraph(i("Add a description… \n", classes=["image-description"])),
+    #         else Paragraph(i("Add a description… \n", classes=["description"])),
     #         Box(
     #             Cluster(
     #                 self.render_tags(bookmark["tags"])
     #                 if bookmark.get("tags")
-    #                 else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
+    #                 else Cluster(
+    #                     ButtonLink("none", to="/untagged", classes=["warning small"])
+    #                 ),
     #             ),
-    #             classes=["no-border no-inline-padding no-block-padding"],
+    #             classes=["no-border no-inline-padding"],
     #         ),
     #     )
 
     # @override
     # def render(self) -> Switcher:
-    #     return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]][:3])
+    #     return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]])
+
+    # Layout for showing image previews
+    def render_bookmark(self, bookmark) -> BookmarkBox:
+        thumbnail_api_url = 'https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get'
+        return BookmarkBox(
+            BookericLink(bookmark["title"], to=bookmark["url"]),
+            Switcher(
+                Link(ImagePlaceholder(src=f'{thumbnail_api_url}?url={bookmark["url"]}&width=480', height='360', width='480'), to=bookmark["url"]),
+                Paragraph(bookmark["url"], classes=["image-url"]),
+                classes=["no-gap"],
+            ),
+            Paragraph(bookmark["description"], classes=["image-description"])
+            if bookmark.get("description")
+            else Paragraph(i("Add a description… \n"), classes=["image-description"]),
+            Box(
+                Cluster(
+                    self.render_tags(bookmark["tags"])
+                    if bookmark.get("tags")
+                    else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
+                ),
+                classes=["no-border no-inline-padding no-block-padding"],
+            ),
+        )
+
+    @override
+    def render(self) -> Switcher:
+        return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]][:1])
