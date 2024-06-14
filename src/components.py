@@ -193,7 +193,7 @@ class BookmarkBox(div):
     styles = style.use(
         lambda theme: {
             ".bookmark-box": {
-                "padding": theme.sizes.l,
+                "padding": theme.sizes.m,
                 "color": theme.colors.dark,
                 "transition": "background-color 0.3s ease, box-shadow 0.3s ease",
             },
@@ -223,21 +223,32 @@ class BookmarkBox(div):
                 "background-color": theme.colors.light.lighten(1),
                 "box-shadow": "rgba(149, 157, 165, 0.2) 0px 8px 24px;",
             },
-            ".bookeric-link.external:hover": {
-                "text-decoration": "underline",
-            },
             ".bookmark-box p.url, .bookmark-box * p.url": {
-                "text-align": "center",
-                "font-size": "14px",
-                "margin": "2px auto",
-                "color": "fern",
-                "font-style": "italic",
+                "margin": "0.75em 0",
+                "font-size": "0.88em",
+                "color": "#5c744a",
             },
             ".bookmark-box p.description, .bookmark-box * p.description": {
-                "color": "#111111",
-                "margin": "1em .25em",
+                "margin": "1em 0 0 0",
                 "font-size": "1em",
+                "color": "#10140d",
             },
+            ".bookmark-box .bookeric-link.external:hover": {
+                "text-decoration": "underline !important",
+            },
+            # Image layout css
+            # ".bookmark-box p.url, .bookmark-box * p.url": {
+            #     "text-align": "center",
+            #     "font-size": "14px",
+            #     "margin": "2px auto",
+            #     "color": "fern",
+            #     "font-style": "italic",
+            # },
+            # ".bookmark-box p.description, .bookmark-box * p.description": {
+            #     "color": "#111111",
+            #     "margin": "1em .25em",
+            #     "font-size": "1em",
+            # },
         }
     )
 
@@ -254,11 +265,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_bookmark(self, bookmark) -> BookmarkBox:
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
-            Switcher(
-                ImagePlaceholder(),
-                Paragraph(bookmark["url"], classes=["url"]),
-                classes=["no-gap"],
-            ),
+            Paragraph(bookmark["url"], classes=["url"]),
             Paragraph(bookmark["description"], classes=["description"])
             if bookmark.get("description")
             else Paragraph(i("Add a description… \n", classes=["description"])),
@@ -268,9 +275,31 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                     if bookmark.get("tags")
                     else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
                 ),
-                classes=["no-border no-inline-padding no-block-padding"],
+                classes=["no-border no-inline-padding"],
             ),
         )
+
+    # Layout for showing image previews
+    # def render_bookmark(self, bookmark) -> BookmarkBox:
+    #     return BookmarkBox(
+    #         BookericLink(bookmark["title"], to=bookmark["url"]),
+    #         Switcher(
+    #             ImagePlaceholder(),
+    #             Paragraph(bookmark["url"], classes=["url"]),
+    #             classes=["no-gap"],
+    #         ),
+    #         Paragraph(bookmark["description"], classes=["description"])
+    #         if bookmark.get("description")
+    #         else Paragraph(i("Add a description… \n", classes=["description"])),
+    #         Box(
+    #             Cluster(
+    #                 self.render_tags(bookmark["tags"])
+    #                 if bookmark.get("tags")
+    #                 else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
+    #             ),
+    #             classes=["no-border no-inline-padding no-block-padding"],
+    #         ),
+    #     )
 
     @override
     def render(self) -> Switcher:
