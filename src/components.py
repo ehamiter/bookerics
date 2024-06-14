@@ -6,12 +6,12 @@ from ludic.base import NoChildren
 from ludic.catalog.buttons import ButtonLink, ButtonPrimary
 from ludic.catalog.forms import InputField
 from ludic.catalog.headers import H1, H2, H3, H4, WithAnchor, WithAnchorAttrs
-from ludic.catalog.layouts import Box, Center, Cluster, Grid, Stack, Switcher
+from ludic.catalog.layouts import Box, Center, Cluster, Cover, Grid, Stack, Switcher
 from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
                                     MessageWarning)
 from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
                                       Paragraph)
-from ludic.html import a, b, div, h5, h6, i, small, style
+from ludic.html import a, b, div, h5, h6, i, img, small, style
 from ludic.types import Component, ComponentStrict, NoChildren
 
 from src.database import BOOKMARK_NAME
@@ -38,7 +38,7 @@ class NavMenu(Component[NoChildren, GlobalAttrs]):
                 Link("random", to="/random"),
                 Link("untagged", to="/untagged"),
             ),
-            Cluster(Link("tags", to="/tags")),
+            Cluster(a("tags", href="#", id="tags-link")),
             classes=["justify-space-between"],
         )
 
@@ -84,10 +84,6 @@ class SearchBar(Component[NoChildren, GlobalAttrs]):
             value=self.query,
             **self.attrs,
         )
-
-
-class HiddenLinkAttrs(Attrs):
-    to: str
 
 
 class HiddenLink(Component[str, LinkAttrs]):
@@ -146,12 +142,107 @@ class H5(ComponentStrict[str, WithAnchorAttrs]):
             return header
 
 
+class ImagePlaceholder(img):
+    void_element = True
+    html_name = "img"
+    classes = ["image-placeholder"]
+    styles = style.use(
+        lambda theme: {
+            ".image-placeholder": {
+                "margin": "1em 0 0 0",
+                "border": "1px groove #a3d3f641",
+                "border-radius": "4px",
+                "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
+                "height": "200px",
+                "background": "#85acc934",
+            }
+        }
+    )
+
+
+class Switcher(div):
+    classes = ["switcher"]
+    styles = style.use(
+        lambda theme: {
+            ".switcher": {
+                "display": "flex",
+                "flex-wrap": "wrap",
+                "gap": theme.sizes.xl,
+            },
+            ".no-gap": {
+                "gap": "0",
+            },
+            ".switcher > *": {
+                "flex-grow": 1,
+                "flex-basis": (
+                    f"calc(({theme.layouts.switcher.threshold} - 100%) * 999)"
+                ),
+            },
+            (
+                f".switcher > :nth-last-child(n+{theme.layouts.switcher.limit+1})",
+                f".switcher > :nth-last-child(n+{theme.layouts.switcher.limit+1}) ~ *",
+            ): {
+                "flex-basis": "100%",
+            },
+        }
+    )
+
+class BookmarkBox(div):
+    classes = ["bookmark-box"]
+    styles = style.use(
+        lambda theme: {
+            ".bookmark-box": {
+                "padding": theme.sizes.m,
+                "color": theme.colors.dark,
+                "transition": "background-color 0.3s ease, box-shadow 0.3s ease",
+            },
+            ".bookmark-box.small": {
+                "padding": theme.sizes.xs,
+            },
+            ".bookmark-box.large": {
+                "padding": theme.sizes.xl,
+            },
+            ".bookmark-box:not(.transparent)": {
+                "border": (
+                    f"{theme.borders.thin} solid {theme.colors.light.darken(1)}"
+                ),
+                "border-radius": theme.rounding.more,
+                "background-color": theme.colors.light,
+            },
+            ".bookmark-box:not(.transparent) *": {
+                "color": "inherit",
+            },
+            ".bookmark-box.invert": {
+                "color": theme.colors.light,
+                "background-color": theme.colors.dark,
+                "border": f"{theme.borders.thin} solid {theme.colors.dark}",
+                "border-radius": theme.rounding.more,
+            },
+            ".bookmark-box:hover": {
+                "background-color": theme.colors.light.lighten(1),
+                "box-shadow": "rgba(149, 157, 165, 0.2) 0px 8px 24px;",
+            },
+            ".bookmark-box p.url, .bookmark-box * p.url": {
+                "text-align": "center",
+                "font-size": "14px",
+                "margin": "2px auto",
+                "color": "fern",
+                "font-style": "italic",
+            },
+            ".bookmark-box p.description, .bookmark-box * p.description": {
+                "color": "#111111",
+                "margin": "1em .25em",
+                "font-size": "1em",
+            },
+        }
+    )
+
 class BookmarkListAttrs(Attrs):
     bookmarks: list
 
 
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
-    def render_tags(self, tags):
+    def render_tags(self, tags) -> Cluster:
         return Cluster(
             *[
                 ButtonLink(tag, to=f"/tags/{tag}", classes=["info small"])
@@ -159,20 +250,24 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             ],
         )
 
-    def render_bookmark(self, bookmark):
-        return Box(
+    def render_bookmark(self, bookmark) -> BookmarkBox:
+        return BookmarkBox(
             H5(Link(bookmark["title"], to=bookmark["url"], classes=["external"])),
-            Paragraph(bookmark["url"]),
-            Paragraph(bookmark["description"])
+            Switcher(
+                ImagePlaceholder(),
+                Paragraph(bookmark["url"], classes=["url"]),
+                classes=["no-gap"],
+            ),
+            Paragraph(bookmark["description"], classes=["description"])
             if bookmark.get("description")
-            else Paragraph(i("Add a description… \n")),
+            else Paragraph(i("Add a description… \n", classes=["description"])),
             Box(
                 Cluster(
                     self.render_tags(bookmark["tags"])
                     if bookmark.get("tags")
-                    else Cluster(ButtonPrimary("none", classes=["warning small"])),
+                    else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
                 ),
-                classes=["no-border no-inline-padding"],
+                classes=["no-border no-inline-padding no-block-padding"],
             ),
         )
 

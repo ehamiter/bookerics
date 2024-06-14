@@ -77,7 +77,7 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, str]]:
     queries = {
         "newest": "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at DESC;",
         "oldest": "SELECT title, url, description, tags FROM bookmarks ORDER BY created_at ASC;",
-        "random": "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM() LIMIT 1;",
+        "random": "SELECT title, url, description, tags FROM bookmarks ORDER BY RANDOM();",
         "untagged": "SELECT title, url, description, tags FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC;",
     }
 
@@ -99,27 +99,28 @@ def search_bookmarks(query: str) -> List[Dict[str, str]]:
     return fetch_data(query)
 
 
-def fetch_unique_tags() -> List[str]:
+def fetch_unique_tags(kind: str = "frequency") -> List[str]:
     # by tag frequency
-    query = """
-    SELECT json_each.value, COUNT(*) as frequency
-    FROM bookmarks, json_each(bookmarks.tags)
-    WHERE json_each.value IS NOT NULL
-      AND json_each.value != ''
-      AND json_each.value != '[""]'
-    GROUP BY json_each.value
-    ORDER BY frequency DESC;
-    """
-
+    if kind == "frequency":
+        query = """
+        SELECT json_each.value, COUNT(*) as frequency
+        FROM bookmarks, json_each(bookmarks.tags)
+        WHERE json_each.value IS NOT NULL
+          AND json_each.value != ''
+          AND json_each.value != '[""]'
+        GROUP BY json_each.value
+        ORDER BY frequency DESC;
+        """
     # by newness
-    # query = """
-    # SELECT DISTINCT json_each.value
-    # FROM bookmarks, json_each(bookmarks.tags)
-    # WHERE json_each.value IS NOT NULL
-    #   AND json_each.value != ''
-    #   AND json_each.value != '[""]'
-    # ORDER BY bookmarks.created_at DESC;
-    # """
+    elif kind == "newest":
+        query = """
+        SELECT DISTINCT json_each.value
+        FROM bookmarks, json_each(bookmarks.tags)
+        WHERE json_each.value IS NOT NULL
+          AND json_each.value != ''
+          AND json_each.value != '[""]'
+        ORDER BY bookmarks.created_at DESC;
+        """
 
     # execute it
     connection = sqlite3.connect(DB_PATH)

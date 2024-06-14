@@ -58,7 +58,16 @@ async def untagged_bookmarks():
 @app.get("/tags")
 async def tags():
     bookmarks = fetch_bookmarks(kind="newest")
-    tags = fetch_unique_tags()
+    tags = fetch_unique_tags(kind="frequency")
+    return Page(
+        NavMenu(bookmark_count=len(bookmarks)), SearchBar(), TagCloud(tags=tags)
+    )
+
+
+@app.get("/tags/newest")
+async def tags():
+    bookmarks = fetch_bookmarks(kind="newest")
+    tags = fetch_unique_tags(kind="newest")
     return Page(
         NavMenu(bookmark_count=len(bookmarks)), SearchBar(), TagCloud(tags=tags)
     )
@@ -93,12 +102,12 @@ async def update():
 
 @app.post("/add")
 async def add_bookmark(request: Request):
-    data = await request.json()
-    title = data.get("title")
-    url = data.get("url")
-    description = data.get("description", "Add a description…")
+    form = await request.form()
+    title = form.get("title")
+    url = form.get("url")
+    description = form.get("description", "Add a description…")
     # TODO: suggest tags automatically
-    tags = data.get("tags", [])
+    tags = form.get("tags", "").split(" ")
 
     if title and url:
         create_bookmark(title, url, description, tags)
@@ -108,6 +117,23 @@ async def add_bookmark(request: Request):
     return JSONResponse(
         {"status": "error", "message": "Title and URL are required!"}, status_code=400
     )
+# @app.post("/add")
+# async def add_bookmark(request: Request):
+#     data = await request.json()
+#     title = data.get("title")
+#     url = data.get("url")
+#     description = data.get("description", "Add a description…")
+#     # TODO: suggest tags automatically
+#     tags = data.get("tags", [])
+
+#     if title and url:
+#         create_bookmark(title, url, description, tags)
+#         return JSONResponse(
+#             {"status": "success", "message": "Bookmark saved!"}, status_code=201
+#         )
+#     return JSONResponse(
+#         {"status": "error", "message": "Title and URL are required!"}, status_code=400
+#     )
 
 
 @app.get("/favicon.ico")

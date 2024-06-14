@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Save Bookeric</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f8f8; }
+        body { font-family: Arial, sans-serif; margin: 5px 10px; background-color: #f8f8f8; }
         form { display: flex; flex-direction: column; }
         label { margin-top: 10px; }
-        input, textarea { min-width: 400px; padding: 8px; margin-top: 5px; }
+        input, textarea { min-width: 90%; padding: 8px; margin-top: 5px; }
         textarea { min-height: 100px; }
-        button { margin-top: 15px; padding: 10px; background-color: hsl(207deg 44% 49%); color: #f8f8f8; border: none; cursor: pointer; max-width: 250px; }
-        button:hover { background-color: hsl(207deg 44% 49%); }
+        button { margin-top: 15px; padding: 10px; background-color: hsl(207deg 44% 59%); color: #f8f8f8; border: none; cursor: pointer; max-width: 30%; }
+        button:hover { box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px; }
     </style>
 </head>
 <body>
@@ -29,10 +29,32 @@
     <script>
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
-            document.getElementById('title').value = decodeURIComponent(urlParams.get('title') || '');
-            document.getElementById('description').value = decodeURIComponent(urlParams.get('description') || '');
-            document.getElementById('url').value = decodeURIComponent(urlParams.get('url') || '');
-            document.getElementById('tags').value = decodeURIComponent(urlParams.get('tags') || '');
+            const titleField = document.getElementById('title');
+            const descriptionField = document.getElementById('description');
+            const urlField = document.getElementById('url');
+            const tagsField = document.getElementById('tags');
+
+            titleField.value = decodeURIComponent(urlParams.get('title') || '');
+            descriptionField.value = decodeURIComponent(urlParams.get('description') || '');
+            urlField.value = decodeURIComponent(urlParams.get('url') || '');
+            tagsField.value = decodeURIComponent(urlParams.get('tags') || '');
+
+            if (!titleField.value) {
+                titleField.focus();
+            } else if (!descriptionField.value) {
+                descriptionField.focus();
+            } else if (!tagsField.value) {
+                tagsField.focus();
+            } else {
+                tagsField.focus();
+                tagsField.select();
+            }
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    window.close();
+                }
+            });
 
             document.getElementById('bookmarkForm').onsubmit = async function(event) {
                 event.preventDefault();
