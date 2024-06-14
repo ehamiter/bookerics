@@ -203,7 +203,7 @@ class BookmarkBox(div):
                 "padding": theme.sizes.xs,
             },
             ".bookmark-box.large": {
-                "padding": theme.sizes.xl,
+                "padding": theme.sizes.l,
             },
             ".bookmark-box:not(.transparent)": {
                 "border": (
@@ -228,15 +228,19 @@ class BookmarkBox(div):
             ".bookmark-box .bookeric-link.external:hover": {
                 "text-decoration": "underline !important",
             },
+            ".box": {
+                "padding": "1em 0 0 0",
+            },
             ".bookmark-box p.url, .bookmark-box * p.url": {
                 "margin": "0.75em 0",
                 "font-size": "0.88em",
+                "font-weight": "500",
                 "color": "#5c744a",
             },
             ".bookmark-box p.description, .bookmark-box * p.description": {
+                "color": "#10140d",
                 "margin": "1em 0 0 0",
                 "font-size": "1em",
-                "color": "#10140d",
             },
             ".bookmark-box p.image-url, .bookmark-box * p.image-url": {
                 "text-align": "center",
