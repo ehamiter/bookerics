@@ -324,10 +324,10 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 classes=["delete-btn"],
                 hx_delete=f"/delete/{bookmark['id']}",
                 hx_target=f"#bookmark-{bookmark['id']}",
-                hx_swap="outerHTML",
+                hx_swap="outerHTML"
             ),
             id=f"bookmark-{bookmark['id']}",
-            classes=["bookmark-box"],
+            classes=["bookmark-box"]
         )
 
     @override
