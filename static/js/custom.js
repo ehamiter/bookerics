@@ -1,5 +1,32 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Code dependent on DOM content being fully loaded
+
+    document.body.addEventListener('click', function(event) {
+        const button = event.target;
+        if (button.classList.contains('delete-btn')) {
+            if (button.dataset.confirmed === 'false') {
+                event.preventDefault();
+                button.dataset.confirmed = 'true';
+                button.textContent = '✅';
+                button.classList.add('enabled');
+                setTimeout(() => {
+                    button.dataset.confirmed = 'false';
+                    button.textContent = '🗑️';
+                    button.classList.remove('enabled');
+                }, 3000);  // Reset after 3 seconds
+            } else if (button.dataset.confirmed === 'true') {
+                event.preventDefault();
+                button.setAttribute('hx-delete', button.dataset.deleteUrl);
+                console.log('Confirmed delete URL:', button.dataset.deleteUrl);
+                console.log('Setting hx-delete:', button.getAttribute('hx-delete'));
+
+                // Manually create an HTMX request to handle the delete
+                htmx.ajax('DELETE', button.dataset.deleteUrl, {
+                    target: button.getAttribute('hx-target'),
+                    swap: 'outerHTML'
+                });
+            }
+        }
+    });
 
     // Tags link toggle functionality
     const tagsLink = document.getElementById('tags-link');

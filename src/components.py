@@ -263,8 +263,11 @@ class BookmarkBox(div):
                 "background": "none",
                 "border": "none",
                 "color": "#f00;",
-                "cursor": "pointer",
+                "cursor": "not-allowed",
                 "font-size": "1.5rem",
+            },
+            ".delete-btn[data-confirmed=\"true\"]": {
+                "cursor": "pointer",
             },
         }
     )
@@ -279,15 +282,12 @@ class HTMXButtonLink(ComponentStrict[PrimitiveChildren, LinkAttrs]):
     def render(self) -> a:
         attrs: HyperlinkAttrs = {
             "href": self.attrs.get("to", "#"),
-            "hx-delete": self.attrs.get("hx_delete"),
             "hx-target": self.attrs.get("hx_target"),
             "hx-swap": self.attrs.get("hx_swap"),
             "class": " ".join(self.classes + self.attrs.get("classes", [])),
+            "data-delete-url": self.attrs.get("hx_delete"),
+            "data-confirmed": "false",
         }
-        # Ensure the target is not set to _blank
-        if "target" in attrs:
-            del attrs["target"]
-
         return a(self.children[0], **attrs)
 
 
@@ -320,11 +320,11 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             ),
             HTMXButtonLink(
                 "🗑️",
-                to=f"/delete/{bookmark['id']}",
+                to="#",
                 classes=["delete-btn"],
-                hx_delete=f"/delete/{bookmark['id']}",
                 hx_target=f"#bookmark-{bookmark['id']}",
-                hx_swap="outerHTML"
+                hx_swap="outerHTML",
+                hx_delete=f"/delete/{bookmark['id']}",  # Stored in data-delete-url
             ),
             id=f"bookmark-{bookmark['id']}",
             classes=["bookmark-box"]
