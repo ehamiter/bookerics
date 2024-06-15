@@ -27,7 +27,6 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
             meta(name="author", content="Eric Hamiter"),
             script(src="/static/js/htmx.min.js", defer=True),
             script(src="/static/js/custom.js", defer=True),
-            script(src="/static/js/custom.js", defer=True),
             link(rel="stylesheet", href="/static/css/styles.css"),
             title(self.attrs.get("title", "bookerics")),
         ]
