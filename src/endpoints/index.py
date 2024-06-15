@@ -2,14 +2,14 @@ from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.catalog.typography import CodeBlock
 from ludic.html import div
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, HTMLResponse
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 
-from src.components import (BookmarkList, BookmarkImageList, NavMenu, SearchBar, TableStructure,
-                            TagCloud)
-from src.database import (create_bookmark, fetch_bookmarks,
-                          fetch_bookmarks_by_tag, delete_bookmark_by_id, fetch_unique_tags,
-                          schedule_upload_to_s3, search_bookmarks,
-                          verify_table_structure)
+from src.components import (BookmarkImageList, BookmarkList, NavMenu,
+                            SearchBar, TableStructure, TagCloud)
+from src.database import (create_bookmark, delete_bookmark_by_id,
+                          fetch_bookmarks, fetch_bookmarks_by_tag,
+                          fetch_unique_tags, schedule_upload_to_s3,
+                          search_bookmarks, verify_table_structure)
 from src.main import app
 from src.pages import Page
 from src.utils import logger
@@ -121,11 +121,11 @@ async def add_bookmark(request: Request):
 
 @app.delete("/delete/{bookmark_id}")
 async def delete_bookmark(request: Request):
-    bookmark_id = request.path_params['bookmark_id']
+    bookmark_id = request.path_params["bookmark_id"]
     try:
         delete_bookmark_by_id(bookmark_id)
         # Return a minimal response to trigger the swap
-        return HTMLResponse('', status_code=200)
+        return HTMLResponse("", status_code=200)
     except Exception as e:
         # Log the error for debugging purposes
         print(f"Error deleting bookmark: {e}")

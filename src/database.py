@@ -3,7 +3,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import aioboto3
 import boto3
@@ -17,6 +17,7 @@ S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
 S3_KEY = f"{BOOKMARK_NAME}s.db"
 DB_PATH = f"/tmp/{BOOKMARK_NAME}s.db"
 
+
 def download_file_from_s3(bucket_name, s3_key, local_path):
     s3 = boto3.client("s3")
     try:
@@ -25,12 +26,14 @@ def download_file_from_s3(bucket_name, s3_key, local_path):
     except Exception as e:
         logger.error(f"Error downloading file from S3: {e}")
 
+
 def load_db_on_startup():
     logger.info("Bookerics starting up…")
     # Download the database file from S3
     if not os.path.exists(DB_PATH):
         download_file_from_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
     logger.info("Database loaded!")
+
 
 def execute_query(query: str, params: tuple = ()) -> Any:
     connection = sqlite3.connect(DB_PATH)
@@ -41,6 +44,7 @@ def execute_query(query: str, params: tuple = ()) -> Any:
     connection.commit()
     connection.close()
     return result, last_row_id
+
 
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     rows, _ = execute_query(query, params)
@@ -54,18 +58,21 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
                     tags = []
             except json.JSONDecodeError:
                 tags = []
-            bookmarks.append({
-                "id": id,
-                "title": title,
-                "url": url,
-                "description": description,
-                "tags": tags,
-                "created_at": created_at,
-                "updated_at": updated_at
-            })
+            bookmarks.append(
+                {
+                    "id": id,
+                    "title": title,
+                    "url": url,
+                    "description": description,
+                    "tags": tags,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                }
+            )
         else:
             logger.error(f"Unexpected row format: {row}")
     return bookmarks
+
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
     queries = {
@@ -76,6 +83,7 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
     }
     query = queries.get(kind, queries["newest"])
     return fetch_data(query)
+
 
 def search_bookmarks(query: str) -> List[Dict[str, Any]]:
     search_query = f"%{query}%"
@@ -89,6 +97,7 @@ def search_bookmarks(query: str) -> List[Dict[str, Any]]:
     ORDER BY created_at DESC;
     """
     return fetch_data(query)
+
 
 def fetch_unique_tags(kind: str = "frequency") -> List[str]:
     if kind == "frequency":
@@ -113,6 +122,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[str]:
     rows, _ = execute_query(query)
     return [row[0] for row in rows]
 
+
 def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     query = """
     SELECT id, title, url, description, tags, created_at, updated_at
@@ -122,14 +132,18 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     """
     return fetch_data(query, (tag,))
 
+
 async def upload_file_to_s3(bucket_name, s3_key, local_path):
     session = aioboto3.Session()
     async with session.client("s3") as s3:
         try:
             await s3.upload_file(local_path, bucket_name, s3_key)
-            logger.info(f"Uploaded {local_path} to bucket {bucket_name} with key {s3_key}")
+            logger.info(
+                f"Uploaded {local_path} to bucket {bucket_name} with key {s3_key}"
+            )
         except Exception as e:
             logger.error(f"Error uploading file to S3: {e}")
+
 
 def schedule_upload_to_s3():
     loop = asyncio.get_event_loop()
@@ -138,6 +152,7 @@ def schedule_upload_to_s3():
     else:
         asyncio.run(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
 
+
 def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> int:
     tags_json = json.dumps(tags)
     current_timestamp = datetime.utcnow().isoformat()
@@ -145,9 +160,13 @@ def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> 
     INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
     """
-    _, bookmark_id = execute_query(query, (title, url, description, tags_json, current_timestamp, current_timestamp))
+    _, bookmark_id = execute_query(
+        query,
+        (title, url, description, tags_json, current_timestamp, current_timestamp),
+    )
     schedule_upload_to_s3()
     return bookmark_id
+
 
 def delete_bookmark_by_id(bookmark_id: int) -> None:
     try:
@@ -158,6 +177,7 @@ def delete_bookmark_by_id(bookmark_id: int) -> None:
     except Exception as e:
         logger.error(f"Error deleting bookmark with id {bookmark_id}: {e}")
         raise e
+
 
 def verify_table_structure(table_name: str = "bookmarks"):
     """
