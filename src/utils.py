@@ -35,7 +35,7 @@ logger.setLevel(logging.INFO)
 
 # Create console handler and set level to debug
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.DEBUG)
 
 # Create formatter with dynamic spacing
 formatter = CustomFormatter("%(levelname)s%(message)s")

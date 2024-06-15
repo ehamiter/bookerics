@@ -2,12 +2,12 @@ from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.catalog.typography import CodeBlock
 from ludic.html import div
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse
+from starlette.responses import FileResponse, JSONResponse, HTMLResponse
 
-from src.components import (BookmarkList, NavMenu, SearchBar, TableStructure,
+from src.components import (BookmarkList, BookmarkImageList, NavMenu, SearchBar, TableStructure,
                             TagCloud)
 from src.database import (create_bookmark, fetch_bookmarks,
-                          fetch_bookmarks_by_tag, fetch_unique_tags,
+                          fetch_bookmarks_by_tag, delete_bookmark_by_id, fetch_unique_tags,
                           schedule_upload_to_s3, search_bookmarks,
                           verify_table_structure)
 from src.main import app
@@ -41,7 +41,7 @@ async def random_bookmark():
     return Page(
         NavMenu(bookmark_count=len(bookmarks)),
         SearchBar(),
-        BookmarkList(bookmarks=bookmarks),
+        BookmarkImageList(bookmarks=bookmarks),
     )
 
 
@@ -119,23 +119,17 @@ async def add_bookmark(request: Request):
     )
 
 
-# @app.post("/add")
-# async def add_bookmark(request: Request):
-#     data = await request.json()
-#     title = data.get("title")
-#     url = data.get("url")
-#     description = data.get("description", "Add a description…")
-#     # TODO: suggest tags automatically
-#     tags = data.get("tags", [])
-
-#     if title and url:
-#         create_bookmark(title, url, description, tags)
-#         return JSONResponse(
-#             {"status": "success", "message": "Bookmark saved!"}, status_code=201
-#         )
-#     return JSONResponse(
-#         {"status": "error", "message": "Title and URL are required!"}, status_code=400
-#     )
+@app.delete("/delete/{bookmark_id}")
+async def delete_bookmark(request: Request):
+    bookmark_id = request.path_params['bookmark_id']
+    try:
+        delete_bookmark_by_id(bookmark_id)
+        # Return a minimal response to trigger the swap
+        return HTMLResponse('', status_code=200)
+    except Exception as e:
+        # Log the error for debugging purposes
+        print(f"Error deleting bookmark: {e}")
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
 @app.get("/favicon.ico")

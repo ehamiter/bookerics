@@ -13,7 +13,7 @@ from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
 from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
                                       Paragraph)
 from ludic.html import a, b, div, h6, i, img, small, style
-from ludic.types import Component, ComponentStrict, NoChildren
+from ludic.types import Component, ComponentStrict, NoChildren, PrimitiveChildren
 
 from src.database import BOOKMARK_NAME
 
@@ -195,6 +195,7 @@ class BookmarkBox(div):
     styles = style.use(
         lambda theme: {
             ".bookmark-box": {
+                "position": "relative",
                 "padding": theme.sizes.m,
                 "color": theme.colors.dark,
                 "transition": "background-color 0.3s ease, box-shadow 0.3s ease",
@@ -254,8 +255,38 @@ class BookmarkBox(div):
                 "margin": "1em .25em",
                 "font-size": "1em",
             },
+            ".delete-btn": {
+                "position": "absolute",
+                "bottom": "0.75rem;",
+                "right": "0.5rem;",
+                "background": "none",
+                "border": "none",
+                "color": "#f00;",
+                "cursor": "pointer",
+                "font-size": "1.5rem",
+            }
         }
     )
+
+class HTMXButtonLink(ComponentStrict[PrimitiveChildren, LinkAttrs]):
+    """Component creating an HTML button for HTMX requests."""
+
+    classes = ["btn"]
+
+    @override
+    def render(self) -> a:
+        attrs: HyperlinkAttrs = {
+            "href": self.attrs.get("to", "#"),
+            "hx-delete": self.attrs.get("hx_delete"),
+            "hx-target": self.attrs.get("hx_target"),
+            "hx-swap": self.attrs.get("hx_swap"),
+            "class": " ".join(self.classes + self.attrs.get("classes", []))
+        }
+        # Ensure the target is not set to _blank
+        if "target" in attrs:
+            del attrs["target"]
+
+        return a(self.children[0], **attrs)
 
 
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
@@ -285,35 +316,55 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding"],
             ),
+            HTMXButtonLink(
+                "🗑️",
+                to=f"/delete/{bookmark['id']}",
+                classes=["delete-btn"],
+                hx_delete=f"/delete/{bookmark['id']}",
+                hx_target=f"#bookmark-{bookmark['id']}",
+                hx_swap="outerHTML"
+            ),
+            id=f"bookmark-{bookmark['id']}",
+            classes=["bookmark-box"]
         )
 
     @override
     def render(self) -> Switcher:
         return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]])
 
-    # Layout for showing image previews
-    # def render_bookmark(self, bookmark) -> BookmarkBox:
-    #     thumbnail_api_url = 'https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get'
-    #     return BookmarkBox(
-    #         BookericLink(bookmark["title"], to=bookmark["url"]),
-    #         Switcher(
-    #             Link(ImagePlaceholder(src=f'{thumbnail_api_url}?url={bookmark["url"]}&width=480', height='360', width='480'), to=bookmark["url"]),
-    #             Paragraph(bookmark["url"], classes=["image-url"]),
-    #             classes=["no-gap"],
-    #         ),
-    #         Paragraph(bookmark["description"], classes=["image-description"])
-    #         if bookmark.get("description")
-    #         else Paragraph(i("Add a description… \n"), classes=["image-description"]),
-    #         Box(
-    #             Cluster(
-    #                 self.render_tags(bookmark["tags"])
-    #                 if bookmark.get("tags")
-    #                 else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
-    #             ),
-    #             classes=["no-border no-inline-padding no-block-padding"],
-    #         ),
-    #     )
 
-    # @override
-    # def render(self) -> Switcher:
-    #     return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]][:1])
+class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
+    def render_tags(self, tags) -> Cluster:
+        return Cluster(
+            *[
+                ButtonLink(tag, to=f"/tags/{tag}", classes=["info small"])
+                for tag in tags
+            ],
+        )
+
+    # Layout for showing image previews
+    def render_bookmark(self, bookmark) -> BookmarkBox:
+        thumbnail_api_url = 'https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get'
+        return BookmarkBox(
+            BookericLink(bookmark["title"], to=bookmark["url"]),
+            Switcher(
+                Link(ImagePlaceholder(src=f'{thumbnail_api_url}?url={bookmark["url"]}&width=480', height='360', width='480'), to=bookmark["url"]),
+                Paragraph(bookmark["url"], classes=["image-url"]),
+                classes=["no-gap"],
+            ),
+            Paragraph(bookmark["description"], classes=["image-description"])
+            if bookmark.get("description")
+            else Paragraph(i("Add a description… \n"), classes=["image-description"]),
+            Box(
+                Cluster(
+                    self.render_tags(bookmark["tags"])
+                    if bookmark.get("tags")
+                    else Cluster(ButtonLink("none", to="/untagged", classes=["warning small"])),
+                ),
+                classes=["no-border no-inline-padding no-block-padding"],
+            ),
+        )
+
+    @override
+    def render(self) -> Switcher:
+        return Switcher(*[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]][:1])
