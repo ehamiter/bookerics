@@ -266,7 +266,7 @@ class BookmarkBox(div):
                 "cursor": "not-allowed",
                 "font-size": "1.5rem",
             },
-            ".delete-btn[data-confirmed=\"true\"]": {
+            '.delete-btn[data-confirmed="true"]': {
                 "cursor": "pointer",
             },
         }
@@ -327,7 +327,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 hx_delete=f"/delete/{bookmark['id']}",  # Stored in data-delete-url
             ),
             id=f"bookmark-{bookmark['id']}",
-            classes=["bookmark-box"]
+            classes=["bookmark-box"],
         )
 
     @override
