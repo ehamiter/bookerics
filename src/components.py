@@ -266,7 +266,7 @@ class BookmarkBox(div):
                 "cursor": "not-allowed",
                 "font-size": "1.5rem",
             },
-            ".delete-btn[data-confirmed=\"true\"]": {  # fmt: skip
+            '.delete-btn[data-confirmed="true"]': {
                 "cursor": "pointer",
             },
         }
