@@ -209,7 +209,7 @@ class BookmarkBox(div):
             },
             ".bookmark-box:not(.transparent)": {
                 "border": (
-                    f"{theme.borders.thin} solid {theme.colors.light.darken(1)}"
+                    "1px solid #bababa"
                 ),
                 "border-radius": theme.rounding.more,
                 "background-color": theme.colors.light,
@@ -324,7 +324,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 classes=["delete-btn"],
                 hx_target=f"#bookmark-{bookmark['id']}",
                 hx_swap="outerHTML",
-                hx_delete=f"/delete/{bookmark['id']}",  # Stored in data-delete-url
+                hx_delete=f"/delete/{bookmark['id']}",
             ),
             id=f"bookmark-{bookmark['id']}",
             classes=["bookmark-box"],
@@ -374,6 +374,16 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
             ),
+            HTMXButtonLink(
+                "🗑️",
+                to="#",
+                classes=["delete-btn"],
+                hx_target=f"#bookmark-{bookmark['id']}",
+                hx_swap="outerHTML",
+                hx_delete=f"/delete/{bookmark['id']}",
+            ),
+            id=f"bookmark-{bookmark['id']}",
+            classes=["bookmark-box"],
         )
 
     @override
