@@ -2,9 +2,9 @@
 
 > bookmarks, but for Erics
 
-![screenshot](screenshot.png)
-
 This is like a self-hosted [pinboard.in](https://pinboard.in), but not nearly as nice or feature-rich. It's also only for Erics.
+
+![screenshot](screenshot.png)
 
 
 ### FAQ
@@ -16,7 +16,7 @@ That seems like it's marketed to a very niche group.
 > That's not a question.
 
 Can I use this if my name isn't Eric?
-> Sure. If you're not lucky enough to be named Eric, you can update the configuration to be Booktoms, Bookzendayas, Bookvolodymyrs, etc. I suppose "Mark" works as well.
+> Sure. If you're not lucky enough to be named Eric, you can update the configuration to be booktoms, bookzendayas, bookvolodymyrs, etc. I suppose "bookmarks" works as well.
 
 
 ### This is a continual work in progress.
