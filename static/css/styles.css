@@ -9,3 +9,5 @@ html {
   -o-background-size: cover;
   background-size: cover;
 }
+
+a.info.small.btn:hover { filter: none; background-color: #fff59b; text-decoration: none; }
