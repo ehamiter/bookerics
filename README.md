@@ -9,6 +9,10 @@ bookmarks, but for Erics
 
 Things will definitely break in here, but if you want to tinker around with it, be my guest.
 
+## Import bookmarks
+
+https://github.com/ehamiter/bookerics-importer
+
 
 ## Running the App
 
