@@ -11,7 +11,7 @@ import aiohttp
 import boto3
 from PIL import Image
 
-from src.utils import logger, log_warning_with_response
+from src.utils import log_warning_with_response, logger
 
 BOOKMARK_NAME = "bookeric"  # change to your name for the ultimate in personalization
 
@@ -253,7 +253,9 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                         img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
 
                     await update_bookmark_thumbnail_url(bookmark["id"], img_url)
-                    logger.info(f"Thumbnail for id # {bookmark["id"]} successfully uploaded to S3 🥳")
+                    logger.info(
+                        f"Thumbnail for id # {bookmark["id"]} successfully uploaded to S3 🥳"
+                    )
                 else:
                     await log_warning_with_response(response)
 

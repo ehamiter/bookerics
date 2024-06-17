@@ -256,6 +256,16 @@ class BookmarkBox(div):
                 "margin": "1em .25em",
                 "font-size": "1em",
             },
+            ".id-btn": {
+                "position": "absolute",
+                "top": "0.75rem;",
+                "right": "0.5rem;",
+                "background": "none",
+                "border": "none",
+                "color": "#f00;",
+                "cursor": "pointer",
+                "font-size": "1.5rem",
+            },
             ".delete-btn": {
                 "position": "absolute",
                 "bottom": "0.75rem;",
@@ -273,9 +283,7 @@ class BookmarkBox(div):
     )
 
 
-class HTMXButtonLink(ComponentStrict[PrimitiveChildren, LinkAttrs]):
-    """Component creating an HTML button for HTMX requests."""
-
+class HTMXDeleteButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
     classes = ["btn"]
 
     @override
@@ -291,6 +299,20 @@ class HTMXButtonLink(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         return a(self.children[0], **attrs)
 
 
+class HTMXLoadBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
+    classes = ["btn"]
+
+    @override
+    def render(self) -> a:
+        attrs: HyperlinkAttrs = {
+            "hx-get": self.attrs.get("hx_get"),
+            "hx-target": self.attrs.get("hx_target"),
+            "hx-swap": self.attrs.get("hx_swap"),
+            "class": " ".join(self.classes + self.attrs.get("classes", [])),
+        }
+        return a(self.children[0], **attrs)
+
+
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags) -> Cluster:
         return Cluster(
@@ -300,7 +322,6 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             ],
         )
 
-    # Layout for not showing image previews
     def render_bookmark(self, bookmark) -> BookmarkBox:
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
@@ -318,7 +339,14 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding"],
             ),
-            HTMXButtonLink(
+            HTMXLoadBookmarkButton(
+                "…",
+                hx_get=f"/id/{bookmark['id']}",
+                hx_target=f"#bookmark-{bookmark['id']}",
+                hx_swap="outerHTML",
+                classes=["id-btn"],
+            ),
+            HTMXDeleteButton(
                 "🗑️",
                 to="#",
                 classes=["delete-btn"],
@@ -340,14 +368,12 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     def __init__(self, bookmarks):
         super().__init__()
-        self.bookmarks = bookmarks
+        self.bookmarks = bookmarks[:1]
         # Schedule the async fetching of thumbnails
         asyncio.create_task(self.fetch_thumbnails())
 
     async def fetch_thumbnails(self):
-        self.bookmarks = await update_bookmarks_with_thumbnails(
-            self.bookmarks[:1]
-        )  # TODO: remove slice
+        self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks)
         # Once fetched, you may want to trigger a re-render if necessary
         # Example: self.update() if you have such a mechanism in place
 
@@ -367,7 +393,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 Link(
                     ImagePlaceholder(
                         src=bookmark["thumbnail_url"],
-                        height="360",
+                        height="270",
                         width="480",
                     ),
                     to=bookmark["url"],
@@ -388,7 +414,14 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
             ),
-            HTMXButtonLink(
+            HTMXLoadBookmarkButton(
+                "…",
+                hx_get=f"/id/{bookmark['id']}",
+                hx_target=f"#bookmark-{bookmark['id']}",
+                hx_swap="outerHTML",
+                classes=["id-btn"],
+            ),
+            HTMXDeleteButton(
                 "🗑️",
                 to="#",
                 classes=["delete-btn"],
@@ -402,4 +435,4 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     @override
     def render(self) -> Switcher:
-        return Switcher(*[self.render_bookmark(bm) for bm in self.bookmarks][:1])
+        return Switcher(*[self.render_bookmark(bm) for bm in self.bookmarks])

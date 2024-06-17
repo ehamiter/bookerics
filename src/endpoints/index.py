@@ -1,6 +1,7 @@
+from ludic import html
+from ludic.base import BaseElement
 from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.catalog.typography import CodeBlock
-from ludic.html import div
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 
@@ -59,11 +60,10 @@ async def untagged_bookmarks():
 @app.get("/id/{id}")
 async def bookmark_by_id(id: str):
     bookmarks = fetch_bookmark_by_id(id=id)
-    return Page(
-        NavMenu(bookmark_count=len(bookmarks)),
-        SearchBar(),
-        BookmarkImageList(bookmarks=bookmarks),
-    )
+    if not bookmarks:
+        return HTMLResponse("Bookmark not found", status_code=404)
+
+    return BookmarkImageList(bookmarks=bookmarks)
 
 
 @app.get("/tags")
