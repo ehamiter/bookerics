@@ -50,3 +50,18 @@ logger.addHandler(ch)
 # logger.info("This is an info message")
 # logger.warning("This is a warning message")
 # logger.error("This is an error message")
+
+async def log_info_with_response(response):
+    response_text = await response.text()
+    message = f"😁 URL: {response.url}, Status: {response.status}, Response: {response_text}"
+    logger.warning(message)
+
+async def log_warning_with_response(response):
+    response_text = await response.text()
+    message = f"🙁 URL: {response.url}, Status: {response.status}, Response: {response_text}"
+    logger.warning(message)
+
+async def log_error_with_response(response):
+    response_text = await response.text()
+    message = f"😭 URL: {response.url}, Status: {response.status}, Response: {response_text}"
+    logger.error(message)

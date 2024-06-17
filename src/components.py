@@ -345,7 +345,6 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
         asyncio.create_task(self.fetch_thumbnails())
 
     async def fetch_thumbnails(self):
-        print("In async, fetching thumbnails")
         self.bookmarks = await update_bookmarks_with_thumbnails(
             self.bookmarks[:1]
         )  # TODO: remove slice
@@ -362,8 +361,6 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     # Layout for showing image previews
     def render_bookmark(self, bookmark) -> BookmarkBox:
-        # img_url = bookmark["thumbnail_url"]
-
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
             Switcher(

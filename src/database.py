@@ -11,7 +11,7 @@ import aiohttp
 import boto3
 from PIL import Image
 
-from src.utils import logger
+from src.utils import logger, log_warning_with_response
 
 BOOKMARK_NAME = "bookeric"  # change to your name for the ultimate in personalization
 
@@ -218,20 +218,18 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     img_url = bookmark.get("thumbnail_url")
 
     if img_url:
-        logger.info("Found thumbnail url for id # ", bookmark["id"])
+        logger.info("Found thumbnail url on S3! 🎉")
         return img_url
-        # img_url = f"https://bookerics.s3.amazonaws.com/thumbnails/{bm_id}.jpg"
-    else:
-        logger.info("Fetching thumbnail url for id # ", bookmark["id"])
-        img_url = f"https://bookerics.s3.amazonaws.com/thumbnails/placeholder.jpg"
 
+    else:
+        logger.info("Fetching thumbnail url from API... 🐕")
         api_root = "https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get"
         api_img_url = f'{api_root}?url={bookmark["url"]}&width=480'
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_img_url) as response:
                 if response.status == 200:
-                    logger.info("Thumbnail API handshake successful")
+                    logger.info("Thumbnail API handshake successful! 🤝")
                     img_bytes = await response.read()
                     img = Image.open(BytesIO(img_bytes))
 
@@ -255,9 +253,9 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                         img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
 
                     await update_bookmark_thumbnail_url(bookmark["id"], img_url)
-                    logger.info("Thumbnail successfully uploaded to S3")
+                    logger.info(f"Thumbnail for id # {bookmark["id"]} successfully uploaded to S3 🥳")
                 else:
-                    logger.warning("Upload failure: ", response)
+                    await log_warning_with_response(response)
 
     return img_url
 
