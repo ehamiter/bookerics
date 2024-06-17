@@ -7,9 +7,10 @@ from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 from src.components import (BookmarkImageList, BookmarkList, NavMenu,
                             SearchBar, TableStructure, TagCloud)
 from src.database import (create_bookmark, delete_bookmark_by_id,
-                          fetch_bookmarks, fetch_bookmarks_by_tag, fetch_bookmark_by_id,
-                          fetch_unique_tags, schedule_upload_to_s3,
-                          search_bookmarks, verify_table_structure)
+                          fetch_bookmark_by_id, fetch_bookmarks,
+                          fetch_bookmarks_by_tag, fetch_unique_tags,
+                          schedule_upload_to_s3, search_bookmarks,
+                          verify_table_structure)
 from src.main import app
 from src.pages import Page
 from src.utils import logger
@@ -63,6 +64,7 @@ async def bookmark_by_id(id: str):
         SearchBar(),
         BookmarkImageList(bookmarks=bookmarks),
     )
+
 
 @app.get("/tags")
 async def tags():

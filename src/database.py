@@ -54,7 +54,16 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     bookmarks = []
     for row in rows:
         if len(row) == 8:
-            id, title, url, thumbnail_url, description, tags_json, created_at, updated_at = row
+            (
+                id,
+                title,
+                url,
+                thumbnail_url,
+                description,
+                tags_json,
+                created_at,
+                updated_at,
+            ) = row
             try:
                 tags = json.loads(tags_json) if tags_json else []
                 if tags == [""]:
@@ -81,6 +90,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
 def fetch_bookmark_by_id(id: str) -> List[Dict[str, Any]]:
     query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id='{id}' LIMIT 1;"
     return fetch_data(query)
+
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
     queries = {
@@ -198,19 +208,21 @@ async def update_bookmark_thumbnail_url(bookmark_id: int, img_url: str):
     params = (img_url, current_timestamp, bookmark_id)
     await execute_query_async(query, params)
 
+
 async def execute_query_async(query: str, params: tuple = ()):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, execute_query, query, params)
+
 
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     img_url = bookmark.get("thumbnail_url")
 
     if img_url:
-        logger.info('Found thumbnail url for id # ', bookmark["id"])
+        logger.info("Found thumbnail url for id # ", bookmark["id"])
         return img_url
         # img_url = f"https://bookerics.s3.amazonaws.com/thumbnails/{bm_id}.jpg"
     else:
-        logger.info('Fetching thumbnail url for id # ', bookmark["id"])
+        logger.info("Fetching thumbnail url for id # ", bookmark["id"])
         img_url = f"https://bookerics.s3.amazonaws.com/thumbnails/placeholder.jpg"
 
         api_root = "https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get"
@@ -219,7 +231,7 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.get(api_img_url) as response:
                 if response.status == 200:
-                    logger.info('Thumbnail API handshake successful')
+                    logger.info("Thumbnail API handshake successful")
                     img_bytes = await response.read()
                     img = Image.open(BytesIO(img_bytes))
 
@@ -237,15 +249,15 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                             img_byte_arr,
                             s3_bucket,
                             s3_key,
-                            ExtraArgs={"ContentType": "image/jpeg"}
+                            ExtraArgs={"ContentType": "image/jpeg"},
                         )
 
                         img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
 
                     await update_bookmark_thumbnail_url(bookmark["id"], img_url)
-                    logger.info('Thumbnail successfully uploaded to S3')
+                    logger.info("Thumbnail successfully uploaded to S3")
                 else:
-                    logger.warning('Upload failure: ', response)
+                    logger.warning("Upload failure: ", response)
 
     return img_url
 

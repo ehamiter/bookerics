@@ -337,6 +337,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
 
 class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
     """currently limited to fetching one entry"""
+
     def __init__(self, bookmarks):
         super().__init__()
         self.bookmarks = bookmarks
@@ -344,8 +345,10 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
         asyncio.create_task(self.fetch_thumbnails())
 
     async def fetch_thumbnails(self):
-        print('In async, fetching thumbnails')
-        self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks[:1])  # TODO: remove slice
+        print("In async, fetching thumbnails")
+        self.bookmarks = await update_bookmarks_with_thumbnails(
+            self.bookmarks[:1]
+        )  # TODO: remove slice
         # Once fetched, you may want to trigger a re-render if necessary
         # Example: self.update() if you have such a mechanism in place
 
@@ -402,6 +405,4 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     @override
     def render(self) -> Switcher:
-        return Switcher(
-            *[self.render_bookmark(bm) for bm in self.bookmarks][:1]
-        )
+        return Switcher(*[self.render_bookmark(bm) for bm in self.bookmarks][:1])
