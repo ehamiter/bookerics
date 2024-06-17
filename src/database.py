@@ -3,10 +3,13 @@ import json
 import os
 import sqlite3
 from datetime import datetime
+from io import BytesIO
 from typing import Any, Dict, List
 
 import aioboto3
+import aiohttp
 import boto3
+from PIL import Image
 
 from src.utils import logger
 
@@ -50,8 +53,8 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     rows, _ = execute_query(query, params)
     bookmarks = []
     for row in rows:
-        if len(row) == 7:
-            id, title, url, description, tags_json, created_at, updated_at = row
+        if len(row) == 8:
+            id, title, url, thumbnail_url, description, tags_json, created_at, updated_at = row
             try:
                 tags = json.loads(tags_json) if tags_json else []
                 if tags == [""]:
@@ -63,6 +66,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
                     "id": id,
                     "title": title,
                     "url": url,
+                    "thumbnail_url": thumbnail_url,
                     "description": description,
                     "tags": tags,
                     "created_at": created_at,
@@ -74,12 +78,16 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     return bookmarks
 
 
+def fetch_bookmark_by_id(id: str) -> List[Dict[str, Any]]:
+    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id='{id}' LIMIT 1;"
+    return fetch_data(query)
+
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
     queries = {
-        "newest": "SELECT id, title, url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at DESC;",
-        "oldest": "SELECT id, title, url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at ASC;",
-        "random": "SELECT id, title, url, description, tags, created_at, updated_at FROM bookmarks ORDER BY RANDOM();",
-        "untagged": "SELECT id, title, url, description, tags, created_at, updated_at FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC;",
+        "newest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at DESC;",
+        "oldest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at ASC;",
+        "random": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY RANDOM();",
+        "untagged": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC;",
     }
     query = queries.get(kind, queries["newest"])
     return fetch_data(query)
@@ -88,7 +96,7 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
 def search_bookmarks(query: str) -> List[Dict[str, Any]]:
     search_query = f"%{query}%"
     query = f"""
-    SELECT id, title, url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
     FROM bookmarks
     WHERE title LIKE '{search_query}'
     OR url LIKE '{search_query}'
@@ -125,7 +133,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[str]:
 
 def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     query = """
-    SELECT id, title, url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
     FROM bookmarks
     WHERE ? IN (SELECT value FROM json_each(bookmarks.tags))
     ORDER BY created_at DESC;
@@ -177,6 +185,77 @@ def delete_bookmark_by_id(bookmark_id: int) -> None:
     except Exception as e:
         logger.error(f"Error deleting bookmark with id {bookmark_id}: {e}")
         raise e
+
+
+# Fetch image preview thumbnails
+async def update_bookmark_thumbnail_url(bookmark_id: int, img_url: str):
+    query = """
+    UPDATE bookmarks
+    SET thumbnail_url = ?, updated_at = ?
+    WHERE id = ?
+    """
+    current_timestamp = datetime.utcnow().isoformat()
+    params = (img_url, current_timestamp, bookmark_id)
+    await execute_query_async(query, params)
+
+async def execute_query_async(query: str, params: tuple = ()):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, execute_query, query, params)
+
+async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
+    img_url = bookmark.get("thumbnail_url")
+
+    if img_url:
+        logger.info('Found thumbnail url for id # ', bookmark["id"])
+        return img_url
+        # img_url = f"https://bookerics.s3.amazonaws.com/thumbnails/{bm_id}.jpg"
+    else:
+        logger.info('Fetching thumbnail url for id # ', bookmark["id"])
+        img_url = f"https://bookerics.s3.amazonaws.com/thumbnails/placeholder.jpg"
+
+        api_root = "https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get"
+        api_img_url = f'{api_root}?url={bookmark["url"]}&width=480'
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_img_url) as response:
+                if response.status == 200:
+                    logger.info('Thumbnail API handshake successful')
+                    img_bytes = await response.read()
+                    img = Image.open(BytesIO(img_bytes))
+
+                    # Save the image to a BytesIO object
+                    img_byte_arr = BytesIO()
+                    img.save(img_byte_arr, format="JPEG")
+                    img_byte_arr.seek(0)
+
+                    # Upload to S3
+                    session = aioboto3.Session()
+                    async with session.client("s3") as s3:
+                        s3_bucket = S3_BUCKET_NAME
+                        s3_key = f'thumbnails/{bookmark["id"]}.jpg'
+                        await s3.upload_fileobj(
+                            img_byte_arr,
+                            s3_bucket,
+                            s3_key,
+                            ExtraArgs={"ContentType": "image/jpeg"}
+                        )
+
+                        img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+
+                    await update_bookmark_thumbnail_url(bookmark["id"], img_url)
+                    logger.info('Thumbnail successfully uploaded to S3')
+                else:
+                    logger.warning('Upload failure: ', response)
+
+    return img_url
+
+
+async def update_bookmarks_with_thumbnails(bookmarks):
+    tasks = [get_bookmark_thumbnail_image(bm) for bm in bookmarks]
+    thumbnails = await asyncio.gather(*tasks)
+    for bm, thumbnail_url in zip(bookmarks, thumbnails):
+        bm["thumbnail_url"] = thumbnail_url
+    return bookmarks
 
 
 def verify_table_structure(table_name: str = "bookmarks"):

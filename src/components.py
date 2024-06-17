@@ -1,3 +1,4 @@
+import asyncio
 from textwrap import dedent
 from typing import override
 
@@ -16,7 +17,7 @@ from ludic.html import a, b, div, h6, i, img, small, style
 from ludic.types import (Component, ComponentStrict, NoChildren,
                          PrimitiveChildren)
 
-from src.database import BOOKMARK_NAME
+from src.database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):
@@ -133,7 +134,8 @@ class ImagePlaceholder(img):
                 "border": "1px groove #a3d3f641",
                 "border-radius": "4px",
                 "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
-                "background": "#85acc934",
+                "background": "#85acc934 url('https://bookerics.s3.amazonaws.com/thumbnails/placeholder.png') no-repeat center center",
+                "background-size": "cover",
             }
         }
     )
@@ -208,9 +210,7 @@ class BookmarkBox(div):
                 "padding": theme.sizes.l,
             },
             ".bookmark-box:not(.transparent)": {
-                "border": (
-                    "1px solid #bababa"
-                ),
+                "border": ("1px solid #bababa"),
                 "border-radius": theme.rounding.more,
                 "background-color": theme.colors.light,
             },
@@ -336,6 +336,19 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
 
 
 class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
+    """currently limited to fetching one entry"""
+    def __init__(self, bookmarks):
+        super().__init__()
+        self.bookmarks = bookmarks
+        # Schedule the async fetching of thumbnails
+        asyncio.create_task(self.fetch_thumbnails())
+
+    async def fetch_thumbnails(self):
+        print('In async, fetching thumbnails')
+        self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks[:1])  # TODO: remove slice
+        # Once fetched, you may want to trigger a re-render if necessary
+        # Example: self.update() if you have such a mechanism in place
+
     def render_tags(self, tags) -> Cluster:
         return Cluster(
             *[
@@ -346,13 +359,14 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     # Layout for showing image previews
     def render_bookmark(self, bookmark) -> BookmarkBox:
-        thumbnail_api_url = "https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get"
+        # img_url = bookmark["thumbnail_url"]
+
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
             Switcher(
                 Link(
                     ImagePlaceholder(
-                        src=f'{thumbnail_api_url}?url={bookmark["url"]}&width=480',
+                        src=bookmark["thumbnail_url"],
                         height="360",
                         width="480",
                     ),
@@ -389,5 +403,5 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Switcher:
         return Switcher(
-            *[self.render_bookmark(bm) for bm in self.attrs["bookmarks"]][:1]
+            *[self.render_bookmark(bm) for bm in self.bookmarks][:1]
         )
