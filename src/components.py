@@ -2,7 +2,8 @@ import asyncio
 from textwrap import dedent
 from typing import override
 
-from ludic.attrs import Attrs, GlobalAttrs
+import requests
+from ludic.attrs import Attrs, GlobalAttrs, ImgAttrs
 from ludic.base import NoChildren
 from ludic.catalog.buttons import ButtonLink, ButtonPrimary
 from ludic.catalog.forms import InputField
@@ -17,6 +18,7 @@ from ludic.html import a, b, div, h6, i, img, small, style
 from ludic.types import (Component, ComponentStrict, NoChildren,
                          PrimitiveChildren)
 
+from src.constants import GIPHY_API_KEY
 from src.database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
 
 
@@ -123,22 +125,30 @@ class BookericLink(Component[str, LinkAttrs]):
         )
 
 
-class ImagePlaceholder(img):
-    void_element = True
-    html_name = "img"
+class PreviewImage(Component[img, ImgAttrs]):
     classes = ["image-placeholder"]
-    styles = style.use(
-        lambda theme: {
-            ".image-placeholder": {
-                "margin-top": "1em",
-                "border": "1px groove #a3d3f641",
-                "border-radius": "4px",
-                "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
-                "background": "#85acc934 url('https://bookerics.s3.amazonaws.com/thumbnails/placeholder.png') no-repeat center center",
-                "background-size": "cover",
-            }
+    styles = {
+        f".image-placeholder": {
+            "margin-top": "1em",
+            "border": "1px groove #a3d3f641",
+            "border-radius": "4px",
+            "box-shadow": "0 1px 2px rgba(0, 0, 0, 0.1)",
+            "background": "#85acc934",
+            "background-size": "cover",
         }
-    )
+    }
+
+    def get_random_giphy_url(self):
+        _url = f"https://api.giphy.com/v1/gifs/random?api_key={GIPHY_API_KEY}&tag=waiting&rating=r"
+        r = requests.get(_url)
+        giphy_url = r.json()["data"]["images"]["original"]["url"]
+        return giphy_url
+
+    @override
+    def render(self) -> img:
+        if not self.attrs.get("src"):
+            self.attrs["src"] = self.get_random_giphy_url()
+        return img(*self.children, **self.attrs)
 
 
 class TableStructure(Component[NoChildren, GlobalAttrs]):
@@ -262,7 +272,6 @@ class BookmarkBox(div):
                 "right": "0.5rem;",
                 "background": "none",
                 "border": "none",
-                "color": "#f00;",
                 "cursor": "pointer",
                 "font-size": "1.5rem",
             },
@@ -272,7 +281,6 @@ class BookmarkBox(div):
                 "right": "0.5rem;",
                 "background": "none",
                 "border": "none",
-                "color": "#f00;",
                 "cursor": "not-allowed",
                 "font-size": "1.5rem",
             },
@@ -391,10 +399,11 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
             BookericLink(bookmark["title"], to=bookmark["url"]),
             Switcher(
                 Link(
-                    ImagePlaceholder(
+                    PreviewImage(
                         src=bookmark["thumbnail_url"],
                         height="270",
                         width="480",
+                        id=f"thumbnail-{bookmark['id']}",
                     ),
                     to=bookmark["url"],
                 ),
@@ -417,7 +426,8 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
             HTMXLoadBookmarkButton(
                 "…",
                 hx_get=f"/id/{bookmark['id']}",
-                hx_target=f"#bookmark-{bookmark['id']}",
+                hx_target=f"#bmb-{bookmark['id']}",
+                hx_trigger="thumbnailLoaded",
                 hx_swap="outerHTML",
                 classes=["id-btn"],
             ),
@@ -429,8 +439,11 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 hx_swap="outerHTML",
                 hx_delete=f"/delete/{bookmark['id']}",
             ),
-            id=f"bookmark-{bookmark['id']}",
+            id=f"bmb-{bookmark['id']}",
             classes=["bookmark-box"],
+            hx_get=f"/thumbnail/{bookmark['id']}/check",
+            hx_target=f"#thumbnail-{bookmark['id']}",
+            hx_swap="outerHTML",
         )
 
     @override

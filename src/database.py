@@ -11,9 +11,8 @@ import aiohttp
 import boto3
 from PIL import Image
 
+from src.constants import BOOKMARK_NAME, THUMBNAIL_API_KEY
 from src.utils import log_warning_with_response, logger
-
-BOOKMARK_NAME = "bookeric"  # change to your name for the ultimate in personalization
 
 # S3/DB setup
 S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
@@ -223,8 +222,8 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 
     else:
         logger.info("Fetching thumbnail url from API... 🐕")
-        api_root = "https://api.thumbnail.ws/api/ab2247020d254828b275c75ada9230473674b395d748/thumbnail/get"
-        api_img_url = f'{api_root}?url={bookmark["url"]}&width=480'
+        api_root = f"https://api.thumbnail.ws/api/{THUMBNAIL_API_KEY}/thumbnail/get"
+        api_img_url = f'{api_root}?width=480&url={bookmark["url"]}'
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_img_url) as response:
@@ -256,6 +255,7 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                     logger.info(
                         f"Thumbnail for id # {bookmark["id"]} successfully uploaded to S3 🥳"
                     )
+                    return img_url
                 else:
                     await log_warning_with_response(response)
 

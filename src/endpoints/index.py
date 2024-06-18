@@ -66,6 +66,21 @@ async def bookmark_by_id(id: str):
     return BookmarkImageList(bookmarks=bookmarks)
 
 
+@app.get("/thumbnail/{id}/check")
+async def thumbnail_check(id: str):
+    bookmarks = fetch_bookmark_by_id(id=id)
+    if not bookmarks or len(bookmarks) == 0:
+        return HTMLResponse("Bookmark not found", status_code=404)
+
+    bookmark = bookmarks[0]  # Assuming it returns a list with one item
+    img_url = bookmark["thumbnail_url"]
+    if img_url:
+        return HTMLResponse(
+            f'<img src="{img_url}" height="270" width="480" id="thumbnail-{id}"><script>document.body.dispatchEvent(new Event("thumbnailLoaded"));</script>'
+        )
+    return HTMLResponse("")
+
+
 @app.get("/tags")
 async def tags():
     bookmarks = fetch_bookmarks(kind="newest")
