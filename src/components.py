@@ -14,12 +14,15 @@ from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
                                     MessageWarning)
 from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
                                       Paragraph)
-from ludic.html import a, b, div, h6, i, img, small, style
-from ludic.types import (Component, ComponentStrict, NoChildren,
-                         PrimitiveChildren)
+from ludic.html import a, b, div, h6, i, img
+from ludic.html import script as Script
+from ludic.html import small, style
+from ludic.types import (AnyChildren, Component, ComponentStrict, JavaScript,
+                         NoChildren, PrimitiveChildren)
 
 from src.constants import GIPHY_API_KEY
 from src.database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
+from src.utils import logger
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):
@@ -128,7 +131,7 @@ class BookericLink(Component[str, LinkAttrs]):
 class PreviewImage(Component[img, ImgAttrs]):
     classes = ["image-placeholder"]
     styles = {
-        f".image-placeholder": {
+        ".image-placeholder": {
             "margin-top": "1em",
             "border": "1px groove #a3d3f641",
             "border-radius": "4px",
@@ -382,8 +385,12 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     async def fetch_thumbnails(self):
         self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks)
-        # Once fetched, you may want to trigger a re-render if necessary
-        # Example: self.update() if you have such a mechanism in place
+        for bookmark in self.bookmarks:
+            self.trigger_htmx_update(bookmark)
+
+    def trigger_htmx_update(self, bookmark):
+        # inject javascript here somehow to refresh the img
+        pass
 
     def render_tags(self, tags) -> Cluster:
         return Cluster(
@@ -404,6 +411,10 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                         height="270",
                         width="480",
                         id=f"thumbnail-{bookmark['id']}",
+                        hx_get=f"/id/{bookmark['id']}",
+                        hx_target=f"#bmb-{bookmark['id']}",
+                        hx_trigger="loadThumbnail from:body",
+                        hx_swap="outerHTML",
                     ),
                     to=bookmark["url"],
                 ),
@@ -427,7 +438,6 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 "…",
                 hx_get=f"/id/{bookmark['id']}",
                 hx_target=f"#bmb-{bookmark['id']}",
-                hx_trigger="thumbnailLoaded",
                 hx_swap="outerHTML",
                 classes=["id-btn"],
             ),
@@ -435,15 +445,12 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 "🗑️",
                 to="#",
                 classes=["delete-btn"],
-                hx_target=f"#bookmark-{bookmark['id']}",
+                hx_target=f"#bmb-{bookmark['id']}",
                 hx_swap="outerHTML",
                 hx_delete=f"/delete/{bookmark['id']}",
             ),
             id=f"bmb-{bookmark['id']}",
             classes=["bookmark-box"],
-            hx_get=f"/thumbnail/{bookmark['id']}/check",
-            hx_target=f"#thumbnail-{bookmark['id']}",
-            hx_swap="outerHTML",
         )
 
     @override
