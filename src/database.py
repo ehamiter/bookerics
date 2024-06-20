@@ -17,7 +17,7 @@ from src.utils import log_warning_with_response, logger
 # S3/DB setup
 S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
 S3_KEY = f"{BOOKMARK_NAME}s.db"
-DB_PATH = f"/tmp/{BOOKMARK_NAME}s.db"
+DB_PATH = f"./{BOOKMARK_NAME}s.db"
 
 
 def download_file_from_s3(bucket_name, s3_key, local_path):
