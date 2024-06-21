@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BASE_URL = 'http://localhost:8080'
+
 ## Personalization
 BOOKMARK_NAME = os.getenv("BOOKMARK_NAME", "bookeric")
 

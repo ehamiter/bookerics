@@ -217,18 +217,18 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     img_url = bookmark.get("thumbnail_url")
 
     if img_url:
-        logger.info("Found thumbnail url on S3! 🎉")
+        logger.info(f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}: {img_url}")
         return img_url
 
     else:
-        logger.info("Fetching thumbnail url from API... 🐕")
+        logger.info(f"🐕 Fetching thumbnail url from API for bookmark id {bookmark['id']}... ")
         api_root = f"https://api.thumbnail.ws/api/{THUMBNAIL_API_KEY}/thumbnail/get"
         api_img_url = f'{api_root}?width=480&url={bookmark["url"]}'
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_img_url) as response:
                 if response.status == 200:
-                    logger.info("Thumbnail API handshake successful! 🤝")
+                    logger.info(f"🤝 Thumbnail API handshake successful for bookmark id {bookmark['id']}!")
                     img_bytes = await response.read()
                     img = Image.open(BytesIO(img_bytes))
 
@@ -253,7 +253,7 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 
                     await update_bookmark_thumbnail_url(bookmark["id"], img_url)
                     logger.info(
-                        f"Thumbnail for id # {bookmark["id"]} successfully uploaded to S3 🥳"
+                        f"🥳 Thumbnail for bookmark id # {bookmark["id"]} successfully uploaded to S3!"
                     )
                     return img_url
                 else:
@@ -263,10 +263,12 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 
 
 async def update_bookmarks_with_thumbnails(bookmarks):
+    logger.info("Starting update of bookmarks with thumbnails.")
     tasks = [get_bookmark_thumbnail_image(bm) for bm in bookmarks]
     thumbnails = await asyncio.gather(*tasks)
     for bm, thumbnail_url in zip(bookmarks, thumbnails):
         bm["thumbnail_url"] = thumbnail_url
+    logger.info("Completed update of bookmarks with thumbnails.")
     return bookmarks
 
 

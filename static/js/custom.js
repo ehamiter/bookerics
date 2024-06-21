@@ -1,17 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
 
-    // console.log('Custom JS loaded');
-
-    /* Updating bookmark thumbnail  */
-    // function triggerHTMXUpdate(bookmarkId) {
-    //     var element = document.querySelector('#thumbnail-' + bookmarkId);
-    //     if (element) {
-    //         htmx.trigger(element, 'loadThumbnail');
-    //     }
-    // }
-    // window.triggerHTMXUpdate = triggerHTMXUpdate;
-
-
     /* Deleting bookmarks  */
     document.body.addEventListener('click', function(event) {
         const button = event.target;

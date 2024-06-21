@@ -110,6 +110,26 @@ async def update():
     schedule_upload_to_s3()
     return JSONResponse({"status": "success", "message": "File uploaded to S3"})
 
+@app.get("/update_thumbnail/{id}")
+async def update_thumbnail(request: Request):
+    bookmark_id = request.path_params['id']
+    headers = {'HX-Trigger': 'loadThumbnail'}
+    logger.info(f"Sending HX-Trigger header for bookmark id: {bookmark_id}")
+    return JSONResponse({'status': 'thumbnail loaded'}, headers=headers)
+
+@app.get("/get_thumbnail/{id}")
+async def get_thumbnail(request: Request):
+    bookmark_id = request.path_params['id']
+    headers = {'HX-Trigger': 'loadThumbnail'}
+    bookmark = fetch_bookmark_by_id(bookmark_id)
+    if bookmark:
+        logger.info(f'Found bookmark # {bookmark_id}!')
+        bookmark = bookmark[0]  # fetch_bookmark_by_id returns a list, so take the first item
+        thumbnail_html = f'<img src="{bookmark["thumbnail_url"]}" height="270" width="480" id="thumbnail-{bookmark_id}" />'
+        logger.info(f"Returning HTML for thumbnail id: {bookmark_id}")
+        return HTMLResponse(thumbnail_html, headers=headers)
+    logging.info(f"Bookmark not found for id: {bookmark_id}")
+    return HTMLResponse('<p>Bookmark not found</p>', status_code=404)
 
 @app.post("/add")
 async def add_bookmark(request: Request):
