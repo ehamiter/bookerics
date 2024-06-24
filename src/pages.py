@@ -29,10 +29,11 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
             script(src="/static/js/custom.js", defer=True),
             link(rel="icon", href="/static/images/favicon.png"),
             title(self.attrs.get("title", "bookerics")),
-
             # Background photo originally by Jess Bailey on Unsplash:
             # https://unsplash.com/photos/close-shot-of-book-page-X5gDoysLbBc
-            style("""html { background: url("/static/images/bg.png") no-repeat center center fixed; -webkit-background-size: cover; -moz-background-size: cover; -o-background-size: cover; background-size: cover;}"""),  # no fmt
+            style(
+                """html { background: url("/static/images/bg.png") no-repeat center center fixed; -webkit-background-size: cover; -moz-background-size: cover; -o-background-size: cover; background-size: cover;}"""
+            ),  # no fmt
         ]
 
         if favicon := self.attrs.get("favicon"):

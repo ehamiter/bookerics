@@ -130,35 +130,6 @@ class BookericLink(Component[str, LinkAttrs]):
         )
 
 
-class PreviewImage(Component[img, ImgAttrs]):
-    classes = ["image-placeholder"]
-    styles = {
-        ".image-placeholder": {
-            "height": "auto",
-            "max-inline-size": "480px",
-            "margin-top": "1em",
-            "border": "1px solid #7a7a7a7a",
-            "border-radius": "5px",
-            "box-shadow": "1 1px 5px rgba(0, 0, 0, 0.2)",
-            "background": "#85acc934",
-            "background-size": "cover",
-        }
-    }
-
-    def get_random_giphy_url(self):
-        _url = f"https://api.giphy.com/v1/gifs/random?api_key={GIPHY_API_KEY}&tag=waiting&rating=r"
-        r = requests.get(_url)
-        giphy_url = r.json()["data"]["images"]["original"]["url"]
-        return giphy_url
-
-    @override
-    def render(self) -> img:
-        if not self.attrs.get("src"):
-            self.attrs["src"] = self.get_random_giphy_url()
-            self.attrs["placeholder"] = True
-        return img(*self.children, **self.attrs)
-
-
 class TableStructure(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Center:
@@ -210,26 +181,51 @@ class Switcher(div):
         }
     )
 
+class PreviewImage(Component[img, ImgAttrs]):
+    classes = ["image-placeholder"]
+    styles = {
+        ".image-placeholder": {
+            "height": "auto",
+            "width": "100%",
+            "max-width": "480px",
+            "margin-top": "1em",
+            "box-shadow": "rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;",
+            "background": "#85acc934",
+        }
+    }
+
+    def get_random_giphy_url(self):
+        _url = f"https://api.giphy.com/v1/gifs/random?api_key={GIPHY_API_KEY}&tag=waiting&rating=r"
+        r = requests.get(_url)
+        giphy_url = r.json()["data"]["images"]["original"]["url"]
+        return giphy_url
+
+    @override
+    def render(self) -> img:
+        if not self.attrs.get("src"):
+            self.attrs["src"] = self.get_random_giphy_url()
+            self.attrs["placeholder"] = True
+        return img(*self.children, **self.attrs)
+
+
 class ImageSwitcher(div):
     classes = ["image-switcher"]
     styles = style.use(
         lambda theme: {
             ".image-switcher": {
                 "display": "flex",
+                "flex-direction": "column",
                 "flex-wrap": "wrap",
                 "gap": theme.sizes.xxxs,
                 "justify-content": "center",  # Center the items horizontally
+                "align-items": "center",
             },
             ".no-gap": {
                 "gap": "0",
             },
             ".image-switcher > *": {
-                "flex-basis": "auto",  # Allow it to retain its natural size
-                "display": "flex",
-                "justify-content": "center",
-                "align-items": "center",
-                "flex-grow": "1",
-                "max-inline-size": "480px",
+                "width": "100%",
+                "text-align": "center",
             },
             (
                 f".image-switcher > :nth-last-child(n+{theme.layouts.switcher.limit+1})",
@@ -239,7 +235,6 @@ class ImageSwitcher(div):
             },
         }
     )
-
 
 
 class BookmarkBox(div):
@@ -422,10 +417,7 @@ class UpdatingBookmarkMessage(Component[NoChildren, GlobalAttrs]):
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags) -> Cluster:
         return Cluster(
-            *[
-                ButtonLink(tag, to=f"/tags/{tag}", classes=["tag info"])
-                for tag in tags
-            ],
+            *[ButtonLink(tag, to=f"/tags/{tag}", classes=["tag info"]) for tag in tags],
         )
 
     def render_bookmark(self, bookmark) -> BookmarkBox:
@@ -486,10 +478,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     def render_tags(self, tags) -> Cluster:
         return Cluster(
-            *[
-                ButtonLink(tag, to=f"/tags/{tag}", classes=["tag info"])
-                for tag in tags
-            ],
+            *[ButtonLink(tag, to=f"/tags/{tag}", classes=["tag info"]) for tag in tags],
         )
 
     # Layout for showing image previews
@@ -511,7 +500,6 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                     to=bookmark["url"],
                 ),
                 Paragraph(bookmark["url"], classes=["image-url"]),
-                classes=["no-gap"],
             ),
             Paragraph(bookmark["description"], classes=["image-description"])
             if bookmark.get("description")

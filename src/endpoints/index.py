@@ -23,8 +23,8 @@ from src.main import app
 from src.pages import Page
 from src.utils import logger
 
-
 # main routes
+
 
 @app.get("/")
 async def index():
@@ -55,6 +55,7 @@ async def random_bookmark():
         BookmarkImageList(bookmarks=bookmarks),
     )
 
+
 @app.get("/tags")
 async def tags():
     bookmarks = fetch_bookmarks(kind="newest")
@@ -82,6 +83,7 @@ async def bookmarks_by_tag(tag: str):
         BookmarkList(bookmarks=bookmarks),
     )
 
+
 @app.get("/untagged")
 async def untagged_bookmarks():
     bookmarks = fetch_bookmarks(kind="untagged")
@@ -91,7 +93,9 @@ async def untagged_bookmarks():
         BookmarkList(bookmarks=bookmarks),
     )
 
+
 # partials
+
 
 @app.get("/id/{id}")
 async def bookmark_by_id(id: str):
@@ -130,6 +134,7 @@ async def search(request: Request):
 
 
 # utils
+
 
 @app.get("/get_thumbnail/{id}")
 async def get_thumbnail(request: Request):
@@ -193,7 +198,9 @@ async def delete_bookmark(request: Request):
         print(f"Error deleting bookmark: {e}")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
+
 # misc
+
 
 @app.get("/favicon.ico")
 async def favicon():
