@@ -1,8 +1,8 @@
-import aiohttp
 import asyncio
 from textwrap import dedent
 from typing import override
 
+import aiohttp
 import requests
 from ludic.attrs import Attrs, GlobalAttrs, ImgAttrs
 from ludic.base import NoChildren
@@ -151,7 +151,7 @@ class PreviewImage(Component[img, ImgAttrs]):
     def render(self) -> img:
         if not self.attrs.get("src"):
             self.attrs["src"] = self.get_random_giphy_url()
-            self.attrs['placeholder'] = True
+            self.attrs["placeholder"] = True
         return img(*self.children, **self.attrs)
 
 
@@ -336,6 +336,7 @@ class HTMXLoadBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         }
         return a(self.children[0], **attrs)
 
+
 class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
     classes = ["btn update-btn"]
 
@@ -357,8 +358,10 @@ class UpdatingBookmarkMessage(Component[NoChildren, GlobalAttrs]):
         return BookmarkBox(
             Paragraph(
                 Link(
-                    f'Updating {BOOKMARK_NAME} # {bookmark_id}, click here to return to {BOOKMARK_NAME}s…',
-                    classes=["update-bookmark"], to="/", title="",
+                    f"Updating {BOOKMARK_NAME} # {bookmark_id}, click here to return to {BOOKMARK_NAME}s…",
+                    classes=["update-bookmark"],
+                    to="/",
+                    title="",
                 ),
             ),
             id=f"bookmark-{bookmark_id}",
@@ -434,7 +437,6 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
         self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks)
         logger.info("Completed fetch thumbnails")
 
-
     def render_tags(self, tags) -> Cluster:
         return Cluster(
             *[
@@ -496,8 +498,8 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 hx_swap="outerHTML",
                 hx_delete=f"/delete/{bookmark['id']}",
             ),
-        id=f"bmb-{bookmark['id']}",
-        classes=["bookmark-box"],
+            id=f"bmb-{bookmark['id']}",
+            classes=["bookmark-box"],
         )
 
     @override

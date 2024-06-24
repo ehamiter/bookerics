@@ -169,6 +169,7 @@ def schedule_upload_to_s3():
     else:
         asyncio.run(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
 
+
 def schedule_thumbnail_fetch_and_save(bookmark):
     loop = asyncio.get_event_loop()
     if loop.is_running():
@@ -227,18 +228,24 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     img_url = bookmark.get("thumbnail_url")
 
     if img_url:
-        logger.info(f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}: {img_url}")
+        logger.info(
+            f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}: {img_url}"
+        )
         return img_url
 
     else:
-        logger.info(f"🐕 Fetching thumbnail url from API for bookmark id {bookmark['id']}... ")
+        logger.info(
+            f"🐕 Fetching thumbnail url from API for bookmark id {bookmark['id']}... "
+        )
         api_root = f"https://api.thumbnail.ws/api/{THUMBNAIL_API_KEY}/thumbnail/get"
         api_img_url = f'{api_root}?width=480&url={bookmark["url"]}'
 
         async with aiohttp.ClientSession() as session:
             async with session.get(api_img_url) as response:
                 if response.status == 200:
-                    logger.info(f"🤝 Thumbnail API handshake successful for bookmark id {bookmark['id']}!")
+                    logger.info(
+                        f"🤝 Thumbnail API handshake successful for bookmark id {bookmark['id']}!"
+                    )
                     img_bytes = await response.read()
                     img = Image.open(BytesIO(img_bytes))
 

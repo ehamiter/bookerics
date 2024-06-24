@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = 'http://localhost:8080'
+BASE_URL = "http://localhost:8080"
 
 # sqlite-web runs on a separate port
 # poetry run sqlite_web bookerics.db -p 8888
-UPDATE_BASE_URL = 'http://localhost:8888/bookmarks/update/'
+UPDATE_BASE_URL = "http://localhost:8888/bookmarks/update/"
 
 ## Personalization
 BOOKMARK_NAME = os.getenv("BOOKMARK_NAME", "bookeric")

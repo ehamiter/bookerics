@@ -7,16 +7,18 @@ from ludic.catalog.headers import H1
 from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.catalog.typography import CodeBlock
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from starlette.responses import (FileResponse, HTMLResponse, JSONResponse,
+                                 RedirectResponse)
 
 from src.components import (BookmarkImageList, BookmarkList, NavMenu,
-                            SearchBar, TableStructure, TagCloud, UpdatingBookmarkMessage)
-from src.constants import UPDATE_BASE_URL, BOOKMARK_NAME
+                            SearchBar, TableStructure, TagCloud,
+                            UpdatingBookmarkMessage)
+from src.constants import BOOKMARK_NAME, UPDATE_BASE_URL
 from src.database import (create_bookmark, delete_bookmark_by_id,
                           fetch_bookmark_by_id, fetch_bookmarks,
                           fetch_bookmarks_by_tag, fetch_unique_tags,
-                          schedule_upload_to_s3, search_bookmarks, get_bookmark_thumbnail_image,
-                          verify_table_structure)
+                          get_bookmark_thumbnail_image, schedule_upload_to_s3,
+                          search_bookmarks, verify_table_structure)
 from src.main import app
 from src.pages import Page
 from src.utils import logger
@@ -83,8 +85,8 @@ async def bookmark_by_id_compact(id: str):
 @app.get("/update/{bookmark_id}")
 async def update_bookmark_by_id(bookmark_id: str):
     # This launches sqlite-web with the id -> b64'd
-    pk_b64_id = base64.b64encode(bookmark_id.encode()).decode('utf8')
-    webbrowser.open_new(f'{UPDATE_BASE_URL}/{pk_b64_id}')
+    pk_b64_id = base64.b64encode(bookmark_id.encode()).decode("utf8")
+    webbrowser.open_new(f"{UPDATE_BASE_URL}/{pk_b64_id}")
 
 
 @app.get("/tags")
@@ -131,26 +133,31 @@ async def update():
     schedule_upload_to_s3()
     return JSONResponse({"status": "success", "message": "File uploaded to S3"})
 
+
 @app.get("/update_thumbnail/{id}")
 async def update_thumbnail(request: Request):
-    bookmark_id = request.path_params['id']
-    headers = {'HX-Trigger': 'loadThumbnail'}
+    bookmark_id = request.path_params["id"]
+    headers = {"HX-Trigger": "loadThumbnail"}
     logger.info(f"Sending HX-Trigger header for bookmark id: {bookmark_id}")
-    return JSONResponse({'status': 'thumbnail loaded'}, headers=headers)
+    return JSONResponse({"status": "thumbnail loaded"}, headers=headers)
+
 
 @app.get("/get_thumbnail/{id}")
 async def get_thumbnail(request: Request):
-    bookmark_id = request.path_params['id']
-    headers = {'HX-Trigger': 'loadThumbnail'}
+    bookmark_id = request.path_params["id"]
+    headers = {"HX-Trigger": "loadThumbnail"}
     bookmark = fetch_bookmark_by_id(bookmark_id)
     if bookmark:
-        logger.info(f'Found bookmark # {bookmark_id}!')
-        bookmark = bookmark[0]  # fetch_bookmark_by_id returns a list, so take the first item
+        logger.info(f"Found bookmark # {bookmark_id}!")
+        bookmark = bookmark[
+            0
+        ]  # fetch_bookmark_by_id returns a list, so take the first item
         thumbnail_html = f'<img src="{bookmark["thumbnail_url"]}" height="270" width="480" id="thumbnail-{bookmark_id}" />'
         logger.info(f"Returning HTML for thumbnail id: {bookmark_id}")
         return HTMLResponse(thumbnail_html, headers=headers)
     logging.info(f"Bookmark not found for id: {bookmark_id}")
-    return HTMLResponse('<p>Bookmark not found</p>', status_code=404)
+    return HTMLResponse("<p>Bookmark not found</p>", status_code=404)
+
 
 @app.post("/add")
 async def add_bookmark(request: Request):
