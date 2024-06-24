@@ -181,6 +181,7 @@ class Switcher(div):
         }
     )
 
+
 class PreviewImage(Component[img, ImgAttrs]):
     classes = ["image-placeholder"]
     styles = {
