@@ -270,6 +270,18 @@ class BookmarkBox(div):
                 "margin": "1em .25em",
                 "font-size": "1em",
             },
+            ".update-btn": {
+                "position": "absolute",
+                "bottom": "0.75rem;",
+                "right": "2.5rem;",
+                "background": "none",
+                "border": "none",
+                "cursor": "pointer",
+                "font-size": "1.5rem",
+            },
+            ".update-bookmark": {
+                "text-align": "center",
+            },
             ".id-btn": {
                 "position": "absolute",
                 "top": "0.75rem;",
@@ -324,6 +336,35 @@ class HTMXLoadBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         }
         return a(self.children[0], **attrs)
 
+class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
+    classes = ["btn update-btn"]
+
+    @override
+    def render(self) -> a:
+        attrs = {
+            "href": "#",
+            "hx-get": self.attrs.get("hx_get"),
+            "hx-swap": "none",
+            "class": " ".join(self.classes + self.attrs.get("classes", [])),
+        }
+        return a(self.children[0], **attrs)
+
+
+class UpdatingBookmarkMessage(Component[NoChildren, GlobalAttrs]):
+    @override
+    def render(self) -> Switcher:
+        bookmark_id = self.attrs.get("bookmark_id")
+        return BookmarkBox(
+            Paragraph(
+                Link(
+                    f'Updating {BOOKMARK_NAME} # {bookmark_id}, click here to return to {BOOKMARK_NAME}s…',
+                    classes=["update-bookmark"], to="/", title="",
+                ),
+            ),
+            id=f"bookmark-{bookmark_id}",
+            classes=["update-bookmark"],
+        )
+
 
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags) -> Cluster:
@@ -350,6 +391,10 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                     ),
                 ),
                 classes=["no-border no-inline-padding"],
+            ),
+            UpdateBookmarkButton(
+                "✒️",
+                hx_get=f"/update/{bookmark['id']}",
             ),
             HTMXLoadBookmarkButton(
                 "…",
@@ -382,25 +427,12 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
         super().__init__()
         self.bookmarks = bookmarks[:1]
         # Schedule the async fetching of thumbnails
-        logger.info(f"Initializing BookmarkImageList with bookmarks: {self.bookmarks}")
         asyncio.create_task(self.fetch_thumbnails())
 
     async def fetch_thumbnails(self):
         logger.info("Starting fetch thumbnails")
         self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks)
-        for bookmark in self.bookmarks:
-            if 'thumbnail_url' in bookmark and bookmark['thumbnail_url']:
-                logger.info(f"Triggering HTMX update for bookmark id: {bookmark['id']}")
-                # await self.trigger_htmx_update(bookmark)
-                self.trigger_htmx_update(bookmark)
         logger.info("Completed fetch thumbnails")
-
-    def trigger_htmx_update(self, bookmark):
-        logger.info(f"Trigger HTMX update!")
-        bookmark["ready_to_process"] = bookmark["thumbnail_url"].startswith('https://bookerics.s3')
-        # print(self)
-        # print(bookmark)
-        # breakpoint()
 
 
     def render_tags(self, tags) -> Cluster:
@@ -445,9 +477,13 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
             ),
+            UpdateBookmarkButton(
+                "✒️",
+                hx_get=f"/update/{bookmark['id']}",
+            ),
             HTMXLoadBookmarkButton(
                 "…",
-                hx_get=f"/id/{bookmark['id']}",
+                hx_get=f"/id/c/{bookmark['id']}",
                 hx_target=f"#bmb-{bookmark['id']}",
                 hx_swap="outerHTML",
                 classes=["id-btn"],
@@ -460,43 +496,6 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 hx_swap="outerHTML",
                 hx_delete=f"/delete/{bookmark['id']}",
             ),
-            Script(JavaScript(f"""
-            document.addEventListener('DOMContentLoaded', function() {{
-                console.log('BookmarkImageScript: bookmark id: {bookmark['id']}');
-                console.log('Thumbnail url: {bookmark['thumbnail_url']}');
-
-                var element = document.getElementById('thumbnail-{bookmark['id']}');
-                if (element) {{
-                    var checkAndTrigger = function() {{
-                        if (element.hasAttribute('placeholder') && element.hasAttribute('ready_to_process')) {{
-                            console.log('Element needs replacing');
-                            htmx.trigger(element, 'loadThumbnail');
-                            console.log('Triggered htmx on element');
-                            element.removeAttribute('placeholder');
-                            element.src = {bookmark['thumbnail_url']};
-                        }} else {{
-                            console.log('Element does not have placeholder or ready_to_process');
-                        }}
-                    }};
-
-                    // Initial check
-                    checkAndTrigger();
-
-                    // Setup MutationObserver
-                    var observer = new MutationObserver(function(mutationsList) {{
-                        for (var mutation of mutationsList) {{
-                            if (mutation.type === 'attributes') {{
-                                checkAndTrigger();
-                            }}
-                        }}
-                    }});
-
-                    observer.observe(element, {{ attributes: true }});
-                }} else {{
-                    console.warn('Element not found for bookmark id:', {bookmark['id']});
-                }}
-            }});
-            """)),
         id=f"bmb-{bookmark['id']}",
         classes=["bookmark-box"],
         )

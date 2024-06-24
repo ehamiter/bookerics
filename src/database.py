@@ -169,6 +169,13 @@ def schedule_upload_to_s3():
     else:
         asyncio.run(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
 
+def schedule_thumbnail_fetch_and_save(bookmark):
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        asyncio.create_task(update_bookmarks_with_thumbnails(bookmark))
+    else:
+        asyncio.run(update_bookmarks_with_thumbnails(bookmark))
+
 
 def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> int:
     tags_json = json.dumps(tags)
@@ -181,7 +188,10 @@ def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> 
         query,
         (title, url, description, tags_json, current_timestamp, current_timestamp),
     )
+    # breakpoint()
     schedule_upload_to_s3()
+    bookmark = fetch_bookmark_by_id(bookmark_id)
+    schedule_thumbnail_fetch_and_save(bookmark)
     return bookmark_id
 
 

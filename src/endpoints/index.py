@@ -1,16 +1,21 @@
+import base64
+import webbrowser
+
 from ludic import html
 from ludic.base import BaseElement
+from ludic.catalog.headers import H1
 from ludic.catalog.layouts import Box, Cluster, Stack, Switcher
 from ludic.catalog.typography import CodeBlock
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
 from src.components import (BookmarkImageList, BookmarkList, NavMenu,
-                            SearchBar, TableStructure, TagCloud)
+                            SearchBar, TableStructure, TagCloud, UpdatingBookmarkMessage)
+from src.constants import UPDATE_BASE_URL, BOOKMARK_NAME
 from src.database import (create_bookmark, delete_bookmark_by_id,
                           fetch_bookmark_by_id, fetch_bookmarks,
                           fetch_bookmarks_by_tag, fetch_unique_tags,
-                          schedule_upload_to_s3, search_bookmarks,
+                          schedule_upload_to_s3, search_bookmarks, get_bookmark_thumbnail_image,
                           verify_table_structure)
 from src.main import app
 from src.pages import Page
@@ -64,6 +69,22 @@ async def bookmark_by_id(id: str):
         return HTMLResponse("Bookmark not found", status_code=404)
 
     return BookmarkImageList(bookmarks=bookmarks)
+
+
+@app.get("/id/c/{id}")
+async def bookmark_by_id_compact(id: str):
+    bookmarks = fetch_bookmark_by_id(id=id)
+    if not bookmarks:
+        return HTMLResponse("Bookmark not found", status_code=404)
+
+    return BookmarkList(bookmarks=bookmarks)
+
+
+@app.get("/update/{bookmark_id}")
+async def update_bookmark_by_id(bookmark_id: str):
+    # This launches sqlite-web with the id -> b64'd
+    pk_b64_id = base64.b64encode(bookmark_id.encode()).decode('utf8')
+    webbrowser.open_new(f'{UPDATE_BASE_URL}/{pk_b64_id}')
 
 
 @app.get("/tags")
