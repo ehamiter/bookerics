@@ -33,6 +33,8 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
 
         if favicon := self.attrs.get("favicon"):
             elements.append(link(rel="icon", href=favicon, type="image/x-icon"))
+        if config := self.attrs.get("htmx_config", {"defaultSwapStyle": "outerHTML"}):
+            elements.append(meta(name="htmx-config", content=json.dumps(config)))
         if self.attrs.get("load_styles", True):
             elements.append(style.load(cache=True))
 
