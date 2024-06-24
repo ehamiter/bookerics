@@ -4,7 +4,7 @@
 
 This is like a self-hosted [pinboard.in](https://pinboard.in), but not nearly as nice or feature-rich. It's also only for Erics.
 
-![screenshot](screenshot.png)
+![screenshot](/static/images/screenshot.webp)
 
 
 ### FAQ

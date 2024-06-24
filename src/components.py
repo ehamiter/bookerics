@@ -118,6 +118,7 @@ class BookericLink(Component[str, LinkAttrs]):
         return a(
             *self.children,
             href=self.attrs["to"],
+            target="_blank",
             classes=["bookeric-link external"],
             style={
                 "font-weight": "normal",
@@ -133,7 +134,10 @@ class PreviewImage(Component[img, ImgAttrs]):
     classes = ["image-placeholder"]
     styles = {
         ".image-placeholder": {
+            "height": "auto",
+            "max-inline-size": "480px",
             "margin-top": "1em",
+            "border": "1px solid #7a7a7a7a",
             "border-radius": "5px",
             "box-shadow": "1 1px 5px rgba(0, 0, 0, 0.2)",
             "background": "#85acc934",
@@ -205,6 +209,37 @@ class Switcher(div):
             },
         }
     )
+
+class ImageSwitcher(div):
+    classes = ["image-switcher"]
+    styles = style.use(
+        lambda theme: {
+            ".image-switcher": {
+                "display": "flex",
+                "flex-wrap": "wrap",
+                "gap": theme.sizes.xxxs,
+                "justify-content": "center",  # Center the items horizontally
+            },
+            ".no-gap": {
+                "gap": "0",
+            },
+            ".image-switcher > *": {
+                "flex-basis": "auto",  # Allow it to retain its natural size
+                "display": "flex",
+                "justify-content": "center",
+                "align-items": "center",
+                "flex-grow": "1",
+                "max-inline-size": "480px",
+            },
+            (
+                f".image-switcher > :nth-last-child(n+{theme.layouts.switcher.limit+1})",
+                f".image-switcher > :nth-last-child(n+{theme.layouts.switcher.limit+1}) ~ *",
+            ): {
+                "flex-basis": "100%",
+            },
+        }
+    )
+
 
 
 class BookmarkBox(div):
@@ -461,7 +496,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
     def render_bookmark(self, bookmark) -> BookmarkBox:
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
-            Switcher(
+            ImageSwitcher(
                 Link(
                     PreviewImage(
                         src=bookmark["thumbnail_url"],

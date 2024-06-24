@@ -24,6 +24,8 @@ from src.pages import Page
 from src.utils import logger
 
 
+# main routes
+
 @app.get("/")
 async def index():
     bookmarks = fetch_bookmarks(kind="newest")
@@ -53,42 +55,6 @@ async def random_bookmark():
         BookmarkImageList(bookmarks=bookmarks),
     )
 
-
-@app.get("/untagged")
-async def untagged_bookmarks():
-    bookmarks = fetch_bookmarks(kind="untagged")
-    return Page(
-        NavMenu(bookmark_count=len(bookmarks)),
-        SearchBar(),
-        BookmarkList(bookmarks=bookmarks),
-    )
-
-
-@app.get("/id/{id}")
-async def bookmark_by_id(id: str):
-    bookmarks = fetch_bookmark_by_id(id=id)
-    if not bookmarks:
-        return HTMLResponse("Bookmark not found", status_code=404)
-
-    return BookmarkImageList(bookmarks=bookmarks)
-
-
-@app.get("/id/c/{id}")
-async def bookmark_by_id_compact(id: str):
-    bookmarks = fetch_bookmark_by_id(id=id)
-    if not bookmarks:
-        return HTMLResponse("Bookmark not found", status_code=404)
-
-    return BookmarkList(bookmarks=bookmarks)
-
-
-@app.get("/update/{bookmark_id}")
-def update_bookmark_by_id(bookmark_id: str):
-    pk_b64_id = base64.b64encode(bookmark_id.encode()).decode("utf8")
-    update_url = f"{UPDATE_BASE_URL}/{pk_b64_id}"
-    webbrowser.open_new_tab(update_url)
-
-
 @app.get("/tags")
 async def tags():
     bookmarks = fetch_bookmarks(kind="newest")
@@ -116,6 +82,41 @@ async def bookmarks_by_tag(tag: str):
         BookmarkList(bookmarks=bookmarks),
     )
 
+@app.get("/untagged")
+async def untagged_bookmarks():
+    bookmarks = fetch_bookmarks(kind="untagged")
+    return Page(
+        NavMenu(bookmark_count=len(bookmarks)),
+        SearchBar(),
+        BookmarkList(bookmarks=bookmarks),
+    )
+
+# partials
+
+@app.get("/id/{id}")
+async def bookmark_by_id(id: str):
+    bookmarks = fetch_bookmark_by_id(id=id)
+    if not bookmarks:
+        return HTMLResponse("Bookmark not found", status_code=404)
+
+    return BookmarkImageList(bookmarks=bookmarks)
+
+
+@app.get("/id/c/{id}")
+async def bookmark_by_id_compact(id: str):
+    bookmarks = fetch_bookmark_by_id(id=id)
+    if not bookmarks:
+        return HTMLResponse("Bookmark not found", status_code=404)
+
+    return BookmarkList(bookmarks=bookmarks)
+
+
+@app.get("/update/{bookmark_id}")
+def update_bookmark_by_id(bookmark_id: str):
+    pk_b64_id = base64.b64encode(bookmark_id.encode()).decode("utf8")
+    update_url = f"{UPDATE_BASE_URL}/{pk_b64_id}"
+    webbrowser.open_new_tab(update_url)
+
 
 @app.get("/search")
 async def search(request: Request):
@@ -128,19 +129,7 @@ async def search(request: Request):
     )
 
 
-@app.get("/update")
-async def update():
-    schedule_upload_to_s3()
-    return JSONResponse({"status": "success", "message": "File uploaded to S3"})
-
-
-@app.get("/update_thumbnail/{id}")
-async def update_thumbnail(request: Request):
-    bookmark_id = request.path_params["id"]
-    headers = {"HX-Trigger": "loadThumbnail"}
-    logger.info(f"Sending HX-Trigger header for bookmark id: {bookmark_id}")
-    return JSONResponse({"status": "thumbnail loaded"}, headers=headers)
-
+# utils
 
 @app.get("/get_thumbnail/{id}")
 async def get_thumbnail(request: Request):
@@ -178,6 +167,20 @@ async def add_bookmark(request: Request):
     )
 
 
+@app.get("/update")
+async def update():
+    schedule_upload_to_s3()
+    return JSONResponse({"status": "success", "message": "File uploaded to S3"})
+
+
+@app.get("/update_thumbnail/{id}")
+async def update_thumbnail(request: Request):
+    bookmark_id = request.path_params["id"]
+    headers = {"HX-Trigger": "loadThumbnail"}
+    logger.info(f"Sending HX-Trigger header for bookmark id: {bookmark_id}")
+    return JSONResponse({"status": "thumbnail loaded"}, headers=headers)
+
+
 @app.delete("/delete/{bookmark_id}")
 async def delete_bookmark(request: Request):
     bookmark_id = request.path_params["bookmark_id"]
@@ -190,6 +193,7 @@ async def delete_bookmark(request: Request):
         print(f"Error deleting bookmark: {e}")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
+# misc
 
 @app.get("/favicon.ico")
 async def favicon():
