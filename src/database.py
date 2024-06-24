@@ -280,12 +280,10 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 
 
 async def update_bookmarks_with_thumbnails(bookmarks):
-    logger.info("Starting update of bookmarks with thumbnails.")
     tasks = [get_bookmark_thumbnail_image(bm) for bm in bookmarks]
     thumbnails = await asyncio.gather(*tasks)
     for bm, thumbnail_url in zip(bookmarks, thumbnails):
         bm["thumbnail_url"] = thumbnail_url
-    logger.info("Completed update of bookmarks with thumbnails.")
     return bookmarks
 
 

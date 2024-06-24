@@ -27,8 +27,12 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
             meta(name="author", content="Eric Hamiter"),
             script(src="/static/js/htmx.min.js", defer=True),
             script(src="/static/js/custom.js", defer=True),
-            link(rel="stylesheet", href="/static/css/styles.css"),
+            link(rel="icon", href="/static/images/favicon.png"),
             title(self.attrs.get("title", "bookerics")),
+
+            # Background photo originally by Jess Bailey on Unsplash:
+            # https://unsplash.com/photos/close-shot-of-book-page-X5gDoysLbBc
+            style("""html { background: url("/static/images/bg.png") no-repeat center center fixed; -webkit-background-size: cover; -moz-background-size: cover; -o-background-size: cover; background-size: cover;}"""),  # no fmt
         ]
 
         if favicon := self.attrs.get("favicon"):
@@ -46,7 +50,6 @@ class Page(Component[AnyChildren, GlobalAttrs]):
     def render(self) -> HtmlPage:
         return HtmlPage(
             CustomHead(
-                link(rel="icon", href="/static/favicon.png"),
                 title=f"{BOOKMARK_NAME}s",
             ),
             Body(

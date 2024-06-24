@@ -17,8 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (button.dataset.confirmed === 'true') {
                 event.preventDefault();
                 button.setAttribute('hx-delete', button.dataset.deleteUrl);
-                console.log('Confirmed delete URL:', button.dataset.deleteUrl);
-                console.log('Setting hx-delete:', button.getAttribute('hx-delete'));
 
                 // Manually create an HTMX request to handle the delete
                 htmx.ajax('DELETE', button.dataset.deleteUrl, {

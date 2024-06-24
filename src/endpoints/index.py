@@ -83,10 +83,10 @@ async def bookmark_by_id_compact(id: str):
 
 
 @app.get("/update/{bookmark_id}")
-async def update_bookmark_by_id(bookmark_id: str):
-    # This launches sqlite-web with the id -> b64'd
+def update_bookmark_by_id(bookmark_id: str):
     pk_b64_id = base64.b64encode(bookmark_id.encode()).decode("utf8")
-    webbrowser.open_new(f"{UPDATE_BASE_URL}/{pk_b64_id}")
+    update_url = f"{UPDATE_BASE_URL}/{pk_b64_id}"
+    webbrowser.open_new_tab(update_url)
 
 
 @app.get("/tags")
@@ -193,7 +193,7 @@ async def delete_bookmark(request: Request):
 
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse("static/favicon.png")
+    return FileResponse("static/images/favicon.png")
 
 
 @app.get("/table")

@@ -272,36 +272,51 @@ class BookmarkBox(div):
             },
             ".update-btn": {
                 "position": "absolute",
-                "bottom": "0.75rem;",
-                "right": "2.5rem;",
+                "bottom": "1rem;",
+                "right": "2rem;",
                 "background": "none",
                 "border": "none",
                 "cursor": "pointer",
-                "font-size": "1.5rem",
+                "font-size": "1rem",
+                "opacity": "0.75",
             },
             ".update-bookmark": {
                 "text-align": "center",
             },
-            ".id-btn": {
+            ".toggle-image-preview-btn": {
                 "position": "absolute",
-                "top": "0.75rem;",
+                "top": "1rem;",
                 "right": "0.5rem;",
                 "background": "none",
                 "border": "none",
+                "font-size": "1rem",
+                "opacity": "0.25",
                 "cursor": "pointer",
-                "font-size": "1.5rem",
             },
             ".delete-btn": {
                 "position": "absolute",
-                "bottom": "0.75rem;",
+                "bottom": "1rem;",
                 "right": "0.5rem;",
                 "background": "none",
                 "border": "none",
                 "cursor": "not-allowed",
-                "font-size": "1.5rem",
+                "font-size": "1rem",
+                "opacity": "0.75",
             },
             '.delete-btn[data-confirmed="true"]': {
                 "cursor": "pointer",
+            },
+            ".btn.tag": {
+                "border": "1px solid #4a4a4a4a;",
+                "font-size": "0.8em;",
+                "padding": "clamp(0.23rem, 0.23rem + 0vw, 0.28rem) clamp(0.47rem, 0.47rem + 0.1vw, 0.59rem);",
+            },
+            ".btn.tag:hover": {
+                "filter": "none;",
+                "border": "1px solid #4a4a4a77;",
+                "background-color": "#fff59b;",
+                "text-decoration": "none;",
+                "box-shadow": "rgba(0, 0, 0, 0.18) 0px 2px 4px;",
             },
         }
     )
@@ -323,8 +338,8 @@ class HTMXDeleteButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         return a(self.children[0], **attrs)
 
 
-class HTMXLoadBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
-    classes = ["btn"]
+class ToggleImagePreviewButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
+    classes = ["btn toggle-image-preview-btn"]
 
     @override
     def render(self) -> a:
@@ -343,9 +358,9 @@ class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
     @override
     def render(self) -> a:
         attrs = {
-            "href": "#",
-            "hx-get": self.attrs.get("hx_get"),
+            "href": self.attrs.get("to", "#"),
             "hx-swap": "none",
+            "hx-get": self.attrs.get("hx_get"),
             "class": " ".join(self.classes + self.attrs.get("classes", [])),
         }
         return a(self.children[0], **attrs)
@@ -373,7 +388,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags) -> Cluster:
         return Cluster(
             *[
-                ButtonLink(tag, to=f"/tags/{tag}", classes=["info small"])
+                ButtonLink(tag, to=f"/tags/{tag}", classes=["tag info"])
                 for tag in tags
             ],
         )
@@ -390,7 +405,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                     self.render_tags(bookmark["tags"])
                     if bookmark.get("tags")
                     else Cluster(
-                        ButtonLink("none", to="/untagged", classes=["warning small"])
+                        ButtonLink("none", to="/untagged", classes=["tag warning"])
                     ),
                 ),
                 classes=["no-border no-inline-padding"],
@@ -399,12 +414,11 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 "✒️",
                 hx_get=f"/update/{bookmark['id']}",
             ),
-            HTMXLoadBookmarkButton(
-                "…",
+            ToggleImagePreviewButton(
+                "➕",
                 hx_get=f"/id/{bookmark['id']}",
                 hx_target=f"#bookmark-{bookmark['id']}",
                 hx_swap="outerHTML",
-                classes=["id-btn"],
             ),
             HTMXDeleteButton(
                 "🗑️",
@@ -433,14 +447,12 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
         asyncio.create_task(self.fetch_thumbnails())
 
     async def fetch_thumbnails(self):
-        logger.info("Starting fetch thumbnails")
         self.bookmarks = await update_bookmarks_with_thumbnails(self.bookmarks)
-        logger.info("Completed fetch thumbnails")
 
     def render_tags(self, tags) -> Cluster:
         return Cluster(
             *[
-                ButtonLink(tag, to=f"/tags/{tag}", classes=["info small"])
+                ButtonLink(tag, to=f"/tags/{tag}", classes=["tag info"])
                 for tag in tags
             ],
         )
@@ -474,7 +486,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                     self.render_tags(bookmark["tags"])
                     if bookmark.get("tags")
                     else Cluster(
-                        ButtonLink("none", to="/untagged", classes=["warning small"])
+                        ButtonLink("none", to="/untagged", classes=["tag warning"])
                     ),
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
@@ -483,12 +495,11 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 "✒️",
                 hx_get=f"/update/{bookmark['id']}",
             ),
-            HTMXLoadBookmarkButton(
-                "…",
+            ToggleImagePreviewButton(
+                "➖",
                 hx_get=f"/id/c/{bookmark['id']}",
                 hx_target=f"#bmb-{bookmark['id']}",
                 hx_swap="outerHTML",
-                classes=["id-btn"],
             ),
             HTMXDeleteButton(
                 "🗑️",
