@@ -21,9 +21,9 @@ from ludic.html import small, style
 from ludic.types import (AnyChildren, Component, ComponentStrict, JavaScript,
                          NoChildren, PrimitiveChildren)
 
-from src.constants import BASE_URL, GIPHY_API_KEY
-from src.database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
-from src.utils import logger
+from .constants import BASE_URL, GIPHY_API_KEY
+from .database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
+from .utils import logger
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):

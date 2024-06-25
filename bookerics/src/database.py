@@ -11,8 +11,8 @@ import aiohttp
 import boto3
 from PIL import Image
 
-from src.constants import BOOKMARK_NAME, THUMBNAIL_API_KEY
-from src.utils import log_warning_with_response, logger
+from .constants import BOOKMARK_NAME, THUMBNAIL_API_KEY
+from .utils import log_warning_with_response, logger
 
 # S3/DB setup
 S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"

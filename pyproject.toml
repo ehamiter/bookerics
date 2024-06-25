@@ -6,6 +6,7 @@ authors = [
     "Eric Hamiter <ehamiter@gmail.com>"
 ]
 readme = "README.md"
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -38,3 +39,6 @@ norecursedirs = ".git docs .pytest_cache .mypy_cache .ruff_cache"
 filterwarnings = [
     "ignore:The \\'app\\' shortcut is now deprecated. Use the explicit style \\'transport=WSGITransport\\(app=\\.\\.\\.\\)\\' instead\\.",
 ]
+
+[tool.poetry.scripts]
+app = "bookerics.run_apps:run_apps"
