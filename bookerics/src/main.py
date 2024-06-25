@@ -1,5 +1,4 @@
 import os
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -55,12 +54,11 @@ async def lifespan(_: LudicApp) -> AsyncIterator[None]:
 
 # Calculate the directory path
 base_dir = os.path.dirname(os.path.abspath(__file__))
-static_dir = os.path.join(base_dir, '..', 'static')
+static_dir = os.path.join(base_dir, "..", "static")
 
 # Ensure the path exists
 if not os.path.exists(static_dir):
     raise RuntimeError(f"Directory '{static_dir}' does not exist")
-
 
 
 app = LudicApp(

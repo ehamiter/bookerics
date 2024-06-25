@@ -1,6 +1,5 @@
-from starlette.testclient import TestClient
-
 from src.main import app
+from starlette.testclient import TestClient
 
 
 def test_bulk_update() -> None:
