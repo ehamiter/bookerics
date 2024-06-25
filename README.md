@@ -33,16 +33,7 @@ https://github.com/ehamiter/bookerics-importer
 
 ### Running the App
 
-Using Poetry (recommended):
-
 ```
-poetry install --no-root
-poetry run uvicorn --reload src.main:app
-```
-
-Or without Poetry:
-
-```
-pip install .
-uvicorn --reload src.main:app
+poetry install
+poetry run app
 ```

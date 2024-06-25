@@ -1,3 +1,5 @@
+import os
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -11,7 +13,7 @@ from ludic.web.routing import Mount
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from src.database import load_db_on_startup
+from .database import load_db_on_startup
 
 
 @dataclass
@@ -51,10 +53,20 @@ async def lifespan(_: LudicApp) -> AsyncIterator[None]:
     yield
 
 
+# Calculate the directory path
+base_dir = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(base_dir, '..', 'static')
+
+# Ensure the path exists
+if not os.path.exists(static_dir):
+    raise RuntimeError(f"Directory '{static_dir}' does not exist")
+
+
+
 app = LudicApp(
     debug=True,
     lifespan=lifespan,
-    routes=[Mount("/static", StaticFiles(directory="static"), name="static")],
+    routes=[Mount("/static", StaticFiles(directory=static_dir), name="static")],
 )
 
 app.add_middleware(
@@ -64,5 +76,5 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-import src.endpoints.errors as _  # noqa
-import src.endpoints.index as _  # noqa
+import bookerics.src.endpoints.errors as _  # noqa
+import bookerics.src.endpoints.index as _  # noqa
