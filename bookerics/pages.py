@@ -27,7 +27,7 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
             meta(name="author", content="Eric Hamiter"),
             script(src="/static/js/htmx.min.js", defer=True),
             script(src="/static/js/custom.js", defer=True),
-            link(rel="icon", href="/static/images/favicon.png"),
+            link(rel="icon", href="/static/favicon.ico"),
             title(self.attrs.get("title", "bookerics")),
             # Background photo originally by Jess Bailey on Unsplash:
             # https://unsplash.com/photos/close-shot-of-book-page-X5gDoysLbBc

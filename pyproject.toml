@@ -16,8 +16,9 @@ aioboto3 = "^13.0.1"
 pillow = "^10.3.0"
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
-sqlite-web = "^0.6.3"
 
+flask = "^3.0.3"
+peewee = "^3.17.5"
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
 pytest = "^8.2.1"

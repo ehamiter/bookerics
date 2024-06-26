@@ -1,0 +1,70 @@
+{% extends "base_table.html" %}
+
+{% block content_title %}
+  {{ super() }}
+  <small>{{ ds_table.all().count() }} rows, showing page {{ page }}</small>
+{% endblock %}
+
+{% block content_tab_class %} active{% endblock %}
+
+{% block inner_content %}
+  {# add filters #}
+  <table class="table table-striped small cell-content">
+    <thead>
+      <tr>
+        {% for column in columns %}
+          <th>
+            <a href="./?ordering={% if ordering == column %}-{% endif %}{{ column }}">{{ column }}</a>
+          </th>
+        {% endfor %}
+        {% if not dataset.is_readonly and table_pk %}<th></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in query %}
+        <tr>
+          {% for field in field_names %}
+            {% set value = row[field] %}
+            <td>
+              {% if value is none %}
+                <code>NULL</code>
+              {% else %}
+                {{ value|value_filter|safe }}
+              {% endif %}
+            </td>
+          {% endfor %}
+          {% if not dataset.is_readonly and table_pk %}
+            <td>
+              {% set pk = row|encode_pk(table_pk) %}
+              {% if not is_view or 'update' in view_ops %}
+              <a class="small" href="{{ url_for('table_update', table=table, pk=pk) }}">Edit</a>
+              {% endif %}
+              {% if not is_view or 'delete' in view_ops %}
+              <a class="small" href="{{ url_for('table_delete', table=table, pk=pk) }}">Delete</a>
+              {% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <nav>
+    <ul class="pagination">
+      <li class="{% if not previous_page %}disabled {% endif %}page-item">
+        <a class="page-link" href="{{ url_for('table_content', table=table, page=1, ordering=ordering) }}">&laquo;</a>
+      </li>
+      <li class="{% if not previous_page %}disabled {% endif %}page-item">
+        <a class="page-link" href="{{ url_for('table_content', table=table, page=previous_page, ordering=ordering) }}">&lsaquo;</a>
+      </li>
+      <li class="page-item disabled">
+        <span class="page-link">Page {{ page }} / {{ total_pages }}</span>
+      </li>
+      <li class="{% if not next_page %}disabled {% endif %}page-item">
+        <a class="page-link" href="{{ url_for('table_content', table=table, page=next_page, ordering=ordering) }}">&rsaquo;</a>
+      </li>
+      <li class="{% if not next_page %}disabled {% endif %}page-item">
+        <a class="page-link" href="{{ url_for('table_content', table=table, page=total_pages, ordering=ordering) }}">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+{% endblock %}

@@ -438,15 +438,15 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding"],
             ),
-            UpdateBookmarkButton(
-                "✒️",
-                hx_get=f"/update/{bookmark['id']}",
-            ),
             ToggleImagePreviewButton(
                 "➕",
                 hx_get=f"/id/{bookmark['id']}",
                 hx_target=f"#bookmark-{bookmark['id']}",
                 hx_swap="outerHTML",
+            ),
+            UpdateBookmarkButton(
+                "✒️",
+                hx_get=f"/update/{bookmark['id']}",
             ),
             HTMXDeleteButton(
                 "🗑️",

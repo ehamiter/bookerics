@@ -1307,21 +1307,6 @@ files = [
 ]
 
 [[package]]
-name = "sqlite-web"
-version = "0.6.3"
-description = "Web-based SQLite database browser."
-optional = false
-python-versions = "*"
-files = [
-    {file = "sqlite-web-0.6.3.tar.gz", hash = "sha256:7034a54a1d2f9f0bdb2591433eabc9e685f3ebc80df72ce875c418917500cad1"},
-]
-
-[package.dependencies]
-flask = "*"
-peewee = ">=3.0.0"
-pygments = "*"
-
-[[package]]
 name = "stack-data"
 version = "0.6.3"
 description = "Extract data from python stack frames and tracebacks for informative displays"
@@ -1649,4 +1634,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3682f11a0b2b6efa058bb1301c04401ec81e2ce24276c7f2c406109abaaec091"
+content-hash = "813ac4c149f4708ecb1512c2fa881b1e4cf09a951c05c1bbdb818170503fa724"

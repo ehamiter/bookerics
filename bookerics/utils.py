@@ -1,21 +1,27 @@
 import logging
 
 # ANSI escape sequences for colors
-RESET = "\033[0m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-RED = "\033[31m"
+# RESET = "\033[0m"
+# GREEN = "\033[32m"
+# YELLOW = "\033[33m"
+# RED = "\033[31m"
 
 
 class CustomFormatter(logging.Formatter):
+    # ANSI escape sequences for colors
+    RESET = "\033[0m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+
     def format(self, record):
         level_name = record.levelname
         if level_name == "INFO":
-            level_name_color = f"{GREEN}{level_name}{RESET}"
+            level_name_color = f"{self.GREEN}{level_name}{self.RESET}"
         elif level_name == "WARNING":
-            level_name_color = f"{YELLOW}{level_name}{RESET}"
+            level_name_color = f"{self.YELLOW}{level_name}self.{RESET}"
         elif level_name == "ERROR":
-            level_name_color = f"{RED}{level_name}{RESET}"
+            level_name_color = f"{self.RED}{level_name}{self.RESET}"
         else:
             level_name_color = level_name
 

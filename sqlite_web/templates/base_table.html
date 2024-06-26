@@ -1,0 +1,13 @@
+{% extends "base_tables.html" %}
+{% set is_view = dataset.is_view(table) %}
+{% set view_ops = dataset.view_operations(table) %}
+
+{% block content_title %}
+{% endblock %}
+
+{% block content %}
+  <div>
+    {% block inner_content %}
+    {% endblock %}
+  </div>
+{% endblock %}

@@ -1,0 +1,6 @@
+#update_box {
+    padding: 2rem;
+    border: 0.2rem groove #00338332;
+    background-color: #99997707;
+    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}

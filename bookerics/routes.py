@@ -203,7 +203,7 @@ async def delete_bookmark(request: Request):
 
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse("static/images/favicon.png")
+    return FileResponse("static/favicon.ico")
 
 
 @app.get("/table")
