@@ -30,10 +30,24 @@ This tool will convert `bookmarks.html` to `bookerics.db`:
 
 https://github.com/ehamiter/bookerics-importer
 
+```
+git clone git@github.com:ehamiter/bookerics-importer.git
+
+cargo build --release
+
+ln -s  /path/to/bookerics_importer/target/release/bookerics_importer /usr/local/bin/bookerics_importer
+
+bookerics_importer /path/to/bookmarks.html bookerics.db
+```
 
 ### Running the App
 
 ```
+git clone git@github.com:ehamiter/bookerics.git bookyournamehere
+
+mv .env.example .env  # and update it with relevant bits
+
 poetry install
+
 poetry run app
 ```
