@@ -10,17 +10,17 @@ from starlette.requests import Request
 from starlette.responses import (FileResponse, HTMLResponse, JSONResponse,
                                  RedirectResponse)
 
-from ..components import (BookmarkImageList, BookmarkList, NavMenu, SearchBar,
+from .components import (BookmarkImageList, BookmarkList, NavMenu, SearchBar,
                           TableStructure, TagCloud, UpdatingBookmarkMessage)
-from ..constants import BOOKMARK_NAME, UPDATE_BASE_URL
-from ..database import (create_bookmark, delete_bookmark_by_id,
+from .constants import BOOKMARK_NAME, UPDATE_BASE_URL
+from .database import (create_bookmark, delete_bookmark_by_id,
                         fetch_bookmark_by_id, fetch_bookmarks,
                         fetch_bookmarks_by_tag, fetch_unique_tags,
                         get_bookmark_thumbnail_image, schedule_upload_to_s3,
                         search_bookmarks, verify_table_structure)
-from ..main import app
-from ..pages import Page
-from ..utils import logger
+from .main import app
+from .pages import Page
+from .utils import logger
 
 # main routes
 

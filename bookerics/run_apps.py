@@ -7,7 +7,7 @@ def run_apps():
             "poetry",
             "run",
             "uvicorn",
-            "bookerics.src.main:app",
+            "bookerics.main:app",
             "--reload",
             "--port",
             "8080",

@@ -54,7 +54,7 @@ async def lifespan(_: LudicApp) -> AsyncIterator[None]:
 
 # Calculate the directory path
 base_dir = os.path.dirname(os.path.abspath(__file__))
-static_dir = os.path.join(base_dir, "..", "static")
+static_dir = os.path.join(base_dir, "static")
 
 # Ensure the path exists
 if not os.path.exists(static_dir):
@@ -74,5 +74,5 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-import bookerics.src.endpoints.errors as _  # noqa
-import bookerics.src.endpoints.index as _  # noqa
+import bookerics.errors as _  # noqa
+import bookerics.routes as _  # noqa
