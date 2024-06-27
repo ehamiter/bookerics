@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
 {% block sidebar %}
-  <input class="form-control form-control-sm" id="table-search" placeholder="table name..." type="text" />
-  <ul class="nav flex-column nav-pills" role="tablist">
     {% set virtual_tables = dataset.get_virtual_tables() %}
     {% set virtual_tables_corollary = dataset.get_corollary_virtual_tables() %}
     {% for table_name in dataset.tables|sort %}
@@ -16,17 +14,6 @@
         </a>
       </li>
       {% endif %}
-    {% endfor %}
-  </ul>
-  <hr />
-  <p><a href="#" id="toggle-helper-tables">Toggle helper tables</a></p>
-  <ul class="nav nav-pills nav-stacked" id="helper-tables" role="tablist"{% if table not in virtual_tables_corollary %} style="display:none;"{% endif %}>
-    {% for table_name in virtual_tables_corollary|sort %}
-      <li{% if table and table_name == table %} class="active"{% endif %}>
-        <a href="{{ url_for('table_structure', table=table_name) }}" title="{{ table_name }}">
-          <small>{{ table_name|truncate(24, True, leeway=2) }}</small>
-        </a>
-      </li>
     {% endfor %}
   </ul>
 {% endblock %}

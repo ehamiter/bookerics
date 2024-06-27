@@ -1,6 +1,13 @@
+body {
+    background: url("/static/images/bg.png") no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+}
 #update_box {
     padding: 2rem;
     border: 0.2rem groove #00338332;
-    background-color: #99997707;
+    background-color: #e5ebef;
     box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
 }

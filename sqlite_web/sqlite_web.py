@@ -619,26 +619,27 @@ def drop_trigger(table):
 @app.route('/<table>/content/')
 @require_table
 def table_content(table):
-    page_number = request.args.get('page') or ''
-    if page_number == 'last': page_number = '1000000'
-    page_number = int(page_number) if page_number.isdigit() else 1
-
+    """we're just going to show one record after updating an existing record"""
+    # page_number = request.args.get('page') or ''
+    # if page_number == 'last': page_number = '1000000'
+    # page_number = int(page_number) if page_number.isdigit() else 1
+    page_number = 1
     dataset.update_cache(table)
     ds_table = dataset[table]
     model = ds_table.model_class
 
-    total_rows = ds_table.all().count()
-    rows_per_page = app.config['ROWS_PER_PAGE']
-    total_pages = max(1, int(math.ceil(total_rows / float(rows_per_page))))
+    total_rows = 1    # ds_table.all().count()
+    rows_per_page = 1 # app.config['ROWS_PER_PAGE']
+    total_pages = 1   # max(1, int(math.ceil(total_rows / float(rows_per_page))))
     # Restrict bounds.
-    page_number = max(min(page_number, total_pages), 1)
+    page_number = 1   # max(min(page_number, total_pages), 1)
 
     previous_page = page_number - 1 if page_number > 1 else None
     next_page = page_number + 1 if page_number < total_pages else None
 
     query = ds_table.all().paginate(page_number, rows_per_page)
 
-    ordering = request.args.get('ordering')
+    ordering = False  # request.args.get('ordering')
     if ordering:
         field = model._meta.columns[ordering.lstrip('-')]
         if ordering.startswith('-'):
@@ -839,13 +840,15 @@ def table_update(table, pk):
                 with dataset.transaction() as txn:
                     n = model.update(update).where(expr).execute()
             except Exception as exc:
-                flash('Update failed: %s' % exc, 'danger')
+                # flash('Update failed: %s' % exc, 'danger')
                 app.logger.exception('Error attempting to update row from %s.', table)
             else:
-                flash('Successfully updated %s record.' % n, 'success')
-                return redirect_to_previous(table)
+                # flash('Successfully updated %s record.' % n, 'success')
+                return jsonify({"status":"success"})
+                # return redirect_to_previous(table)
         else:
-            flash('No data was specified to be updated.', 'warning')
+            # flash('No data was specified to be updated.', 'warning')
+            pass
 
     return render_template(
         'table_update.html',

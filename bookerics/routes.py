@@ -117,7 +117,7 @@ async def bookmark_by_id_compact(id: str):
 @app.get("/update/{bookmark_id}")
 def update_bookmark_by_id(bookmark_id: str):
     pk_b64_id = base64.b64encode(bookmark_id.encode()).decode("utf8")
-    update_url = f"{UPDATE_BASE_URL}/{pk_b64_id}"
+    update_url = f"{UPDATE_BASE_URL}/{pk_b64_id}/"
     webbrowser.open_new_tab(update_url)
 
 

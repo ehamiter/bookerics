@@ -1,7 +1,7 @@
 {% extends "base_table.html" %}
 
 {% block inner_content %}
-  <form action="{{ url_for('table_update', table=table, pk=pk) }}" method="post" role="form">
+  <form action="{{ url_for('table_update', table=table, pk=pk) }}" method="post" role="form" id="updateForm">
     {% for column in columns %}
       <div class="form-group row">
         <label for="id_{{ column.name }}" class="text-monospace col-sm-2 col-form-label" style="font-size: 14px;">{{ column.name }}</label>
@@ -34,4 +34,37 @@
     <button class="btn btn-primary" type="submit">Update</button>
     <button class="btn btn-secondary" type="button" onclick="window.close()">Cancel</button>
   </form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("updateForm").onsubmit = async function(event) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      try {
+          const response = await fetch(form.action, {
+              method: 'POST',
+              body: formData
+          });
+          const text = await response.text();
+          let result;
+          try {
+              result = JSON.parse(text);
+          } catch (e) {
+              alert("Error parsing JSON: " + text);
+              return;
+          }
+          if (result.status === "success") {
+              window.close();
+          } else {
+              alert("Error: " + result.message);
+          }
+      } catch (error) {
+          alert("Fetch error: " + error.message);
+      }
+  };
+});
+</script>
 {% endblock %}
