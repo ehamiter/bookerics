@@ -1,4 +1,3 @@
-import sys
 
 from .sqlite_web import main
 

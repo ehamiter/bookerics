@@ -55,7 +55,6 @@ from flask import (Flask, abort, flash, jsonify, make_response, redirect,
                    render_template, request, session, url_for)
 from markupsafe import Markup, escape
 from peewee import __version__ as _pw_version
-from pygments import formatters, highlight, lexers
 
 peewee_version = tuple([int(p) for p in _pw_version.split(".")])
 

@@ -1,29 +1,19 @@
 import asyncio
-from textwrap import dedent
 from typing import override
 
-import aiohttp
 import requests
-from ludic.attrs import Attrs, GlobalAttrs, ImgAttrs
+from ludic.attrs import GlobalAttrs, ImgAttrs
 from ludic.base import NoChildren
-from ludic.catalog.buttons import ButtonLink, ButtonPrimary
+from ludic.catalog.buttons import ButtonLink
 from ludic.catalog.forms import InputField
-from ludic.catalog.headers import H1, H2, H3, H4, WithAnchor, WithAnchorAttrs
-from ludic.catalog.layouts import (Box, Center, Cluster, Cover, Grid, Stack,
-                                   Switcher)
-from ludic.catalog.messages import (MessageDanger, MessageInfo, MessageSuccess,
-                                    MessageWarning)
-from ludic.catalog.typography import (Code, CodeBlock, Link, LinkAttrs,
-                                      Paragraph)
-from ludic.html import a, b, div, h6, i, img
-from ludic.html import script as Script
-from ludic.html import small, style
-from ludic.types import (AnyChildren, Component, ComponentStrict, JavaScript,
-                         NoChildren, PrimitiveChildren)
+from ludic.catalog.layouts import (Box, Center, Cluster, Switcher)
+from ludic.catalog.typography import (CodeBlock, Link, LinkAttrs, Paragraph)
+from ludic.html import a, div, i, img
+from ludic.html import style
+from ludic.types import (Component, ComponentStrict, NoChildren, PrimitiveChildren)
 
-from .constants import BASE_URL, GIPHY_API_KEY
+from .constants import GIPHY_API_KEY
 from .database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
-from .utils import logger
 
 
 class NavMenu(Component[NoChildren, GlobalAttrs]):

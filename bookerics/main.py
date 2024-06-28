@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 
 from ludic.html import style
 from ludic.styles import themes
-from ludic.styles.themes import Colors, Fonts, Sizes, Switcher
-from ludic.styles.types import Color, Size, SizeClamp
+from ludic.styles.themes import Colors, Fonts
+from ludic.styles.types import Color
 from ludic.web import LudicApp
 from ludic.web.routing import Mount
 from starlette.middleware.cors import CORSMiddleware

@@ -1,6 +1,5 @@
 import subprocess
 
-from sqlite_web.sqlite_web import main as run_sqlite_web
 
 
 def run_apps():

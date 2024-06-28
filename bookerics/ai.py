@@ -1,20 +1,9 @@
-import asyncio
 import json
-import os
-import shutil
-import sqlite3
-from datetime import datetime
-from io import BytesIO
-from typing import Any, Dict, List, Tuple
+from typing import List
 
-import aioboto3
-import aiohttp
-import boto3
-from openai import BadRequestError, OpenAI
-from PIL import Image
+from openai import OpenAI
 
 from .constants import BOOKERICS_OPENAI_KEY, GPT_MODEL
-from .utils import log_warning_with_response, logger
 
 client = OpenAI(api_key=BOOKERICS_OPENAI_KEY)
 
