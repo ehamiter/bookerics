@@ -1,19 +1,4 @@
 {% extends "base.html" %}
 
 {% block sidebar %}
-    {% set virtual_tables = dataset.get_virtual_tables() %}
-    {% set virtual_tables_corollary = dataset.get_corollary_virtual_tables() %}
-    {% for table_name in dataset.tables|sort %}
-      {% if table_name not in virtual_tables_corollary %}
-      <li class="nav-item table-link">
-        <a class="nav-link{% if table and table_name == table %} active{% endif %}" href="{{ url_for('table_structure', table=table_name) }}" title="{{ table_name }}">
-          {{ table_name|truncate(24, True, leeway=2) }}
-          {% if table_name in virtual_tables %}
-            <sup>(v)</sup>
-          {% endif %}
-        </a>
-      </li>
-      {% endif %}
-    {% endfor %}
-  </ul>
 {% endblock %}

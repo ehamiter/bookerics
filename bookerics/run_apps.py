@@ -1,5 +1,7 @@
 import subprocess
+
 from sqlite_web.sqlite_web import main as run_sqlite_web
+
 
 def run_apps():
     uvicorn_process = subprocess.Popen(
@@ -14,7 +16,17 @@ def run_apps():
         ]
     )
     sqlite_web_process = subprocess.Popen(
-        ["poetry", "run", "python", "-m", "sqlite_web.sqlite_web", "bookerics.db", "-p", "8888", "-x"]
+        [
+            "poetry",
+            "run",
+            "python",
+            "-m",
+            "sqlite_web.sqlite_web",
+            "bookerics.db",
+            "-p",
+            "8888",
+            "-x",
+        ]
     )
 
     uvicorn_process.wait()

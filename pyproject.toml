@@ -19,6 +19,7 @@ requests = "^2.32.3"
 
 flask = "^3.0.3"
 peewee = "^3.17.5"
+openai = "^1.35.7"
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
 pytest = "^8.2.1"

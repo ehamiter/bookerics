@@ -1,17 +1,18 @@
 import asyncio
 import json
 import os
+import shutil
 import sqlite3
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import aioboto3
 import aiohttp
 import boto3
 from PIL import Image
 
-from .constants import BOOKMARK_NAME, THUMBNAIL_API_KEY
+from .constants import ADDITIONAL_DB_PATHS, BOOKMARK_NAME, THUMBNAIL_API_KEY
 from .utils import log_warning_with_response, logger
 
 # S3/DB setup
@@ -37,10 +38,51 @@ def load_db_on_startup():
     logger.info("Database loaded!")
 
 
-def execute_query(query: str, params: tuple = ()) -> Any:
+def get_max_id(cursor) -> int:
+    cursor.execute("SELECT MAX(id) FROM bookmarks")
+    max_id = cursor.fetchone()[0]
+    return max_id if max_id is not None else 0
+
+
+def extract_order_by_clause(query: str) -> str:
+    order_by_index = query.lower().find("order by")
+    if order_by_index != -1:
+        return query[order_by_index:]
+    return ""
+
+
+def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks") -> Any:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
-    cursor.execute(query, params)
+
+    # Attach additional databases if they exist
+    for idx, _db_path in enumerate(ADDITIONAL_DB_PATHS):
+        cursor.execute(f'ATTACH DATABASE "{_db_path}" AS db_{idx};')
+
+    # Get the maximum ID from the main database
+    max_id_main = get_max_id(cursor)
+
+    # Extract the ORDER BY clause from the original query
+    order_by_clause = extract_order_by_clause(query)
+
+    # Remove the ORDER BY clause from the original query
+    base_query = query.strip().split("ORDER BY")[0].strip().rstrip(";")
+
+    # Modify query to include data from attached databases
+    union_queries = [f"SELECT * FROM ({base_query})"]
+    for idx in range(len(ADDITIONAL_DB_PATHS)):
+        attach_query = base_query.replace(table_name, f"db_{idx}.{table_name}")
+        offset = max_id_main + 1 + idx * 1000000  # Adjust the range to avoid overlaps
+        union_queries.append(
+            f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM ({attach_query})"
+        )
+
+    combined_query = " UNION ALL ".join(union_queries)
+
+    # Append the ORDER BY clause to the combined query
+    final_query = f"SELECT * FROM ({combined_query}) {order_by_clause}"
+
+    cursor.execute(final_query, params)
     result = cursor.fetchall()
     last_row_id = cursor.lastrowid
     connection.commit()
@@ -93,10 +135,10 @@ def fetch_bookmark_by_id(id: str) -> List[Dict[str, Any]]:
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
     queries = {
-        "newest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at DESC;",
-        "oldest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at ASC;",
+        "newest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY updated_at DESC, created_at DESC;",
+        "oldest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at ASC, updated_at ASC;",
         "random": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY RANDOM();",
-        "untagged": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC;",
+        "untagged": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY updated_at DESC, created_at DESC;",
     }
     query = queries.get(kind, queries["newest"])
     return fetch_data(query)
@@ -111,7 +153,7 @@ def search_bookmarks(query: str) -> List[Dict[str, Any]]:
     OR url LIKE '{search_query}'
     OR description LIKE '{search_query}'
     OR tags LIKE '{search_query}'
-    ORDER BY created_at DESC;
+    ORDER BY updated_at DESC, created_at DESC;
     """
     return fetch_data(query)
 
@@ -134,7 +176,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[str]:
         WHERE json_each.value IS NOT NULL
           AND json_each.value != ''
           AND json_each.value != '[""]'
-        ORDER BY bookmarks.created_at DESC;
+        ORDER BY bookmarks.updated_at DESC, bookmarks.created_at DESC;
         """
     rows, _ = execute_query(query)
     return [row[0] for row in rows]
@@ -145,7 +187,7 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
     FROM bookmarks
     WHERE ? IN (SELECT value FROM json_each(bookmarks.tags))
-    ORDER BY created_at DESC;
+    ORDER BY updated_at DESC, created_at DESC;
     """
     return fetch_data(query, (tag,))
 
@@ -160,6 +202,21 @@ async def upload_file_to_s3(bucket_name, s3_key, local_path):
             )
         except Exception as e:
             logger.error(f"Error uploading file to S3: {e}")
+
+
+def backup_bookerics_db():
+    src_path = "bookerics.db"
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    dest_dir = os.path.expanduser(
+        "~/Library/CloudStorage/Dropbox/Documents/bookerics-db"
+    )
+    dest_path = os.path.join(dest_dir, f"{today_str}-bookerics.db")
+
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+
+    shutil.copy2(src_path, dest_path)
+    logger.info(f"Backup created at {dest_path}")
 
 
 def schedule_upload_to_s3():
@@ -189,7 +246,6 @@ def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> 
         query,
         (title, url, description, tags_json, current_timestamp, current_timestamp),
     )
-    # breakpoint()
     schedule_upload_to_s3()
     bookmark = fetch_bookmark_by_id(bookmark_id)
     schedule_thumbnail_fetch_and_save(bookmark)
@@ -232,7 +288,6 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
             f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}: {img_url}"
         )
         return img_url
-
     else:
         logger.info(
             f"🐕 Fetching thumbnail url from API for bookmark id {bookmark['id']}... "
