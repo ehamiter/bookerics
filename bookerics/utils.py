@@ -1,11 +1,5 @@
 import logging
 
-# ANSI escape sequences for colors
-# RESET = "\033[0m"
-# GREEN = "\033[32m"
-# YELLOW = "\033[33m"
-# RED = "\033[31m"
-
 
 class CustomFormatter(logging.Formatter):
     # ANSI escape sequences for colors

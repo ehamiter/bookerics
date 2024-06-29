@@ -1,7 +1,6 @@
 import subprocess
 
 
-
 def run_apps():
     uvicorn_process = subprocess.Popen(
         [

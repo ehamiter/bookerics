@@ -3,8 +3,9 @@ import webbrowser
 
 from ludic.catalog.layouts import Stack
 from starlette.requests import Request
-from starlette.responses import (FileResponse, HTMLResponse, JSONResponse)
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 
+from .ai import get_tags_and_description_from_bookmark_url
 from .components import (BookmarkImageList, BookmarkList, NavMenu, SearchBar,
                          TableStructure, TagCloud)
 from .constants import UPDATE_BASE_URL
@@ -12,12 +13,11 @@ from .database import (backup_bookerics_db, create_bookmark,
                        delete_bookmark_by_id, fetch_bookmark_by_id,
                        fetch_bookmarks, fetch_bookmarks_by_tag,
                        fetch_unique_tags, schedule_upload_to_s3,
-                       search_bookmarks, verify_table_structure, update_bookmark_tags, update_bookmark_description)
+                       search_bookmarks, update_bookmark_description,
+                       update_bookmark_tags, verify_table_structure)
 from .main import app
 from .pages import Page
 from .utils import logger
-from .ai import get_tags_and_description_from_bookmark_url
-
 
 # main routes
 
@@ -131,17 +131,19 @@ async def search(request: Request):
 
 # utils
 
+
 @app.get("/ai/{id}")
 async def get_ai_info_for_bookmark_by_id(id: str):
     bookmark = await fetch_bookmark_by_id(id=id)
-    tags, description = await get_tags_and_description_from_bookmark_url(bookmark[0]["url"])
+    tags, description = await get_tags_and_description_from_bookmark_url(
+        bookmark[0]["url"]
+    )
 
-    await update_bookmark_tags(bookmark[0]['id'], tags)
-    await update_bookmark_description(bookmark[0]['id'], description)
-    # return JSONResponse(
-    #         {"status": "success", "tags": tags}, status_code=201
-    #     )
+    await update_bookmark_tags(bookmark[0]["id"], tags)
+    await update_bookmark_description(bookmark[0]["id"], description)
+
     return BookmarkList().render_tags(tags)
+
 
 @app.get("/get_thumbnail/{id}")
 async def get_thumbnail(request: Request):

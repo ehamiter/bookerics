@@ -6,11 +6,11 @@ from ludic.attrs import GlobalAttrs, ImgAttrs
 from ludic.base import NoChildren
 from ludic.catalog.buttons import ButtonLink
 from ludic.catalog.forms import InputField
-from ludic.catalog.layouts import (Box, Center, Cluster, Switcher)
-from ludic.catalog.typography import (CodeBlock, Link, LinkAttrs, Paragraph)
-from ludic.html import a, div, i, img
-from ludic.html import style
-from ludic.types import (Component, ComponentStrict, NoChildren, PrimitiveChildren)
+from ludic.catalog.layouts import Box, Center, Cluster, Switcher
+from ludic.catalog.typography import CodeBlock, Link, LinkAttrs, Paragraph
+from ludic.html import a, div, i, img, style
+from ludic.types import (Component, ComponentStrict, NoChildren,
+                         PrimitiveChildren)
 
 from .constants import GIPHY_API_KEY
 from .database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
@@ -402,7 +402,6 @@ class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         return a(self.children[0], **attrs)
 
 
-
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
     def render_tags(self, tags) -> Cluster:
         return Cluster(
@@ -429,7 +428,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                             hx_target=f"#tags-{bookmark['id']}",
                         ),
                     ),
-                    id=f"tags-{bookmark['id']}"
+                    id=f"tags-{bookmark['id']}",
                 ),
                 classes=["no-border no-inline-padding"],
             ),
@@ -461,7 +460,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
 
 
 class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
-    """currently limited to fetching one entry"""
+    """Calling this with many bookmarks will hit the thumbnail service rapidly-- limit it to reduce quota"""
 
     def __init__(self, bookmarks):
         super().__init__()
@@ -513,7 +512,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                             hx_target=f"#tags-{bookmark['id']}",
                         ),
                     ),
-                    id=f"tags-{bookmark['id']}"
+                    id=f"tags-{bookmark['id']}",
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
             ),
