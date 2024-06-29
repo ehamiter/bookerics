@@ -136,11 +136,26 @@ class TableStructure(Component[NoChildren, GlobalAttrs]):
 
 
 class TagCloud(Component[NoChildren, GlobalAttrs]):
+    styles = {
+        ".btn.tag": {
+            "border": "1px solid #4a4a4a4a;",
+            "font-size": "0.8em;",
+            "padding": "clamp(0.23rem, 0.23rem + 0vw, 0.28rem) clamp(0.47rem, 0.47rem + 0.1vw, 0.59rem);",
+        },
+        ".btn.tag:hover": {
+            "filter": "none;",
+            "border": "1px solid #4a4a4a77;",
+            "background-color": "#fff59b;",
+            "text-decoration": "none;",
+            "box-shadow": "rgba(0, 0, 0, 0.18) 0px 2px 4px;",
+        },
+    }
+
     @override
     def render(self) -> Cluster:
         tags = self.attrs.get("tags", [])
         return Cluster(
-            *[ButtonLink(tag, to=f"/tags/{tag}", classes="info small") for tag in tags]
+            *[ButtonLink(tag, to=f"/tags/{tag}", classes="btn tag info") for tag in tags]
         )
 
 
