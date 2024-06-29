@@ -208,7 +208,7 @@ class ImageSwitcher(div):
                 "flex-direction": "column",
                 "flex-wrap": "wrap",
                 "gap": theme.sizes.xxxs,
-                "justify-content": "center",  # Center the items horizontally
+                "justify-content": "center",
                 "align-items": "center",
             },
             ".no-gap": {
@@ -373,6 +373,21 @@ class ToggleImagePreviewButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         return a(self.children[0], **attrs)
 
 
+class GetTagsForBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
+    classes = ["btn"]
+
+    @override
+    def render(self) -> a:
+        attrs = {
+            "href": self.attrs.get("to", "#"),
+            "hx-swap": self.attrs.get("hx_swap"),
+            "hx-target": self.attrs.get("hx_target"),
+            "hx-get": self.attrs.get("hx_get"),
+            "class": " ".join(self.classes + self.attrs.get("classes", [])),
+        }
+        return a(self.children[0], **attrs)
+
+
 class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
     classes = ["btn update-btn"]
 
@@ -386,23 +401,6 @@ class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         }
         return a(self.children[0], **attrs)
 
-
-class UpdatingBookmarkMessage(Component[NoChildren, GlobalAttrs]):
-    @override
-    def render(self) -> Switcher:
-        bookmark_id = self.attrs.get("bookmark_id")
-        return BookmarkBox(
-            Paragraph(
-                Link(
-                    f"Updating {BOOKMARK_NAME} # {bookmark_id}, click here to return to {BOOKMARK_NAME}s…",
-                    classes=["update-bookmark"],
-                    to="/",
-                    title="",
-                ),
-            ),
-            id=f"bookmark-{bookmark_id}",
-            classes=["update-bookmark"],
-        )
 
 
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
@@ -423,8 +421,15 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                     self.render_tags(bookmark["tags"])
                     if bookmark.get("tags")
                     else Cluster(
-                        ButtonLink("none", to="/untagged", classes=["tag warning"])
+                        GetTagsForBookmarkButton(
+                            "none",
+                            classes=["tag warning"],
+                            hx_get=f"/ai/{bookmark['id']}",
+                            hx_swap="outerHTML",
+                            hx_target=f"#tags-{bookmark['id']}",
+                        ),
                     ),
+                    id=f"tags-{bookmark['id']}"
                 ),
                 classes=["no-border no-inline-padding"],
             ),
@@ -460,7 +465,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     def __init__(self, bookmarks):
         super().__init__()
-        self.bookmarks = bookmarks[:1]
+        self.bookmarks = bookmarks
         # Schedule the async fetching of thumbnails
         asyncio.create_task(self.fetch_thumbnails())
 
@@ -500,8 +505,15 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                     self.render_tags(bookmark["tags"])
                     if bookmark.get("tags")
                     else Cluster(
-                        ButtonLink("none", to="/untagged", classes=["tag warning"])
+                        GetTagsForBookmarkButton(
+                            "none",
+                            classes=["tag warning"],
+                            hx_get=f"/ai/{bookmark['id']}",
+                            hx_swap="outerHTML",
+                            hx_target=f"#tags-{bookmark['id']}",
+                        ),
                     ),
+                    id=f"tags-{bookmark['id']}"
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
             ),

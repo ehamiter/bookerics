@@ -19,7 +19,7 @@ class CustomFormatter(logging.Formatter):
         if level_name == "INFO":
             level_name_color = f"{self.GREEN}{level_name}{self.RESET}"
         elif level_name == "WARNING":
-            level_name_color = f"{self.YELLOW}{level_name}self.{RESET}"
+            level_name_color = f"{self.YELLOW}{level_name}{self.RESET}"
         elif level_name == "ERROR":
             level_name_color = f"{self.RED}{level_name}{self.RESET}"
         else:
@@ -63,7 +63,7 @@ async def log_info_with_response(response):
     message = (
         f"😁 URL: {response.url}, Status: {response.status}, Response: {response_text}"
     )
-    logger.warning(message)
+    logger.info(message)
 
 
 async def log_warning_with_response(response):

@@ -12,10 +12,12 @@ from .database import (backup_bookerics_db, create_bookmark,
                        delete_bookmark_by_id, fetch_bookmark_by_id,
                        fetch_bookmarks, fetch_bookmarks_by_tag,
                        fetch_unique_tags, schedule_upload_to_s3,
-                       search_bookmarks, verify_table_structure)
+                       search_bookmarks, verify_table_structure, update_bookmark_tags, update_bookmark_description)
 from .main import app
 from .pages import Page
 from .utils import logger
+from .ai import get_tags_and_description_from_bookmark_url
+
 
 # main routes
 
@@ -93,7 +95,7 @@ async def untagged_bookmarks():
 
 @app.get("/id/{id}")
 async def bookmark_by_id(id: str):
-    bookmarks = fetch_bookmark_by_id(id=id)
+    bookmarks = await fetch_bookmark_by_id(id=id)
     if not bookmarks:
         return HTMLResponse("Bookmark not found", status_code=404)
 
@@ -102,7 +104,7 @@ async def bookmark_by_id(id: str):
 
 @app.get("/id/c/{id}")
 async def bookmark_by_id_compact(id: str):
-    bookmarks = fetch_bookmark_by_id(id=id)
+    bookmarks = await fetch_bookmark_by_id(id=id)
     if not bookmarks:
         return HTMLResponse("Bookmark not found", status_code=404)
 
@@ -129,12 +131,23 @@ async def search(request: Request):
 
 # utils
 
+@app.get("/ai/{id}")
+async def get_ai_info_for_bookmark_by_id(id: str):
+    bookmark = await fetch_bookmark_by_id(id=id)
+    tags, description = await get_tags_and_description_from_bookmark_url(bookmark[0]["url"])
+
+    await update_bookmark_tags(bookmark[0]['id'], tags)
+    await update_bookmark_description(bookmark[0]['id'], description)
+    # return JSONResponse(
+    #         {"status": "success", "tags": tags}, status_code=201
+    #     )
+    return BookmarkList().render_tags(tags)
 
 @app.get("/get_thumbnail/{id}")
 async def get_thumbnail(request: Request):
     bookmark_id = request.path_params["id"]
     headers = {"HX-Trigger": "loadThumbnail"}
-    bookmark = fetch_bookmark_by_id(bookmark_id)
+    bookmark = await fetch_bookmark_by_id(bookmark_id)
     if bookmark:
         logger.info(f"Found bookmark # {bookmark_id}!")
         bookmark = bookmark[
@@ -153,14 +166,15 @@ async def add_bookmark(request: Request):
     title = form.get("title")
     url = form.get("url")
     description = form.get("description", "Add a description…")
-    # TODO: suggest tags automatically
     tags = form.get("tags", "").split(" ")
 
     if title and url:
-        create_bookmark(title, url, description, tags)
+        bookmark_id = await create_bookmark(title, url, description, tags)
+
         return JSONResponse(
             {"status": "success", "message": "Bookmark saved!"}, status_code=201
         )
+
     return JSONResponse(
         {"status": "error", "message": "Title and URL are required!"}, status_code=400
     )
@@ -192,7 +206,7 @@ async def delete_bookmark(request: Request):
         return HTMLResponse("", status_code=200)
     except Exception as e:
         # Log the error for debugging purposes
-        print(f"Error deleting bookmark: {e}")
+        logger.error(f"Error deleting bookmark: {e}")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
