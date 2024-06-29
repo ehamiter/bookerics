@@ -151,14 +151,13 @@ async def get_thumbnail(request: Request):
     headers = {"HX-Trigger": "loadThumbnail"}
     bookmark = await fetch_bookmark_by_id(bookmark_id)
     if bookmark:
-        logger.info(f"Found bookmark # {bookmark_id}!")
         bookmark = bookmark[
             0
         ]  # fetch_bookmark_by_id returns a list, so take the first item
         thumbnail_html = f'<img src="{bookmark["thumbnail_url"]}" height="270" width="480" id="thumbnail-{bookmark_id}" />'
-        logger.info(f"Returning HTML for thumbnail id: {bookmark_id}")
         return HTMLResponse(thumbnail_html, headers=headers)
-    logging.info(f"Bookmark not found for id: {bookmark_id}")
+
+    logging.error(f"💥 Bookmark not found for id: {bookmark_id}")
     return HTMLResponse("<p>Bookmark not found</p>", status_code=404)
 
 

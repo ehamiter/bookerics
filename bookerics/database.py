@@ -26,17 +26,17 @@ def download_file_from_s3(bucket_name, s3_key, local_path):
     s3 = boto3.client("s3")
     try:
         s3.download_file(bucket_name, s3_key, local_path)
-        logger.info(f"Downloaded {s3_key} from bucket {bucket_name} to {local_path}")
+        logger.info(f"💾 Downloaded {s3_key} from bucket {bucket_name} to {local_path}")
     except Exception as e:
-        logger.error(f"Error downloading file from S3: {e}")
+        logger.error(f"💥 Error downloading file from S3: {e}")
 
 
 def load_db_on_startup():
-    logger.info("Bookerics starting up…")
+    logger.info("🔖 Bookerics starting up…")
     # Download the database file from S3
     if not os.path.exists(DB_PATH):
         download_file_from_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
-    logger.info("Database loaded!")
+    logger.info("☑️ Database loaded!")
 
 
 def get_max_id(cursor) -> int:
@@ -95,7 +95,7 @@ def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks")
         connection.commit()
     except Exception as e:
         logger.error(
-            f"Error executing query: {final_query}\nParams: {params}\nException: {e}"
+            f"💥 Error executing query: {final_query}\nParams: {params}\nException: {e}"
         )
         raise
     finally:
@@ -138,7 +138,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
                 }
             )
         else:
-            logger.error(f"Unexpected row format: {row}")
+            logger.error(f"💥 Unexpected row format: {row}")
     return bookmarks
 
 
@@ -212,10 +212,10 @@ async def upload_file_to_s3(bucket_name, s3_key, local_path):
         try:
             await s3.upload_file(local_path, bucket_name, s3_key)
             logger.info(
-                f"Uploaded {local_path} to bucket {bucket_name} with key {s3_key}"
+                f"☑️ Uploaded {local_path} to bucket {bucket_name} with key {s3_key}"
             )
         except Exception as e:
-            logger.error(f"Error uploading file to S3: {e}")
+            logger.error(f"💥 Error uploading file to S3: {e}")
 
 
 def backup_bookerics_db():
@@ -230,7 +230,7 @@ def backup_bookerics_db():
         os.makedirs(dest_dir)
 
     shutil.copy2(src_path, dest_path)
-    logger.info(f"Backup created at {dest_path}")
+    logger.info(f"☑️ Backup created at {dest_path}")
 
 
 def schedule_upload_to_s3():
@@ -269,7 +269,7 @@ async def create_bookmark(
         query,
         (title, url, description, tags_json, current_timestamp, current_timestamp),
     )
-    bookmark = fetch_bookmark_by_id(bookmark_id)
+    bookmark = await fetch_bookmark_by_id(bookmark_id)
 
     schedule_thumbnail_fetch_and_save(bookmark)
     schedule_upload_to_s3()
@@ -280,10 +280,10 @@ def delete_bookmark_by_id(bookmark_id: int) -> None:
     try:
         query = "DELETE FROM bookmarks WHERE id = ?"
         execute_query(query, (bookmark_id,))
-        logger.info(f"Deleted bookmark id: {bookmark_id}")
+        logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
         schedule_upload_to_s3()
     except Exception as e:
-        logger.error(f"Error deleting bookmark with id {bookmark_id}: {e}")
+        logger.error(f"💥 Error deleting bookmark with id {bookmark_id}: {e}")
         raise e
 
 
@@ -333,12 +333,12 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
         img_url = bookmark["thumbnail_url"]
     else:
         # Handle cases where bookmark is not as expected (log, raise error, etc.)
-        logger.error(f"Bookmark is not a valid dictionary: {bookmark}")
+        logger.error(f"💥 Bookmark is not a valid dictionary: {bookmark}")
         return ""
 
     if img_url:
         logger.info(
-            f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}: {img_url}"
+            f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}."
         )
         return img_url
     else:
@@ -390,13 +390,13 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 async def update_bookmarks_with_thumbnails(bookmarks):
     tasks = []
     for bookmark in bookmarks:
-        img_url = bookmark["thumbnail_url"]
+        img_url = bookmark.get("thumbnail_url")
         if img_url is None:
             if isinstance(bookmark, dict):
                 task = asyncio.create_task(get_bookmark_thumbnail_image(bookmark))
                 tasks.append(task)
             else:
-                logger.error(f"Bookmark is not a dictionary: {bookmark}")
+                logger.error(f"💥 Bookmark is not a dictionary: {bookmark}")
 
     # Await all thumbnail fetching tasks
     thumbnails = await asyncio.gather(*tasks)
@@ -405,7 +405,7 @@ async def update_bookmarks_with_thumbnails(bookmarks):
         if thumbnail_url:
             bookmarks[i]["thumbnail_url"] = thumbnail_url
 
-    return thumbnails
+    return bookmarks
 
 
 def verify_table_structure(table_name: str = "bookmarks"):

@@ -9,7 +9,7 @@ client = AsyncOpenAI(api_key=BOOKERICS_OPENAI_KEY)
 
 
 async def get_tags_and_description_from_bookmark_url(bookmark_url):
-    logger.info(f"Getting tags and description for {bookmark_url}...")
+    logger.info(f"🤖 Getting tags and description for {bookmark_url}...")
     completion = await client.chat.completions.create(
         model=GPT_MODEL,
         messages=[
@@ -34,7 +34,7 @@ async def get_tags_and_description_from_bookmark_url(bookmark_url):
 
     description = tags_and_description_dict["description"]
 
-    logger.info(f"Generated tags: {formatted_tags_list}")
-    logger.info(f"Generated decription: {description}")
+    logger.info(f"🏷️ Generated tags: {formatted_tags_list}")
+    logger.info(f"📖 Generated decription: {description}")
 
     return formatted_tags_list, description
