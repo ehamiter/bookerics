@@ -167,7 +167,7 @@ def search_bookmarks(query: str) -> List[Dict[str, Any]]:
     OR url LIKE '{search_query}'
     OR description LIKE '{search_query}'
     OR tags LIKE '{search_query}'
-    ORDER BY updated_at DESC, created_at DESC;
+    ORDER BY created_at DESC, updated_at DESC;
     """
     return fetch_data(query)
 
