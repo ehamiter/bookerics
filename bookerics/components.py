@@ -9,8 +9,7 @@ from ludic.catalog.forms import InputField
 from ludic.catalog.layouts import Box, Center, Cluster, Switcher
 from ludic.catalog.typography import CodeBlock, Link, LinkAttrs, Paragraph
 from ludic.html import a, div, i, img, style
-from ludic.types import (Component, ComponentStrict, NoChildren,
-                         PrimitiveChildren)
+from ludic.types import Component, ComponentStrict, NoChildren, PrimitiveChildren
 
 from .constants import GIPHY_API_KEY
 from .database import BOOKMARK_NAME, update_bookmarks_with_thumbnails
@@ -155,7 +154,10 @@ class TagCloud(Component[NoChildren, GlobalAttrs]):
     def render(self) -> Cluster:
         tags = self.attrs.get("tags", [])
         return Cluster(
-            *[ButtonLink(tag, to=f"/tags/{tag}", classes="btn tag info") for tag in tags]
+            *[
+                ButtonLink(tag, to=f"/tags/{tag}", classes="btn tag info")
+                for tag in tags
+            ]
         )
 
 

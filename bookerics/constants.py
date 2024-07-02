@@ -13,6 +13,9 @@ UPDATE_BASE_URL = "http://localhost:8888/bookmarks/update"
 ## Personalization
 BOOKMARK_NAME = os.getenv("BOOKMARK_NAME", "bookeric")
 
+### Local backups
+LOCAL_BACKUP_PATH = os.getenv("LOCAL_BACKUP_PATH")
+
 ### AWS
 AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
 AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION")

@@ -51,8 +51,18 @@ unicode_type = str
 from functools import reduce
 from io import StringIO
 
-from flask import (Flask, abort, flash, jsonify, make_response, redirect,
-                   render_template, request, session, url_for)
+from flask import (
+    Flask,
+    abort,
+    flash,
+    jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from markupsafe import Markup, escape
 from peewee import __version__ as _pw_version
 
@@ -328,7 +338,7 @@ def _query_view(template, table=None):
             (total,) = dataset.query(
                 "SELECT COUNT(*) FROM (%s) as _" % qsql.rstrip("; ")
             ).fetchone()
-        except Exception as exc:
+        except Exception:
             total = -1
 
         # Apply pagination.
@@ -741,7 +751,7 @@ def minimal_validate_field(field, value):
     elif isinstance(field, BlobField):
         try:
             value = base64.b64decode(value)
-        except Exception as exc:
+        except Exception:
             return value, "Value must be base64-encoded binary data."
     try:
         field.db_value(value)
@@ -890,7 +900,7 @@ def table_update(table, pk):
             try:
                 with dataset.transaction() as txn:
                     n = model.update(update).where(expr).execute()
-            except Exception as exc:
+            except Exception:
                 # flash('Update failed: %s' % exc, 'danger')
                 app.logger.exception("Error attempting to update row from %s.", table)
             else:
@@ -1082,7 +1092,7 @@ def drop_table(table):
             else:
                 model_class = dataset[table].model_class
                 model_class.drop_table()
-        except Exception as exc:
+        except Exception:
             flash('Error attempting to drop %s "%s".' % (label, table), "danger")
             app.logger.exception('Error attempting to drop %s "%s".', label, table)
         else:
@@ -1112,7 +1122,7 @@ def encode_pk(row, pk):
     if isinstance(pk, CompositeKey):
         try:
             return ":::".join([str(row[k]) for k in pk.field_names])
-        except Exception as exc:
+        except Exception:
             return "__uneditable__"
     return row[pk.column_name]
 

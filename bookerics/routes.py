@@ -6,15 +6,29 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 
 from .ai import get_tags_and_description_from_bookmark_url
-from .components import (BookmarkImageList, BookmarkList, NavMenu, SearchBar,
-                         TableStructure, TagCloud)
+from .components import (
+    BookmarkImageList,
+    BookmarkList,
+    NavMenu,
+    SearchBar,
+    TableStructure,
+    TagCloud,
+)
 from .constants import UPDATE_BASE_URL
-from .database import (backup_bookerics_db, create_bookmark,
-                       delete_bookmark_by_id, fetch_bookmark_by_id,
-                       fetch_bookmarks, fetch_bookmarks_by_tag,
-                       fetch_unique_tags, schedule_upload_to_s3,
-                       search_bookmarks, update_bookmark_description,
-                       update_bookmark_tags, verify_table_structure)
+from .database import (
+    backup_bookerics_db,
+    create_bookmark,
+    delete_bookmark_by_id,
+    fetch_bookmark_by_id,
+    fetch_bookmarks,
+    fetch_bookmarks_by_tag,
+    fetch_unique_tags,
+    schedule_upload_to_s3,
+    search_bookmarks,
+    update_bookmark_description,
+    update_bookmark_tags,
+    verify_table_structure,
+)
 from .main import app
 from .pages import Page
 from .utils import logger

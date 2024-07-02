@@ -13,7 +13,7 @@ import boto3
 from PIL import Image
 
 from .ai import get_tags_and_description_from_bookmark_url
-from .constants import ADDITIONAL_DB_PATHS, BOOKMARK_NAME, THUMBNAIL_API_KEY
+from .constants import ADDITIONAL_DB_PATHS, BOOKMARK_NAME, LOCAL_BACKUP_PATH, THUMBNAIL_API_KEY
 from .utils import log_warning_with_response, logger
 
 # S3/DB setup
@@ -219,12 +219,10 @@ async def upload_file_to_s3(bucket_name, s3_key, local_path):
 
 
 def backup_bookerics_db():
-    src_path = "bookerics.db"
+    src_path = S3_KEY
     today_str = datetime.now().strftime("%Y-%m-%d")
-    dest_dir = os.path.expanduser(
-        "~/Library/CloudStorage/Dropbox/Documents/bookerics-db"
-    )
-    dest_path = os.path.join(dest_dir, f"{today_str}-bookerics.db")
+    dest_dir = LOCAL_BACKUP_PATH
+    dest_path = os.path.join(dest_dir, f"{today_str}-{src_path}")
 
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
