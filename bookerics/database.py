@@ -13,7 +13,12 @@ import boto3
 from PIL import Image
 
 from .ai import get_tags_and_description_from_bookmark_url
-from .constants import ADDITIONAL_DB_PATHS, BOOKMARK_NAME, LOCAL_BACKUP_PATH, THUMBNAIL_API_KEY
+from .constants import (
+    ADDITIONAL_DB_PATHS,
+    BOOKMARK_NAME,
+    LOCAL_BACKUP_PATH,
+    THUMBNAIL_API_KEY,
+)
 from .utils import log_warning_with_response, logger
 
 # S3/DB setup
