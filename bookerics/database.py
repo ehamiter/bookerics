@@ -142,9 +142,11 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     return bookmarks
 
 
-async def fetch_bookmark_by_id(id: str) -> List[Dict[str, Any]]:
+async def fetch_bookmark_by_id(id: str) -> Dict[str, Any]:
     query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id='{id}' LIMIT 1;"
-    return fetch_data(query)
+    results = fetch_data(query)
+    bookmark = results[0]
+    return bookmark
 
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
@@ -240,11 +242,12 @@ def schedule_upload_to_s3():
 
 
 def schedule_thumbnail_fetch_and_save(bookmark):
+    bookmarks = [bookmark]
     loop = asyncio.get_event_loop()
     if loop.is_running():
-        asyncio.create_task(update_bookmarks_with_thumbnails(bookmark))
+        asyncio.create_task(update_bookmarks_with_thumbnails(bookmarks))
     else:
-        asyncio.run(update_bookmarks_with_thumbnails(bookmark))
+        asyncio.run(update_bookmarks_with_thumbnails(bookmarks))
 
 
 async def create_bookmark(

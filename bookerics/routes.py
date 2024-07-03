@@ -109,19 +109,21 @@ async def untagged_bookmarks():
 
 @app.get("/id/{id}")
 async def bookmark_by_id(id: str):
-    bookmarks = await fetch_bookmark_by_id(id=id)
-    if not bookmarks:
+    bookmark = await fetch_bookmark_by_id(id=id)
+    if not bookmark:
         return HTMLResponse("Bookmark not found", status_code=404)
 
+    bookmarks = [bookmark]
     return BookmarkImageList(bookmarks=bookmarks)
 
 
 @app.get("/id/c/{id}")
 async def bookmark_by_id_compact(id: str):
-    bookmarks = await fetch_bookmark_by_id(id=id)
-    if not bookmarks:
+    bookmark = await fetch_bookmark_by_id(id=id)
+    if not bookmark:
         return HTMLResponse("Bookmark not found", status_code=404)
 
+    bookmarks = [bookmark]
     return BookmarkList(bookmarks=bookmarks)
 
 
@@ -150,7 +152,7 @@ async def search(request: Request):
 async def get_ai_info_for_bookmark_by_id(id: str):
     bookmark = await fetch_bookmark_by_id(id=id)
     tags, description = await get_tags_and_description_from_bookmark_url(
-        bookmark[0]["url"]
+        bookmark["url"]
     )
 
     await update_bookmark_tags(bookmark[0]["id"], tags)
@@ -165,9 +167,6 @@ async def get_thumbnail(request: Request):
     headers = {"HX-Trigger": "loadThumbnail"}
     bookmark = await fetch_bookmark_by_id(bookmark_id)
     if bookmark:
-        bookmark = bookmark[
-            0
-        ]  # fetch_bookmark_by_id returns a list, so take the first item
         thumbnail_html = f'<img src="{bookmark["thumbnail_url"]}" height="270" width="480" id="thumbnail-{bookmark_id}" />'
         return HTMLResponse(thumbnail_html, headers=headers)
 
