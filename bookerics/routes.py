@@ -155,8 +155,8 @@ async def get_ai_info_for_bookmark_by_id(id: str):
         bookmark["url"]
     )
 
-    await update_bookmark_tags(bookmark[0]["id"], tags)
-    await update_bookmark_description(bookmark[0]["id"], description)
+    await update_bookmark_tags(bookmark["id"], tags)
+    await update_bookmark_description(bookmark["id"], description)
 
     return BookmarkList().render_tags(tags)
 

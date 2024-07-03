@@ -38,23 +38,55 @@ def download_file_from_s3(bucket_name, s3_key, local_path):
 
 def load_db_on_startup():
     logger.info("🔖 Bookerics starting up…")
-    # Download the database file from S3
     if not os.path.exists(DB_PATH):
         download_file_from_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
     logger.info("☑️ Database loaded!")
 
 
-def get_max_id(cursor) -> int:
-    cursor.execute("SELECT MAX(id) FROM bookmarks")
-    max_id = cursor.fetchone()[0]
-    return max_id if max_id is not None else 0
+def get_max_id(cursor, table_name: str = "bookmarks"):
+    cursor.execute(f'SELECT MAX(id) FROM {table_name}')
+    return cursor.fetchone()[0] or 0
 
+def extract_order_by_clause(query):
+    if 'ORDER BY' in query:
+        return query.split('ORDER BY')[-1]
+    return ''
 
-def extract_order_by_clause(query: str) -> str:
-    order_by_index = query.lower().find("order by")
-    if order_by_index != -1:
-        return query[order_by_index:]
-    return ""
+def enter_the_multiverse(query, cursor, table_name):
+    # Attach additional databases if they exist
+    for idx, _db_path in enumerate(ADDITIONAL_DB_PATHS):
+        try:
+            cursor.execute(f'ATTACH DATABASE "{_db_path}" AS db_{idx};')
+            logger.info(f"☑️ Found {_db_path}")
+        except sqlite3.OperationalError as e:
+            logger.error(f"❌ Failed to attach {_db_path}: {e}")
+            raise
+
+    # Get the maximum ID from the main database
+    max_id_main = get_max_id(cursor, table_name)
+
+    # Extract the ORDER BY clause from the original query
+    order_by_clause = extract_order_by_clause(query) or "created_at DESC, updated_at DESC;"
+
+    # Remove the ORDER BY clause from the original query
+    base_query = query.strip().split("ORDER BY")[0].strip().rstrip(";")
+
+    # Modify query to include data from attached databases
+    union_queries = [f"SELECT * FROM ({base_query})"]
+    for idx in range(len(ADDITIONAL_DB_PATHS)):
+        attach_query = base_query.replace(table_name, f"db_{idx}.{table_name}")
+        offset = (
+            max_id_main + 1 + idx * 1000000
+        )  # Adjust the range to avoid overlaps
+        union_queries.append(
+            f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM ({attach_query})"
+        )
+
+    combined_query = " UNION ALL ".join(union_queries)
+
+    # Append the ORDER BY clause to the combined query
+    final_query = f"{combined_query} ORDER BY {order_by_clause}"
+    return final_query
 
 
 def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks") -> Any:
@@ -62,34 +94,8 @@ def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks")
     cursor = connection.cursor()
 
     if ADDITIONAL_DB_PATHS:
-        # Attach additional databases if they exist
-        for idx, _db_path in enumerate(ADDITIONAL_DB_PATHS):
-            cursor.execute(f'ATTACH DATABASE "{_db_path}" AS db_{idx};')
-
-        # Get the maximum ID from the main database
-        max_id_main = get_max_id(cursor)
-
-        # Extract the ORDER BY clause from the original query
-        order_by_clause = extract_order_by_clause(query)
-
-        # Remove the ORDER BY clause from the original query
-        base_query = query.strip().split("ORDER BY")[0].strip().rstrip(";")
-
-        # Modify query to include data from attached databases
-        union_queries = [f"SELECT * FROM ({base_query})"]
-        for idx in range(len(ADDITIONAL_DB_PATHS)):
-            attach_query = base_query.replace(table_name, f"db_{idx}.{table_name}")
-            offset = (
-                max_id_main + 1 + idx * 1000000
-            )  # Adjust the range to avoid overlaps
-            union_queries.append(
-                f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM ({attach_query})"
-            )
-
-        combined_query = " UNION ALL ".join(union_queries)
-
-        # Append the ORDER BY clause to the combined query
-        final_query = f"SELECT * FROM ({combined_query}) {order_by_clause}"
+        logger.info(f"💽 Additional db paths found…")
+        final_query = enter_the_multiverse(query, cursor, table_name)
     else:
         final_query = query
 
@@ -145,13 +151,6 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         else:
             logger.error(f"💥 Unexpected row format: {row}")
     return bookmarks
-
-
-async def fetch_bookmark_by_id(id: str) -> Dict[str, Any]:
-    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id='{id}' LIMIT 1;"
-    results = fetch_data(query)
-    bookmark = results[0]
-    return bookmark
 
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
@@ -213,16 +212,15 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     return fetch_data(query, (tag,))
 
 
-async def upload_file_to_s3(bucket_name, s3_key, local_path):
-    session = aioboto3.Session()
-    async with session.client("s3") as s3:
-        try:
-            await s3.upload_file(local_path, bucket_name, s3_key)
-            logger.info(
-                f"☑️ Uploaded {local_path} to bucket {bucket_name} with key {s3_key}"
-            )
-        except Exception as e:
-            logger.error(f"💥 Error uploading file to S3: {e}")
+def delete_bookmark_by_id(bookmark_id: int) -> None:
+    try:
+        query = "DELETE FROM bookmarks WHERE id = ?"
+        execute_query(query, (bookmark_id,))
+        logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
+        schedule_upload_to_s3()
+    except Exception as e:
+        logger.error(f"💥 Error deleting bookmark with id {bookmark_id}: {e}")
+        raise e
 
 
 def backup_bookerics_db():
@@ -255,6 +253,40 @@ def schedule_thumbnail_fetch_and_save(bookmark):
         asyncio.run(update_bookmarks_with_thumbnails(bookmarks))
 
 
+def verify_table_structure(table_name: str = "bookmarks"):
+    """
+    /table web endpoint
+    """
+    query = f"PRAGMA table_info({table_name})"
+    rows, _ = execute_query(query)
+    return rows
+
+
+# async
+
+async def execute_query_async(query: str, params: tuple = ()):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, execute_query, query, params)
+
+async def fetch_bookmark_by_id(id: str) -> Dict[str, Any]:
+    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id='{id}' LIMIT 1;"
+    results = fetch_data(query)
+    bookmark = {} if not results else results[0]
+    return bookmark
+
+
+async def upload_file_to_s3(bucket_name, s3_key, local_path):
+    session = aioboto3.Session()
+    async with session.client("s3") as s3:
+        try:
+            await s3.upload_file(local_path, bucket_name, s3_key)
+            logger.info(
+                f"☑️ Uploaded {local_path} to bucket {bucket_name} with key {s3_key}"
+            )
+        except Exception as e:
+            logger.error(f"💥 Error uploading file to S3: {e}")
+
+
 async def create_bookmark(
     title: str, url: str, description: str, tags: List[str]
 ) -> int:
@@ -281,16 +313,6 @@ async def create_bookmark(
     schedule_upload_to_s3()
     return bookmark_id
 
-
-def delete_bookmark_by_id(bookmark_id: int) -> None:
-    try:
-        query = "DELETE FROM bookmarks WHERE id = ?"
-        execute_query(query, (bookmark_id,))
-        logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
-        schedule_upload_to_s3()
-    except Exception as e:
-        logger.error(f"💥 Error deleting bookmark with id {bookmark_id}: {e}")
-        raise e
 
 
 async def update_bookmark_thumbnail_url(bookmark_id: int, img_url: str):
@@ -327,11 +349,6 @@ async def update_bookmark_tags(bookmark_id: int, tags: List[str]):
     update_params = (tags_json, current_timestamp, bookmark_id)
 
     await execute_query_async(update_query, update_params)
-
-
-async def execute_query_async(query: str, params: tuple = ()):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, execute_query, query, params)
 
 
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
@@ -412,12 +429,3 @@ async def update_bookmarks_with_thumbnails(bookmarks):
             bookmarks[i]["thumbnail_url"] = thumbnail_url
 
     return bookmarks
-
-
-def verify_table_structure(table_name: str = "bookmarks"):
-    """
-    /table web endpoint
-    """
-    query = f"PRAGMA table_info({table_name})"
-    rows, _ = execute_query(query)
-    return rows
