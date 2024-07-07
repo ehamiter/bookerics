@@ -354,6 +354,8 @@ async def update_bookmark_title(bookmark_id: int, title: str):
 
 
 async def update_bookmark_tags(bookmark_id: int, tags: List[str]):
+    # Filter out empty tags
+    tags = [tag for tag in tags if tag.strip()]
     tags_json = json.dumps(tags)
 
     update_query = """
