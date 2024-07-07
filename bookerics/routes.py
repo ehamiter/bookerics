@@ -16,7 +16,6 @@ from .components import (
 )
 from .constants import UPDATE_BASE_URL
 from .database import (
-    S3_KEY,
     backup_bookerics_db,
     create_bookmark,
     delete_bookmark_by_id,
@@ -177,11 +176,20 @@ async def get_thumbnail(request: Request):
     return HTMLResponse("<p>Bookmark not found</p>", status_code=404)
 
 
-@app.get("/check/{url}")
-async def check_if_bookmark_already_saved(url) -> dict:
-    # This will return either a bookmark or an empty dict
-    bookmark = await fetch_bookmark_by_url(url)
-    return bookmark
+@app.get("/check")
+async def check_if_bookmark_already_saved(request: Request):
+    status = "not-exists"
+    bookmark = {}
+    url = request.query_params.get('url')
+    if url:
+        bookmark = await fetch_bookmark_by_url(url)
+        if bookmark:
+            status = "exists"
+
+    return JSONResponse(
+        {"status": status, "message": bookmark}
+    )
+
 
 @app.post("/add")
 async def add_bookmark(request: Request):
@@ -198,18 +206,10 @@ async def add_bookmark(request: Request):
         )
 
     # Does it already exist in our db?
-    bookmark = await check_if_bookmark_already_saved(url)
+    bookmark = await fetch_bookmark_by_url(url)
     if bookmark:
-        logger.warning(f'"{url}" already exists in "{S3_KEY}"" ("{bookmark["title"]}")')
-
-        # A bookmark exists but we're not explicitly forcing an update. So we don't know about it.
-        if not force_update:
-            # Present the opportunity to update it in the bookmarklet:
-            return JSONResponse(
-                {"status": "exists", "message": bookmark}
-            )
-        else:
-            # Update the existing bookmark with any new info.
+        # Update the existing bookmark with any new info.
+        if force_update:
             await update_bookmark_description(bookmark["id"], description)
             await update_bookmark_tags(bookmark["id"], tags)
             await update_bookmark_title(bookmark["id"], title)
@@ -217,7 +217,10 @@ async def add_bookmark(request: Request):
             return JSONResponse(
                 {"status": "success", "message": "Bookmark updated!"}
             )
-
+        else:
+            return JSONResponse(
+                {"status": "success", "message": "Bookmark not updated."}
+            )
 
     bookmark = await create_bookmark(title, url, description, tags)
     return JSONResponse(

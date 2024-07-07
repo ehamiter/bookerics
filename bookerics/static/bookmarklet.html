@@ -43,15 +43,35 @@
             tagsField.value = decodeURIComponent(urlParams.get('tags') || '');
             forceUpdate.value = 0;
 
+            const urlValue = encodeURIComponent(urlField.value);
+            const checkUrl = `http://localhost:8080/check?url=${urlValue}`;
+            console.log('Check URL: ', checkUrl);
+
+            fetch(checkUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "exists" && data.message) {
+                        const bookmark = data.message;
+                        titleField.value = bookmark.title;
+                        descriptionField.value = bookmark.description;
+                        tagsField.value = String(bookmark.tags).replace(/,/g, ' ');
+
+                        const fields = [titleField, descriptionField, urlField, tagsField];
+                        fields.forEach(field => field.style.backgroundColor = "#f7ffc07e");
+                        document.querySelector('button[type="submit"]').textContent = "Update";
+                        forceUpdate.value = 1;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching bookmark:', error);
+            });
+
             if (!titleField.value) {
                 titleField.focus();
             } else if (!descriptionField.value) {
                 descriptionField.focus();
-            } else if (!tagsField.value) {
-                tagsField.focus();
             } else {
                 tagsField.focus();
-                tagsField.select();
             }
 
             document.addEventListener('keydown', function(event) {
@@ -71,16 +91,6 @@
                 const result = await response.json();
                 if (result.status === "success") {
                     window.close();
-                } else if (result.status === "exists") {
-                    forceUpdate.value = 1;
-                    existingBookmark = result.message;
-                    titleField.value = existingBookmark.title;
-                    tagsField.value = String(existingBookmark.tags).replace(/,/g, ' ');
-                    descriptionField.value = existingBookmark.description;
-                    // Look, man, there is new information that has come to light
-                    const fields = [titleField, descriptionField, tagsField];
-                    fields.forEach(field => field.style.backgroundColor = "#f7ffc07e");
-                    document.querySelector('button[type="submit"]').textContent = "Update";
                 } else {
                     alert("Error: " + result.message);
                 }

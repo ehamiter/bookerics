@@ -263,11 +263,6 @@ app.url_map.converters["b64"] = Base64Converter
 #
 
 
-# @app.route("/favicon.ico/", methods=["GET"])
-# def favicon():
-#     return redirect("/static/favicon.ico/")
-
-
 @app.route("/")
 def index():
     return render_template("index.html", sqlite=sqlite3)
