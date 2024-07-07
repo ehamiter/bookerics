@@ -45,7 +45,6 @@
 
             const urlValue = encodeURIComponent(urlField.value);
             const checkUrl = `http://localhost:8080/check?url=${urlValue}`;
-            console.log('Check URL: ', checkUrl);
 
             fetch(checkUrl)
                 .then(response => response.json())
