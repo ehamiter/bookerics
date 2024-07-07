@@ -3,7 +3,7 @@ import webbrowser
 
 from ludic.catalog.layouts import Stack
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse
 
 from .ai import get_tags_and_description_from_bookmark_url
 from .components import (
@@ -28,8 +28,8 @@ from .database import (
     schedule_upload_to_s3,
     search_bookmarks,
     update_bookmark_description,
-    update_bookmark_title,
     update_bookmark_tags,
+    update_bookmark_title,
     verify_table_structure,
 )
 from .main import app
