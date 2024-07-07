@@ -37,14 +37,26 @@
             const tagsField = document.getElementById('tags');
             let forceUpdate = document.getElementById('forceUpdate');
 
-            titleField.value = decodeURIComponent(urlParams.get('title') || '');
-            descriptionField.value = decodeURIComponent(urlParams.get('description') || '');
+            try {
+                descriptionField.value = decodeURIComponent(urlParams.get('description') || '');
+            } catch (e) {
+                console.error('Error decoding URI component:', e);
+                descriptionField.value = urlParams.get('description') || '';
+            }
+
+            try {
+                titleField.value = decodeURIComponent(urlParams.get('title') || '');
+            } catch (e) {
+                console.error('Error decoding URI component:', e);
+                titleField.value = urlParams.get('title') || '';
+            }
+
             urlField.value = decodeURIComponent(urlParams.get('url') || '');
-            tagsField.value = decodeURIComponent(urlParams.get('tags') || '');
+            tagsField.value = '';
             forceUpdate.value = 0;
 
-            const urlValue = encodeURIComponent(urlField.value);
-            const checkUrl = `http://localhost:8080/check?url=${urlValue}`;
+            const encodedUrlValue = encodeURIComponent(urlField.value);
+            const checkUrl = `http://localhost:8080/check?url=${encodedUrlValue}`;
 
             fetch(checkUrl)
                 .then(response => response.json())

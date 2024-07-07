@@ -198,7 +198,7 @@ async def add_bookmark(request: Request):
     url = form.get("url")
     description = form.get("description")
     tags = form.get("tags", "").split(" ")
-    force_update = bool(int(form.get("forceUpdate")))
+    force_update = form.get("forceUpdate")
 
     if not title and url:
         return JSONResponse(
