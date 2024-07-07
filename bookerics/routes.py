@@ -177,6 +177,12 @@ async def get_thumbnail(request: Request):
     return HTMLResponse("<p>Bookmark not found</p>", status_code=404)
 
 
+@app.get("/check/{url}")
+async def check_if_bookmark_already_saved(url) -> dict:
+    # This will return either a bookmark or an empty dict
+    bookmark = await fetch_bookmark_by_url(url)
+    return bookmark
+
 @app.post("/add")
 async def add_bookmark(request: Request):
     form = await request.form()
@@ -188,11 +194,11 @@ async def add_bookmark(request: Request):
 
     if not title and url:
         return JSONResponse(
-            {"status": "error", "message": "Title and URL are required!"}, status_code=400
+            {"status": "error", "message": "Title and URL are required!"}
         )
 
-    # Does it already exist in our db? If so, update it
-    bookmark = await fetch_bookmark_by_url(url)
+    # Does it already exist in our db?
+    bookmark = await check_if_bookmark_already_saved(url)
     if bookmark:
         logger.warning(f'"{url}" already exists in "{S3_KEY}"" ("{bookmark["title"]}")')
 
@@ -200,7 +206,7 @@ async def add_bookmark(request: Request):
         if not force_update:
             # Present the opportunity to update it in the bookmarklet:
             return JSONResponse(
-                {"status": "exists", "message": bookmark}, status_code=302
+                {"status": "exists", "message": bookmark}
             )
         else:
             # Update the existing bookmark with any new info.
@@ -209,13 +215,13 @@ async def add_bookmark(request: Request):
             await update_bookmark_title(bookmark["id"], title)
             logger.info(f"Bookmark updated!")
             return JSONResponse(
-                {"status": "success", "message": "Bookmark updated!"}, status_code=201
+                {"status": "success", "message": "Bookmark updated!"}
             )
 
 
     bookmark = await create_bookmark(title, url, description, tags)
     return JSONResponse(
-        {"status": "success", "message": "Bookmark saved!"}, status_code=201
+        {"status": "success", "message": "Bookmark saved!"}
     )
 
 

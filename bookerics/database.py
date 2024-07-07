@@ -75,9 +75,7 @@ def enter_the_multiverse(query, cursor, table_name):
     union_queries = [f"SELECT * FROM ({base_query})"]
     for idx in range(len(ADDITIONAL_DB_PATHS)):
         attach_query = base_query.replace(table_name, f"db_{idx}.{table_name}")
-        offset = (
-            max_id_main + 1 + idx * 1000000
-        )  # Adjust the range to avoid overlaps
+        offset = (max_id_main + 1 + idx * 1000000)
         union_queries.append(
             f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM ({attach_query})"
         )
@@ -154,11 +152,12 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
 
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
     queries = {
-        "newest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at DESC, updated_at DESC;",
-        "oldest": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY created_at ASC, updated_at ASC;",
-        "random": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks ORDER BY RANDOM() LIMIT 1;",
-        "untagged": "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC;",
+        "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
+        "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC;",
+        "random": f"{bq} ORDER BY RANDOM() LIMIT 1;",
+        "untagged": f"{bq} WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC;",
     }
     query = queries.get(kind, queries["newest"])
     return fetch_data(query)
