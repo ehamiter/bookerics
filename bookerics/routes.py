@@ -16,16 +16,19 @@ from .components import (
 )
 from .constants import UPDATE_BASE_URL
 from .database import (
+    S3_KEY,
     backup_bookerics_db,
     create_bookmark,
     delete_bookmark_by_id,
     fetch_bookmark_by_id,
+    fetch_bookmark_by_url,
     fetch_bookmarks,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
     schedule_upload_to_s3,
     search_bookmarks,
     update_bookmark_description,
+    update_bookmark_title,
     update_bookmark_tags,
     verify_table_structure,
 )
@@ -179,19 +182,42 @@ async def add_bookmark(request: Request):
     form = await request.form()
     title = form.get("title")
     url = form.get("url")
-    description = form.get("description", "Add a description…")
+    description = form.get("description")
     tags = form.get("tags", "").split(" ")
+    force_update = bool(int(form.get("forceUpdate")))
 
-    if title and url:
-        bookmark_id = await create_bookmark(title, url, description, tags)
-
+    if not title and url:
         return JSONResponse(
-            {"status": "success", "message": "Bookmark saved!"}, status_code=201
+            {"status": "error", "message": "Title and URL are required!"}, status_code=400
         )
 
+    # Does it already exist in our db? If so, update it
+    bookmark = await fetch_bookmark_by_url(url)
+    if bookmark:
+        logger.warning(f'"{url}" already exists in "{S3_KEY}"" ("{bookmark["title"]}")')
+
+        # A bookmark exists but we're not explicitly forcing an update. So we don't know about it.
+        if not force_update:
+            # Present the opportunity to update it in the bookmarklet:
+            return JSONResponse(
+                {"status": "exists", "message": bookmark}, status_code=302
+            )
+        else:
+            # Update the existing bookmark with any new info.
+            await update_bookmark_description(bookmark["id"], description)
+            await update_bookmark_tags(bookmark["id"], tags)
+            await update_bookmark_title(bookmark["id"], title)
+            logger.info(f"Bookmark updated!")
+            return JSONResponse(
+                {"status": "success", "message": "Bookmark updated!"}, status_code=201
+            )
+
+
+    bookmark = await create_bookmark(title, url, description, tags)
     return JSONResponse(
-        {"status": "error", "message": "Title and URL are required!"}, status_code=400
+        {"status": "success", "message": "Bookmark saved!"}, status_code=201
     )
+
 
 
 @app.get("/update")
@@ -225,11 +251,6 @@ async def delete_bookmark(request: Request):
 
 
 # misc
-
-
-@app.get("/favicon.ico")
-async def favicon():
-    return FileResponse("static/favicon.ico")
 
 
 @app.get("/table")
