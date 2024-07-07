@@ -274,6 +274,12 @@ async def fetch_bookmark_by_id(id: str) -> Dict[str, Any]:
     bookmark = {} if not results else results[0]
     return bookmark
 
+async def fetch_bookmark_by_url(url: str) -> Dict[str, Any]:
+    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE url='{url}' LIMIT 1;"
+    results = fetch_data(query)
+    bookmark = {} if not results else results[0]
+    return bookmark
+
 
 async def upload_file_to_s3(bucket_name, s3_key, local_path):
     session = aioboto3.Session()
@@ -289,7 +295,8 @@ async def upload_file_to_s3(bucket_name, s3_key, local_path):
 
 async def create_bookmark(
     title: str, url: str, description: str, tags: List[str]
-) -> int:
+) -> dict:
+
     # We get both from AI in the same call so if there's one missing, generate them both
     if tags == [""] or not description:
         _tags, _description = await get_tags_and_description_from_bookmark_url(url)
@@ -311,7 +318,7 @@ async def create_bookmark(
 
     schedule_thumbnail_fetch_and_save(bookmark)
     schedule_upload_to_s3()
-    return bookmark_id
+    return bookmark
 
 
 
@@ -334,6 +341,16 @@ async def update_bookmark_description(bookmark_id: int, description: str):
     """
     current_timestamp = datetime.utcnow().isoformat()
     params = (description, current_timestamp, bookmark_id)
+    await execute_query_async(query, params)
+
+async def update_bookmark_title(bookmark_id: int, title: str):
+    query = """
+    UPDATE bookmarks
+    SET title = ?, updated_at = ?
+    WHERE id = ?
+    """
+    current_timestamp = datetime.utcnow().isoformat()
+    params = (title, current_timestamp, bookmark_id)
     await execute_query_async(query, params)
 
 

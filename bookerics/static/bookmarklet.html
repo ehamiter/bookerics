@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" href="/static/favicon.ico">
     <title>Save Bookeric</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 5px 10px; background-color: #f8f8f8; }
@@ -24,6 +25,7 @@
         <input type="text" id="url" name="url">
         <label for="tags">Tags (separate by spaces):</label>
         <input type="text" id="tags" name="tags">
+        <input type="hidden" id="forceUpdate" name="forceUpdate">
         <button type="submit">Save</button>
     </form>
     <script>
@@ -33,11 +35,13 @@
             const descriptionField = document.getElementById('description');
             const urlField = document.getElementById('url');
             const tagsField = document.getElementById('tags');
+            let forceUpdate = document.getElementById('forceUpdate');
 
             titleField.value = decodeURIComponent(urlParams.get('title') || '');
             descriptionField.value = decodeURIComponent(urlParams.get('description') || '');
             urlField.value = decodeURIComponent(urlParams.get('url') || '');
             tagsField.value = decodeURIComponent(urlParams.get('tags') || '');
+            forceUpdate.value = 0;
 
             if (!titleField.value) {
                 titleField.focus();
@@ -67,6 +71,13 @@
                 const result = await response.json();
                 if (result.status === "success") {
                     window.close();
+                } else if (result.status === "exists") {
+                    forceUpdate.value = 1;
+                    existingBookmark = result.message;
+                    titleField.value = existingBookmark.title;
+                    tagsField.value = String(existingBookmark.tags).replace(/,/g, ' ');
+                    descriptionField.value = existingBookmark.description;
+                    alert('Existing bookmark found. Submit again to update.');
                 } else {
                     alert("Error: " + result.message);
                 }
