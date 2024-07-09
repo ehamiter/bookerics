@@ -1,4 +1,5 @@
 import base64
+import secrets
 import webbrowser
 
 from ludic.catalog.layouts import Stack
@@ -60,10 +61,11 @@ async def oldest():
 
 @app.get("/random")
 async def random_bookmark():
-    bookmarks = fetch_bookmarks(kind="random")
-    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+    bookmarks = fetch_bookmarks(kind="newest")
+    bookmark_count = len(bookmarks)
+    bookmarks = [secrets.choice(bookmarks)]
     return Page(
-        NavMenu(bookmark_count=len(bookmarks)),
+        NavMenu(bookmark_count=bookmark_count),
         SearchBar(),
         BookmarkImageList(bookmarks=bookmarks),
     )
@@ -72,6 +74,7 @@ async def random_bookmark():
 @app.get("/tags")
 async def tags():
     bookmarks = fetch_bookmarks(kind="newest")
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
     tags = fetch_unique_tags(kind="frequency")
     return Page(
         NavMenu(bookmark_count=len(bookmarks)), SearchBar(), TagCloud(tags=tags)
@@ -81,6 +84,7 @@ async def tags():
 @app.get("/tags/newest")
 async def tags():
     bookmarks = fetch_bookmarks(kind="newest")
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
     tags = fetch_unique_tags(kind="newest")
     return Page(
         NavMenu(bookmark_count=len(bookmarks)), SearchBar(), TagCloud(tags=tags)
@@ -90,6 +94,7 @@ async def tags():
 @app.get("/tags/{tag}")
 async def bookmarks_by_tag(tag: str):
     bookmarks = fetch_bookmarks_by_tag(tag)
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
     return Page(
         NavMenu(bookmark_count=len(bookmarks)),
         SearchBar(),

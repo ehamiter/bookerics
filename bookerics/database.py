@@ -57,7 +57,7 @@ def enter_the_multiverse(query, cursor, table_name):
     for idx, _db_path in enumerate(ADDITIONAL_DB_PATHS):
         try:
             cursor.execute(f'ATTACH DATABASE "{_db_path}" AS db_{idx};')
-            logger.info(f"💽 {_db_path} > db_{idx}…")
+            logger.info(f"💽 {_db_path} > db_{idx}")
         except sqlite3.OperationalError as e:
             logger.error(f"❌ Failed to attach {_db_path}: {e}")
             raise
@@ -86,25 +86,23 @@ def enter_the_multiverse(query, cursor, table_name):
     final_query = f"SELECT * FROM ({combined_query}) ORDER BY {order_by_clause}"
     return final_query
 
-def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks") -> Any:
+def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks", allow_external_db: bool = True) -> Any:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
-    # params are passed in to fetch thumbnails, so do not attach additional dbs if that is the case
-    if not params and ADDITIONAL_DB_PATHS:
-        final_query = enter_the_multiverse(query, cursor, table_name)
-    else:
-        final_query = query
+    if allow_external_db:
+        # params are passed in to fetch thumbnails, so do not attach additional dbs if that is the case
+        if not params and ADDITIONAL_DB_PATHS:
+            query = enter_the_multiverse(query, cursor, table_name)
 
     try:
-        cursor.execute(final_query, params)
+        cursor.execute(query, params)
         result = cursor.fetchall()
         last_row_id = cursor.lastrowid
-        # print('cursor result: ', result)
         connection.commit()
     except Exception as e:
         logger.error(
-            f"💥 Error executing query: {final_query}\nParams: {params}\nException: {e}"
+            f"💥 Error executing query: {query}\nParams: {params}\nException: {e}"
         )
         raise
     finally:
@@ -159,7 +157,6 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
         "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC;",
-        "random": f"{bq} ORDER BY RANDOM() LIMIT 1;",
         "untagged": f"{bq} WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC;",
     }
     query = queries.get(kind, queries["newest"])
@@ -200,7 +197,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[str]:
           AND json_each.value != '[""]'
         ORDER BY bookmarks.updated_at DESC, bookmarks.created_at DESC;
         """
-    rows, _ = execute_query(query)
+    rows, _ = execute_query(query, allow_external_db=False)
     return [row[0] for row in rows]
 
 
