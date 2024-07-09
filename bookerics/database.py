@@ -57,7 +57,7 @@ def enter_the_multiverse(query, cursor, table_name):
     for idx, _db_path in enumerate(ADDITIONAL_DB_PATHS):
         try:
             cursor.execute(f'ATTACH DATABASE "{_db_path}" AS db_{idx};')
-            logger.info(f"☑️ Found {_db_path}")
+            logger.info(f"💽 {_db_path} > db_{idx}…")
         except sqlite3.OperationalError as e:
             logger.error(f"❌ Failed to attach {_db_path}: {e}")
             raise
@@ -66,33 +66,32 @@ def enter_the_multiverse(query, cursor, table_name):
     max_id_main = get_max_id(cursor, table_name)
 
     # Extract the ORDER BY clause from the original query
-    order_by_clause = extract_order_by_clause(query) or "created_at DESC, updated_at DESC;"
+    order_by_clause = extract_order_by_clause(query) or "created_at DESC, updated_at DESC"
 
     # Remove the ORDER BY clause from the original query
     base_query = query.strip().split("ORDER BY")[0].strip().rstrip(";")
 
     # Modify query to include data from attached databases
-    union_queries = [f"SELECT * FROM ({base_query})"]
+    union_queries = [f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM ({base_query})"]
     for idx in range(len(ADDITIONAL_DB_PATHS)):
         attach_query = base_query.replace(table_name, f"db_{idx}.{table_name}")
         offset = (max_id_main + 1 + idx * 1000000)
         union_queries.append(
-            f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM ({attach_query})"
+            f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'external' AS source FROM ({attach_query})"
         )
 
     combined_query = " UNION ALL ".join(union_queries)
 
     # Append the ORDER BY clause to the combined query
-    final_query = f"{combined_query} ORDER BY {order_by_clause}"
+    final_query = f"SELECT * FROM ({combined_query}) ORDER BY {order_by_clause}"
     return final_query
-
 
 def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks") -> Any:
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
-    if ADDITIONAL_DB_PATHS:
-        logger.info(f"💽 Additional db paths found…")
+    # params are passed in to fetch thumbnails, so do not attach additional dbs if that is the case
+    if not params and ADDITIONAL_DB_PATHS:
         final_query = enter_the_multiverse(query, cursor, table_name)
     else:
         final_query = query
@@ -101,6 +100,7 @@ def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks")
         cursor.execute(final_query, params)
         result = cursor.fetchall()
         last_row_id = cursor.lastrowid
+        # print('cursor result: ', result)
         connection.commit()
     except Exception as e:
         logger.error(
@@ -114,10 +114,11 @@ def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks")
 
 
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    # source (internal / external) gets added as an attribute here
     rows, _ = execute_query(query, params)
     bookmarks = []
     for row in rows:
-        if len(row) == 8:
+        if len(row) == 9:
             (
                 id,
                 title,
@@ -127,6 +128,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
                 tags_json,
                 created_at,
                 updated_at,
+                source
             ) = row
             try:
                 tags = json.loads(tags_json) if tags_json else []
@@ -144,6 +146,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
                     "tags": tags,
                     "created_at": created_at,
                     "updated_at": updated_at,
+                    "source": source
                 }
             )
         else:
@@ -277,6 +280,7 @@ async def fetch_bookmark_by_url(url: str) -> Dict[str, Any]:
     query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE url='{url}' LIMIT 1;"
     results = fetch_data(query)
     bookmark = {} if not results else results[0]
+    bookmark = bookmark if bookmark.get('source') == 'internal' else {}
     return bookmark
 
 
@@ -431,6 +435,11 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 async def update_bookmarks_with_thumbnails(bookmarks):
     tasks = []
     for bookmark in bookmarks:
+        # Don't look up thumbnails for db entries we're just browsing
+        source = bookmark.get("source")
+        if source == "external":
+            return bookmarks
+
         img_url = bookmark.get("thumbnail_url")
         if img_url is None:
             if isinstance(bookmark, dict):

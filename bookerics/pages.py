@@ -30,7 +30,7 @@ class CustomHead(Component[AnyChildren, HtmlHeadAttrs]):
             title(self.attrs.get("title", "bookerics")),
             # Background photo originally by Jess Bailey on Unsplash:
             # https://unsplash.com/photos/close-shot-of-book-page-X5gDoysLbBc
-            link(rel="icon", href="/static/favicon.ico", type="image/x-icon"),
+            link(rel="icon", href="/static/favicon.png", type="image/png"),
             style(
                 """html { background: url("/static/images/bg.png") no-repeat center center fixed; -webkit-background-size: cover; -moz-background-size: cover; -o-background-size: cover; background-size: cover;}"""
             ),  # no fmt

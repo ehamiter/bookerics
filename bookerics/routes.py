@@ -61,6 +61,7 @@ async def oldest():
 @app.get("/random")
 async def random_bookmark():
     bookmarks = fetch_bookmarks(kind="random")
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
     return Page(
         NavMenu(bookmark_count=len(bookmarks)),
         SearchBar(),
@@ -99,6 +100,7 @@ async def bookmarks_by_tag(tag: str):
 @app.get("/untagged")
 async def untagged_bookmarks():
     bookmarks = fetch_bookmarks(kind="untagged")
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
     return Page(
         NavMenu(bookmark_count=len(bookmarks)),
         SearchBar(),

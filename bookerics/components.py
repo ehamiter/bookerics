@@ -426,6 +426,12 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
         )
 
     def render_bookmark(self, bookmark) -> BookmarkBox:
+        if bookmark["source"] == "external":
+            return BookmarkBox(
+                BookericLink(bookmark["title"], to=bookmark["url"]),
+                Paragraph(bookmark["url"], classes=["url"]),
+            )
+
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
             Paragraph(bookmark["url"], classes=["url"]),
@@ -495,6 +501,12 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
 
     # Layout for showing image previews
     def render_bookmark(self, bookmark) -> BookmarkBox:
+        if bookmark["source"] == "external":
+            return BookmarkBox(
+                BookericLink(bookmark["title"], to=bookmark["url"]),
+                Paragraph(bookmark["url"], classes=["url"]),
+            )
+
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
             ImageSwitcher(
