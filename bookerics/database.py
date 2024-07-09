@@ -166,7 +166,7 @@ def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
 def search_bookmarks(query: str) -> List[Dict[str, Any]]:
     search_query = f"%{query}%"
     query = f"""
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source
     FROM bookmarks
     WHERE title LIKE '{search_query}'
     OR url LIKE '{search_query}'
