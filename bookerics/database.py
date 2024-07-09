@@ -153,7 +153,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
 
 
 def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
-    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks "
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
         "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC;",
@@ -203,7 +203,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[str]:
 
 def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     query = """
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source
     FROM bookmarks
     WHERE ? IN (SELECT value FROM json_each(bookmarks.tags))
     ORDER BY updated_at DESC, created_at DESC;
@@ -268,13 +268,13 @@ async def execute_query_async(query: str, params: tuple = ()):
     return await loop.run_in_executor(None, execute_query, query, params)
 
 async def fetch_bookmark_by_id(id: str) -> Dict[str, Any]:
-    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id='{id}' LIMIT 1;"
+    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks WHERE id='{id}' LIMIT 1;"
     results = fetch_data(query)
     bookmark = {} if not results else results[0]
     return bookmark
 
 async def fetch_bookmark_by_url(url: str) -> Dict[str, Any]:
-    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE url='{url}' LIMIT 1;"
+    query = f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks WHERE url='{url}' LIMIT 1;"
     results = fetch_data(query)
     bookmark = {} if not results else results[0]
     bookmark = bookmark if bookmark.get('source') == 'internal' else {}
