@@ -53,3 +53,7 @@ line_length = 88
 
 [tool.poetry.scripts]
 app = "bookerics.run_apps:run_apps"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
