@@ -19,6 +19,7 @@ from .constants import UPDATE_BASE_URL
 from .database import (
     backup_bookerics_db,
     create_bookmark,
+    create_feed,
     delete_bookmark_by_id,
     fetch_bookmark_by_id,
     fetch_bookmark_by_url,
@@ -95,6 +96,12 @@ async def tags():
 async def bookmarks_by_tag(tag: str):
     bookmarks = fetch_bookmarks_by_tag(tag)
     bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+
+    # feeds for certain tags
+    if tag == 'adam':
+        await create_feed(tag, bookmarks)
+
+
     return Page(
         NavMenu(bookmark_count=len(bookmarks)),
         SearchBar(),

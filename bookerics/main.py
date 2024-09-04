@@ -55,16 +55,23 @@ async def lifespan(_: LudicApp) -> AsyncIterator[None]:
 # Calculate the directory path
 base_dir = os.path.dirname(os.path.abspath(__file__))
 static_dir = os.path.join(base_dir, "static")
+feeds_dir = os.path.join(base_dir, "feeds")
 
 # Ensure the path exists
 if not os.path.exists(static_dir):
     raise RuntimeError(f"Directory '{static_dir}' does not exist")
 
+if not os.path.exists(feeds_dir):
+    raise RuntimeError(f"Directory '{feeds_dir}' does not exist")
+
 
 app = LudicApp(
     debug=True,
     lifespan=lifespan,
-    routes=[Mount("/static", StaticFiles(directory=static_dir), name="static")],
+    routes=[
+        Mount("/static", StaticFiles(directory=static_dir), name="static"),
+        Mount("/feeds", StaticFiles(directory=feeds_dir), name="feeds"),
+    ],
 )
 
 app.add_middleware(

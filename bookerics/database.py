@@ -1,9 +1,17 @@
-import asyncio
-import json
 import os
 import shutil
+import subprocess
+import aiofiles
+import aiofiles.os
+from aiofiles.os import wrap
+from datetime import datetime, timezone
+from feedgen.feed import FeedGenerator
+from typing import List
+import asyncio
+import json
 import sqlite3
-from datetime import datetime
+from pathlib import Path
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any, Dict, List, Tuple
 
@@ -11,12 +19,15 @@ import aioboto3
 import aiohttp
 import boto3
 from PIL import Image
+from feedgen.feed import FeedGenerator
+import aiofiles
 
 from .ai import get_tags_and_description_from_bookmark_url
 from .constants import (
     ADDITIONAL_DB_PATHS,
     BOOKMARK_NAME,
     LOCAL_BACKUP_PATH,
+    RSS_METADATA,
     THUMBNAIL_API_KEY,
 )
 from .utils import log_warning_with_response, logger
@@ -262,6 +273,96 @@ def verify_table_structure(table_name: str = "bookmarks"):
 
 
 # async
+base_directory = os.path.dirname(os.path.abspath(__file__))
+feeds_directory = os.path.join(base_directory, 'feeds')
+
+async def push_changes_up(tag):
+    feed_source_path = os.path.join(feeds_directory, tag, 'atom.xml')
+    local_repo_path = '/Users/eric/projects/bookerics-web-page'
+    feed_destination_path = os.path.join(local_repo_path, 'feeds', tag, 'atom.xml')
+
+    shutil.copy2(feed_source_path, feed_destination_path)
+
+    os.chdir(local_repo_path)
+    subprocess.run(['git', 'add', '.'])
+    subprocess.run(['git', 'commit', '-m', 'Update RSS feed'])
+    subprocess.run(['git', 'push', 'origin', 'main'])
+
+    print("RSS feed updated and pushed to GitHub Pages!")
+
+
+async def create_feed(tag: str, bookmarks: List, xml_file: str = "atom.xml"):
+    directory_path = os.path.join(feeds_directory, tag)
+
+    # Check if the directory exists
+    if not os.path.exists(directory_path):
+        print(f"Directory {directory_path} does not exist.")
+
+    # debugging
+    file_path = os.path.join(directory_path, xml_file)
+    # print(f"Constructed file path: {file_path}")
+
+    # Check if the file is writable
+    # if os.access(file_path, os.W_OK):
+    #     print(f"File {file_path} is writable.")
+    # else:
+    #     print(f"File {file_path} is not writable.")
+
+    # directory_path = f"/feeds/{tag}"
+    # await async_makedirs(directory_path, exist_ok=True)
+
+    md = RSS_METADATA
+    fg = FeedGenerator()
+
+    # Ensure required fields are set
+    fg.id(md["id"])  # This sets the unique ID of the feed
+    title = f"{md['title']}: {tag}" if tag else md["title"]
+    fg.title(title)  # This sets the title of the feed
+    fg.subtitle(md["subtitle"])
+    fg.author({"name": md["author"]["name"], "email": md["author"]["email"]})
+    fg.logo(md["logo"])
+    fg.link(href=md["link"], rel="self")
+    fg.language(md["language"])
+    fg.description(md["description"])
+    fg.updated(datetime.now(timezone.utc))
+
+    for bm in bookmarks:
+        fe = fg.add_entry(order="append")
+        fe.id(bm["url"])
+        fe.title(bm["title"])
+        fe.summary(bm["description"])
+        fe.author({"name": md["author"]["name"], "email": md["author"]["email"]})
+        fe.link({"href": bm["url"], "title": bm["title"]})
+        fe.enclosure(url=bm["thumbnail_url"])
+
+        created_at_str = bm["created_at"]
+        naive_created_at_datetime = datetime.fromisoformat(created_at_str)
+        aware_created_at_datetime = naive_created_at_datetime.replace(tzinfo=timezone.utc)
+        fe.published(aware_created_at_datetime)
+
+        updated_at_str = bm["updated_at"]
+        naive_updated_at_datetime = datetime.fromisoformat(updated_at_str)
+        aware_updated_at_datetime = naive_updated_at_datetime.replace(tzinfo=timezone.utc)
+        fe.updated(aware_updated_at_datetime)
+
+    atom_feed = fg.atom_str(pretty=True)
+    # print(atom_feed)
+
+    # Attempt to write the file asynchronously
+    try:
+        async with aiofiles.open(file_path, mode="w") as f:
+            await f.write(atom_feed.decode('utf-8'))
+        print(f"Feed written successfully to {file_path}")
+    except Exception as e:
+        print(f"Failed to write feed: {e}")
+
+    # async with aiofiles.open(f"{directory_path}/{xml_file}", mode="w") as f:
+    #     await f.write(atom_feed.decode('utf-8'))
+
+    print('atom_feed -> ', atom_feed)
+
+    await push_changes_up(tag)
+
 
 async def execute_query_async(query: str, params: tuple = ()):
     loop = asyncio.get_event_loop()

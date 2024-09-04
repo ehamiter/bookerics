@@ -510,18 +510,15 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
         return BookmarkBox(
             BookericLink(bookmark["title"], to=bookmark["url"]),
             ImageSwitcher(
-                Link(
-                    PreviewImage(
-                        src=bookmark["thumbnail_url"],
-                        height="270",
-                        width="480",
-                        id=f"thumbnail-{bookmark['id']}",
-                        hx_get=f"/get_thumbnail/{bookmark['id']}",
-                        hx_target=f"#thumbnail-{bookmark['id']}",
-                        hx_trigger="loadThumbnail from:body",
-                        hx_swap="outerHTML",
-                    ),
-                    to=bookmark["url"],
+                PreviewImage(
+                    src=bookmark["thumbnail_url"],
+                    height="270",
+                    width="480",
+                    id=f"thumbnail-{bookmark['id']}",
+                    hx_get=f"/get_thumbnail/{bookmark['id']}",
+                    hx_target=f"#thumbnail-{bookmark['id']}",
+                    hx_trigger="loadThumbnail from:body",
+                    hx_swap="outerHTML",
                 ),
                 Paragraph(bookmark["url"], classes=["image-url"]),
             ),

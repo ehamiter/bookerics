@@ -6,6 +6,17 @@ load_dotenv()
 
 BASE_URL = "http://localhost:8080"
 
+RSS_METADATA = {
+    "id": "https://bookerics.com/feeds",
+    "title": "bookerics",
+    "subtitle": "Bookmarks, but for Erics",
+    "author": {"name": "Eric Hamiter", "email": "ehamiter@gmail.com"},
+    "link": "https://bookerics.com/feeds",
+    "logo": "https://www.gravatar.com/avatar/004503b8f559333472885c88a406519c2b4c92f3846cfe829ba6de76aa9776cc.jpg",
+    "language": "en",
+    "description": "ATOM feeds for Bookerics",
+}
+
 # sqlite-web runs on a separate port
 # poetry run sqlite_web bookerics.db -p 8888 -x
 UPDATE_BASE_URL = "http://localhost:8888/bookmarks/update"
