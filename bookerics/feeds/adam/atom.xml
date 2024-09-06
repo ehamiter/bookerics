@@ -1,16 +1,16 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
-  <id>https://bookerics.com/feed</id>
+  <id>https://bookerics.com/feeds</id>
   <title>bookerics: adam</title>
-  <updated>2024-09-04T01:03:15.808746+00:00</updated>
+  <updated>2024-09-04T13:45:09.331139+00:00</updated>
   <author>
     <name>Eric Hamiter</name>
     <email>ehamiter@gmail.com</email>
   </author>
-  <link href="https://bookerics.com/feed" rel="self"/>
+  <link href="https://bookerics.com/feeds" rel="self"/>
   <generator uri="https://lkiesow.github.io/python-feedgen" version="1.0.0">python-feedgen</generator>
   <logo>https://www.gravatar.com/avatar/004503b8f559333472885c88a406519c2b4c92f3846cfe829ba6de76aa9776cc.jpg</logo>
-  <subtitle>ATOM feed for Bookerics</subtitle>
+  <subtitle>ATOM feeds for Bookerics</subtitle>
   <entry>
     <id>https://www.themadnoodle.com/udon13v2</id>
     <title>Udon:13 v.2 | The Mad Noodle</title>

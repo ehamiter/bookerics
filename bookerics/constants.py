@@ -7,14 +7,14 @@ load_dotenv()
 BASE_URL = "http://localhost:8080"
 
 RSS_METADATA = {
-    "id": "https://bookerics.com/feeds",
+    "id": "https://bookerics.com/",
     "title": "bookerics",
     "subtitle": "Bookmarks, but for Erics",
     "author": {"name": "Eric Hamiter", "email": "ehamiter@gmail.com"},
-    "link": "https://bookerics.com/feeds",
+    "link": "https://bookerics.com/",
     "logo": "https://www.gravatar.com/avatar/004503b8f559333472885c88a406519c2b4c92f3846cfe829ba6de76aa9776cc.jpg",
     "language": "en",
-    "description": "ATOM feeds for Bookerics",
+    "description": "Hand-curated, organically-roasted RSS feeds just like Mom used to make",
 }
 
 # sqlite-web runs on a separate port

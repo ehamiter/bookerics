@@ -1,26 +1,19 @@
+from textwrap import dedent
 import os
 import shutil
 import subprocess
+import boto3
+import aioboto3
+import aiohttp
 import aiofiles
-import aiofiles.os
-from aiofiles.os import wrap
 from datetime import datetime, timezone
-from feedgen.feed import FeedGenerator
-from typing import List
+from typing import Any, Dict, List, Tuple
 import asyncio
 import json
 import sqlite3
-from pathlib import Path
-from datetime import datetime, timezone
 from io import BytesIO
-from typing import Any, Dict, List, Tuple
 
-import aioboto3
-import aiohttp
-import boto3
 from PIL import Image
-from feedgen.feed import FeedGenerator
-import aiofiles
 
 from .ai import get_tags_and_description_from_bookmark_url
 from .constants import (
@@ -276,10 +269,20 @@ def verify_table_structure(table_name: str = "bookmarks"):
 base_directory = os.path.dirname(os.path.abspath(__file__))
 feeds_directory = os.path.join(base_directory, 'feeds')
 
+async def get_file_size(url: str) -> int:
+    async with aiohttp.ClientSession() as session:
+        print(f"Requesting HEAD for URL: {url}")  # Debug print
+        async with session.head(url) as response:
+            file_size = response.headers.get('Content-Length')
+            if file_size:
+                return int(file_size)
+            else:
+                raise ValueError("Could not retrieve file size.")
+
 async def push_changes_up(tag):
-    feed_source_path = os.path.join(feeds_directory, tag, 'atom.xml')
+    feed_source_path = os.path.join(feeds_directory, tag, 'rss.xml')
     local_repo_path = '/Users/eric/projects/bookerics-web-page'
-    feed_destination_path = os.path.join(local_repo_path, 'feeds', tag, 'atom.xml')
+    feed_destination_path = os.path.join(local_repo_path, 'feeds', tag, 'rss.xml')
 
     shutil.copy2(feed_source_path, feed_destination_path)
 
@@ -290,76 +293,88 @@ async def push_changes_up(tag):
 
     print("RSS feed updated and pushed to GitHub Pages!")
 
+DEFAULT_THUMBNAIL_URL = "https://bookerics.s3.amazonaws.com/thumbnails/1651.jpg"
 
-async def create_feed(tag: str, bookmarks: List, xml_file: str = "atom.xml"):
+
+
+async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
     directory_path = os.path.join(feeds_directory, tag)
 
-    # Check if the directory exists
     if not os.path.exists(directory_path):
         print(f"Directory {directory_path} does not exist.")
-
-    # debugging
-    file_path = os.path.join(directory_path, xml_file)
-    # print(f"Constructed file path: {file_path}")
-
-    # Check if the file is writable
-    # if os.access(file_path, os.W_OK):
-    #     print(f"File {file_path} is writable.")
-    # else:
-    #     print(f"File {file_path} is not writable.")
-
-    # directory_path = f"/feeds/{tag}"
-    # await async_makedirs(directory_path, exist_ok=True)
+        return
 
     md = RSS_METADATA
-    fg = FeedGenerator()
 
-    # Ensure required fields are set
-    fg.id(md["id"])  # This sets the unique ID of the feed
-    title = f"{md['title']}: {tag}" if tag else md["title"]
-    fg.title(title)  # This sets the title of the feed
-    fg.subtitle(md["subtitle"])
-    fg.author({"name": md["author"]["name"], "email": md["author"]["email"]})
-    fg.logo(md["logo"])
-    fg.link(href=md["link"], rel="self")
-    fg.language(md["language"])
-    fg.description(md["description"])
-    fg.updated(datetime.now(timezone.utc))
+    RSS_FEED_ITEM_TEMPLATE = dedent("""\
+    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <description>{description}</description>
+      <author>{email} ({name})</author>
+      <guid isPermaLink="true">{link}</guid>
+      {enclosure}
+      <pubDate>{created_at}</pubDate>
+    </item>""")
 
+    items = ""
     for bm in bookmarks:
-        fe = fg.add_entry(order="append")
-        fe.id(bm["url"])
-        fe.title(bm["title"])
-        fe.summary(bm["description"])
-        fe.author({"name": md["author"]["name"], "email": md["author"]["email"]})
-        fe.link({"href": bm["url"], "title": bm["title"]})
-        fe.enclosure(url=bm["thumbnail_url"])
+        thumbnail_url = bm.get("thumbnail_url")
+        enclosure = ""
+
+        if thumbnail_url:
+            img_size = await get_file_size(thumbnail_url)
+            enclosure = f'<enclosure url="{thumbnail_url}" length="{img_size}" type="image/jpeg"/>'
 
         created_at_str = bm["created_at"]
         naive_created_at_datetime = datetime.fromisoformat(created_at_str)
         aware_created_at_datetime = naive_created_at_datetime.replace(tzinfo=timezone.utc)
-        fe.published(aware_created_at_datetime)
 
-        updated_at_str = bm["updated_at"]
-        naive_updated_at_datetime = datetime.fromisoformat(updated_at_str)
-        aware_updated_at_datetime = naive_updated_at_datetime.replace(tzinfo=timezone.utc)
-        fe.updated(aware_updated_at_datetime)
+        formatted_created_at = aware_created_at_datetime.strftime('%a, %d %b %Y %H:%M:%S %z')
 
-    atom_feed = fg.atom_str(pretty=True)
-    # print(atom_feed)
+        items += RSS_FEED_ITEM_TEMPLATE.format(
+            title=bm["title"],
+            link=bm["url"],
+            description=bm["description"],
+            email=md["author"]["email"],
+            name=md["author"]["name"],
+            enclosure=enclosure,
+            created_at=formatted_created_at,
+        )
 
-    # Attempt to write the file asynchronously
+    RSS_FEED_TEMPLATE = dedent(f"""\
+    <rss version="2.0">
+      <channel>
+        <title>{md["title"]}: {tag}</title>
+        <link>{md["link"]}</link>
+        <description>{md["description"]}</description>
+        <webMaster>{md["author"]["email"]}</webMaster>
+        <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
+        <atom:link href="{md["link"]}feeds/{tag}/rss.xml" rel="self" type="application/rss+xml"/>
+        <docs>http://www.rssboard.org/rss-specification</docs>
+        <generator>{md["title"]} 2024.09.05</generator>
+        <image>
+          <url>{md["logo"]}</url>
+          <title>{md["title"]}: {tag}</title>
+          <link>{md["link"]}</link>
+        </image>
+        <language>{md["language"]}</language>
+        <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
+        {items}
+      </channel>
+    </rss>""")
+
+    file_path = os.path.join(directory_path, xml_file)
+
     try:
         async with aiofiles.open(file_path, mode="w") as f:
-            await f.write(atom_feed.decode('utf-8'))
+            await f.write(RSS_FEED_TEMPLATE)
         print(f"Feed written successfully to {file_path}")
     except Exception as e:
         print(f"Failed to write feed: {e}")
 
-    # async with aiofiles.open(f"{directory_path}/{xml_file}", mode="w") as f:
-    #     await f.write(atom_feed.decode('utf-8'))
 
-    print('atom_feed -> ', atom_feed)
+    print('rss_feed -> ', RSS_FEED_TEMPLATE)
 
     await push_changes_up(tag)
 
