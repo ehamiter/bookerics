@@ -12,6 +12,8 @@ import asyncio
 import json
 import sqlite3
 from io import BytesIO
+import xml.sax.saxutils as saxutils
+from textwrap import dedent
 
 from PIL import Image
 
@@ -296,7 +298,6 @@ async def push_changes_up(tag):
 DEFAULT_THUMBNAIL_URL = "https://bookerics.s3.amazonaws.com/thumbnails/1651.jpg"
 
 
-
 async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
     directory_path = os.path.join(feeds_directory, tag)
 
@@ -307,24 +308,23 @@ async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
     md = RSS_METADATA
 
     RSS_FEED_ITEM_TEMPLATE = dedent("""\
-    <item>
-      <title>{title}</title>
-      <link>{link}</link>
-      <description>{description}</description>
-      <author>{email} ({name})</author>
-      <guid isPermaLink="true">{link}</guid>
-      {enclosure}
-      <pubDate>{created_at}</pubDate>
-    </item>""")
+  <item>
+    <title>{title}</title>
+    <link>{link}</link>
+    <description>{description}</description>
+    <author>{email} ({name})</author>
+    <guid isPermaLink="true">{link}</guid>
+    {enclosure}
+    <pubDate>{created_at}</pubDate>
+  </item>
+  """)
 
     items = ""
     for bm in bookmarks:
-        thumbnail_url = bm.get("thumbnail_url")
+        thumbnail_url = bm.get("thumbnail_url") or DEFAULT_THUMBNAIL_URL
         enclosure = ""
-
-        if thumbnail_url:
-            img_size = await get_file_size(thumbnail_url)
-            enclosure = f'<enclosure url="{thumbnail_url}" length="{img_size}" type="image/jpeg"/>'
+        img_size = await get_file_size(thumbnail_url)
+        enclosure = f'<enclosure url="{thumbnail_url}" length="{img_size}" type="image/jpeg"/>'
 
         created_at_str = bm["created_at"]
         naive_created_at_datetime = datetime.fromisoformat(created_at_str)
@@ -332,10 +332,15 @@ async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
 
         formatted_created_at = aware_created_at_datetime.strftime('%a, %d %b %Y %H:%M:%S %z')
 
+        # Clean up the description
+        description = bm["description"].strip()
+        description = description.replace('\n', ' ').replace('\r', '')
+        description = saxutils.escape(description)  # Escape XML special characters
+
         items += RSS_FEED_ITEM_TEMPLATE.format(
             title=bm["title"],
             link=bm["url"],
-            description=bm["description"],
+            description=description,
             email=md["author"]["email"],
             name=md["author"]["name"],
             enclosure=enclosure,
@@ -343,26 +348,26 @@ async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
         )
 
     RSS_FEED_TEMPLATE = dedent(f"""\
-    <rss version="2.0">
-      <channel>
-        <title>{md["title"]}: {tag}</title>
-        <link>{md["link"]}</link>
-        <description>{md["description"]}</description>
-        <webMaster>{md["author"]["email"]}</webMaster>
-        <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
-        <atom:link href="{md["link"]}feeds/{tag}/rss.xml" rel="self" type="application/rss+xml"/>
-        <docs>http://www.rssboard.org/rss-specification</docs>
-        <generator>{md["title"]} 2024.09.05</generator>
-        <image>
-          <url>{md["logo"]}</url>
-          <title>{md["title"]}: {tag}</title>
-          <link>{md["link"]}</link>
-        </image>
-        <language>{md["language"]}</language>
-        <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
-        {items}
-      </channel>
-    </rss>""")
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>{md["title"]}: {tag}</title>
+    <link>{md["link"]}</link>
+    <description>{md["description"]}</description>
+    <webMaster>{md["author"]["email"]}</webMaster>
+    <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
+    <atom:link href="{md["link"]}feeds/{tag}/rss.xml" rel="self" type="application/rss+xml"/>
+    <docs>http://www.rssboard.org/rss-specification</docs>
+    <generator>{md["title"]} 2024.09.05</generator>
+    <image>
+      <url>{md["logo"]}</url>
+      <title>{md["title"]}: {tag}</title>
+      <link>{md["link"]}</link>
+    </image>
+    <language>{md["language"]}</language>
+    <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
+    {items}
+  </channel>
+</rss>""")
 
     file_path = os.path.join(directory_path, xml_file)
 
