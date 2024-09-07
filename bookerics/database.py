@@ -294,12 +294,10 @@ async def push_changes_up(tag):
     subprocess.run(['git', 'commit', '-m', 'Update RSS feed'])
     subprocess.run(['git', 'push', 'origin', 'main'])
 
-    print("RSS feed updated and pushed to GitHub Pages!")
-
 DEFAULT_THUMBNAIL_URL = "https://bookerics.s3.amazonaws.com/thumbnails/1651.jpg"
 
 
-async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
+async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "rss.xml"):
     directory_path = os.path.join(feeds_directory, tag)
 
     if not os.path.exists(directory_path):
@@ -380,9 +378,14 @@ async def create_feed(tag: str, bookmarks: List, xml_file: str = "rss.xml"):
         print(f"Failed to write feed: {e}")
 
 
-    print('rss_feed -> ', RSS_FEED_TEMPLATE)
+    print('rss_feed -> \n', RSS_FEED_TEMPLATE)
 
-    await push_changes_up(tag)
+    if publish:
+        await push_changes_up(tag)
+        print("RSS feed updated and pushed to GitHub Pages!")
+    else:
+        print("RSS feed updated!")
+
 
 
 async def execute_query_async(query: str, params: tuple = ()):
@@ -438,12 +441,16 @@ async def create_bookmark(
     )
     bookmark = await fetch_bookmark_by_id(bookmark_id)
 
+    # feed hack debugging
+    # publish = False
+    publish = True
+    if 'adam' in tags:
+        print('>tags: ', tags)
+        bookmarks = fetch_bookmarks_by_tag('adam')
+        await create_feed(tag='adam', bookmarks=bookmarks, publish=publish)
+
     schedule_thumbnail_fetch_and_save(bookmark)
     schedule_upload_to_s3()
-    print('>tags: ', tags)
-    if 'adam' in tags:
-        from .routes import create_feed_for_tag
-        await create_feed_for_tag('adam')
     return bookmark
 
 
