@@ -13,7 +13,6 @@ import json
 import sqlite3
 from io import BytesIO
 import xml.sax.saxutils as saxutils
-from textwrap import dedent
 
 from PIL import Image
 
@@ -22,6 +21,7 @@ from .constants import (
     ADDITIONAL_DB_PATHS,
     BOOKMARK_NAME,
     LOCAL_BACKUP_PATH,
+    RSS_FEED_CREATION_TAGS,
     RSS_METADATA,
     THUMBNAIL_API_KEY,
 )
@@ -442,12 +442,12 @@ async def create_bookmark(
     bookmark = await fetch_bookmark_by_id(bookmark_id)
 
     # feed hack debugging
-    # publish = False
     publish = True
-    if 'adam' in tags:
-        print('>tags: ', tags)
-        bookmarks = fetch_bookmarks_by_tag('adam')
-        await create_feed(tag='adam', bookmarks=bookmarks, publish=publish)
+    for tag in tags:
+        if tag in RSS_FEED_CREATION_TAGS:
+            print('>feed tag: ', tag)
+            bookmarks = fetch_bookmarks_by_tag(tag)
+            await create_feed(tag=tag, bookmarks=bookmarks, publish=publish)
 
     schedule_thumbnail_fetch_and_save(bookmark)
     schedule_upload_to_s3()

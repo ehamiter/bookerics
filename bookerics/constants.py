@@ -16,6 +16,7 @@ RSS_METADATA = {
     "language": "en",
     "description": "Hand-curated, organically-roasted RSS feeds just like Mom used to make",
 }
+RSS_FEED_CREATION_TAGS = ['adam',]
 
 # sqlite-web runs on a separate port
 # poetry run sqlite_web bookerics.db -p 8888 -x
