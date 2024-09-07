@@ -25,6 +25,7 @@ from .constants import (
     RSS_METADATA,
     THUMBNAIL_API_KEY,
 )
+
 from .utils import log_warning_with_response, logger
 
 # S3/DB setup
@@ -439,6 +440,10 @@ async def create_bookmark(
 
     schedule_thumbnail_fetch_and_save(bookmark)
     schedule_upload_to_s3()
+    print('>tags: ', tags)
+    if 'adam' in tags:
+        from .routes import create_feed_for_tag
+        await create_feed_for_tag('adam')
     return bookmark
 
 

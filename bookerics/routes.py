@@ -92,15 +92,22 @@ async def tags():
     )
 
 
+
 @app.get("/tags/{tag}")
 async def bookmarks_by_tag(tag: str):
     bookmarks = fetch_bookmarks_by_tag(tag)
     bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
 
-    # feeds for certain tags
-    if tag == 'adam':
-        await create_feed(tag, bookmarks)
+    return Page(
+        NavMenu(bookmark_count=len(bookmarks)),
+        SearchBar(),
+        BookmarkList(bookmarks=bookmarks),
+    )
 
+@app.get("/tags/{tag}/feed")
+async def create_feed_for_tag(tag: str):
+    bookmarks = fetch_bookmarks_by_tag(tag)
+    await create_feed(tag, bookmarks)
 
     return Page(
         NavMenu(bookmark_count=len(bookmarks)),
