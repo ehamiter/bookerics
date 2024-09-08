@@ -1,4 +1,3 @@
-from textwrap import dedent
 import os
 import shutil
 import subprocess
@@ -361,6 +360,8 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
       <url>{md["logo"]}</url>
       <title>{md["title"]}: {tag}</title>
       <link>{md["link"]}</link>
+      <width>80</width>
+      <height>80</height>
     </image>
     <language>{md["language"]}</language>
     <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
