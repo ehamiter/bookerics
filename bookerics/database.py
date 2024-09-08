@@ -306,17 +306,17 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
 
     md = RSS_METADATA
 
-    RSS_FEED_ITEM_TEMPLATE = dedent("""\
-  <item>
-    <title>{title}</title>
-    <link>{link}</link>
-    <description>{description}</description>
-    <author>{email} ({name})</author>
-    <guid isPermaLink="true">{link}</guid>
-    {enclosure}
-    <pubDate>{created_at}</pubDate>
-  </item>
-  """)
+    RSS_FEED_ITEM_TEMPLATE = """\
+    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <description>{description}</description>
+      <author>{email} ({name})</author>
+      <guid isPermaLink="true">{link}</guid>
+      {enclosure}
+      <pubDate>{created_at}</pubDate>
+    </item>
+"""
 
     items = ""
     for bm in bookmarks:
@@ -346,7 +346,7 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
             created_at=formatted_created_at,
         )
 
-    RSS_FEED_TEMPLATE = dedent(f"""\
+    RSS_FEED_TEMPLATE = f"""\
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>{md["title"]}: {tag}</title>
@@ -364,9 +364,8 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
     </image>
     <language>{md["language"]}</language>
     <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
-    {items}
-  </channel>
-</rss>""")
+    {items}  </channel>
+</rss>"""
 
     file_path = os.path.join(directory_path, xml_file)
 
