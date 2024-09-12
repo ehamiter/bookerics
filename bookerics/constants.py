@@ -11,8 +11,8 @@ RSS_METADATA = {
     "title": "bookerics",
     "subtitle": "Bookmarks, but for Erics",
     "author": {"name": "Eric", "email": "eric@bookerics.com"},
-    "link": "https://bookerics.com/",
-    "logo": "https://bookerics.com/eric.png",
+    "link": "https://bookerics.com",
+    "logo": "eric.png",
     "language": "en",
     "description": "Hand-curated, organically-roasted RSS feeds just like Mom used to make.",
 }
