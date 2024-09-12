@@ -11,7 +11,7 @@ import asyncio
 import json
 import sqlite3
 from io import BytesIO
-import xml.sax.saxutils as saxutils
+from xml.sax.saxutils import escape
 
 from PIL import Image
 
@@ -249,6 +249,14 @@ def schedule_upload_to_s3():
         asyncio.run(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
 
 
+def schedule_feed_creation(tag, bookmarks, publish):
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        asyncio.create_task(create_feed(tag=tag, bookmarks=bookmarks, publish=publish))
+    else:
+        asyncio.run(create_feed(tag=tag, bookmarks=bookmarks, publish=publish))
+
+
 def schedule_thumbnail_fetch_and_save(bookmark):
     bookmarks = [bookmark]
     loop = asyncio.get_event_loop()
@@ -282,9 +290,13 @@ async def get_file_size(url: str) -> int:
                 raise ValueError("Could not retrieve file size.")
 
 async def push_changes_up(tag):
-    feed_source_path = os.path.join(feeds_directory, tag, 'rss.xml')
     local_repo_path = '/Users/eric/projects/bookerics-web-page'
-    feed_destination_path = os.path.join(local_repo_path, 'feeds', tag, 'rss.xml')
+    if tag:
+        feed_source_path = os.path.join(feeds_directory, tag, 'rss.xml')
+        feed_destination_path = os.path.join(local_repo_path, 'feeds', tag, 'rss.xml')
+    else:
+        feed_source_path = os.path.join(feeds_directory, 'rss.xml')
+        feed_destination_path = os.path.join(local_repo_path, 'feeds', 'rss.xml')
 
     shutil.copy2(feed_source_path, feed_destination_path)
 
@@ -295,9 +307,8 @@ async def push_changes_up(tag):
 
 DEFAULT_THUMBNAIL_URL = "https://bookerics.s3.amazonaws.com/thumbnails/1651.jpg"
 
-
-async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "rss.xml"):
-    directory_path = os.path.join(feeds_directory, tag)
+async def create_feed(tag: str | None, bookmarks: List, publish=True, xml_file: str = "rss.xml"):
+    directory_path = os.path.join(feeds_directory, tag) if tag else feeds_directory
 
     if not os.path.exists(directory_path):
         print(f"Directory {directory_path} does not exist.")
@@ -317,11 +328,15 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
     </item>
 """
 
+    if not tag:
+        # we're doing an entire dump-- limit to most 50 recent bookmarks
+        bookmarks = bookmarks[:50]
+
     items = ""
     for bm in bookmarks:
         thumbnail_url = bm.get("thumbnail_url") or DEFAULT_THUMBNAIL_URL
         enclosure = ""
-        img_size = await get_file_size(thumbnail_url)
+        img_size = 25000  # await get_file_size(thumbnail_url)
         enclosure = f'<enclosure url="{thumbnail_url}" length="{img_size}" type="image/jpeg"/>'
 
         created_at_str = bm["created_at"]
@@ -333,14 +348,13 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
         # Clean up the description
         description = bm["description"].strip()
         description = description.replace('\n', ' ').replace('\r', '')
-        description = saxutils.escape(description)  # Escape XML special characters
 
         items += RSS_FEED_ITEM_TEMPLATE.format(
-            title=bm["title"],
-            link=bm["url"],
-            description=description,
-            email=md["author"]["email"],
-            name=md["author"]["name"],
+            title=escape(bm["title"]),
+            link=escape(bm["url"]),
+            description=escape(description),
+            email=escape(md["author"]["email"]),
+            name=escape(md["author"]["name"]),
             enclosure=enclosure,
             created_at=formatted_created_at,
         )
@@ -348,17 +362,17 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
     RSS_FEED_TEMPLATE = f"""\
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>{md["title"]}: {tag}</title>
+    <title>{md["title"]}{": " + tag if tag else ""}</title>
     <link>{md["link"]}</link>
     <description>{md["description"]}</description>
-    <webMaster>{md["author"]["email"]}</webMaster>
+    <webMaster>{md["author"]["email"]} ({md["author"]["name"]})</webMaster>
     <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
-    <atom:link href="{md["link"]}feeds/{tag}/rss.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="{md["link"]}feeds/{tag + '/' if tag else ''}rss" rel="self" type="application/rss+xml"/>
     <docs>http://www.rssboard.org/rss-specification</docs>
     <generator>{md["title"]} 2024.09.05</generator>
     <image>
       <url>{md["logo"]}</url>
-      <title>{md["title"]}: {tag}</title>
+      <title>{md["title"]}{": " + tag if tag else ""}</title>
       <link>{md["link"]}</link>
       <width>80</width>
       <height>80</height>
@@ -378,7 +392,7 @@ async def create_feed(tag: str, bookmarks: List, publish=True, xml_file: str = "
         print(f"Failed to write feed: {e}")
 
 
-    print('rss_feed -> \n', RSS_FEED_TEMPLATE)
+    print('rss_feed -> ', str(file_path))
 
     if publish:
         await push_changes_up(tag)

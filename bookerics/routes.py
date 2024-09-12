@@ -26,6 +26,7 @@ from .database import (
     fetch_bookmarks,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
+    schedule_feed_creation,
     schedule_upload_to_s3,
     search_bookmarks,
     update_bookmark_description,
@@ -254,8 +255,13 @@ async def add_bookmark(request: Request):
 async def update():
     backup_bookerics_db()
     schedule_upload_to_s3()
+
+    bookmarks = fetch_bookmarks(kind="newest")
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+    schedule_feed_creation(tag=None, bookmarks=bookmarks, publish=True)
+
     return JSONResponse(
-        {"status": "success", "message": "File backed up locally and uploaded to S3"}
+        {"status": "success", "message": "File backed up locally and uploaded to S3. Feed created."}
     )
 
 

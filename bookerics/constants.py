@@ -10,11 +10,11 @@ RSS_METADATA = {
     "id": "https://bookerics.com/",
     "title": "bookerics",
     "subtitle": "Bookmarks, but for Erics",
-    "author": {"name": "Eric Hamiter", "email": "ehamiter@gmail.com"},
+    "author": {"name": "Eric", "email": "eric@bookerics.com"},
     "link": "https://bookerics.com/",
     "logo": "https://bookerics.com/eric.png",
     "language": "en",
-    "description": "Hand-curated, organically-roasted RSS feeds just like Mom used to make",
+    "description": "Hand-curated, organically-roasted RSS feeds just like Mom used to make.",
 }
 RSS_FEED_CREATION_TAGS = ['adam',]
 
