@@ -9,7 +9,7 @@ BASE_URL = "http://localhost:8080"
 RSS_METADATA = {
     "id": "https://bookerics.com/",
     "title": "bookerics",
-    "description": "Bookmarks, but for Erics",
+    "description": "bookmarks, but for Erics",
     "author": {"name": "Eric", "email": "eric@bookerics.com"},
     "link": "https://bookerics.com",
     "logo": "bookerics.png",
