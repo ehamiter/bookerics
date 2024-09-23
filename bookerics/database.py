@@ -321,12 +321,19 @@ async def create_feed(tag: str | None, bookmarks: List, publish=True, xml_file: 
       <title>{title}</title>
       <link>{link}</link>
       <description>{description}</description>
+      {categories}
       <author>{email} ({name})</author>
       <guid isPermaLink="true">{link}</guid>
       {enclosure}
       <pubDate>{created_at}</pubDate>
     </item>
 """
+
+    def format_categories(tags):
+        # If tags exist, create <category> elements for each tag
+        if tags:
+            return "\n  ".join(f"<category>{escape(tag)}</category>" for tag in tags)
+        return ""
 
     if not tag:
         # we're doing an entire dump-- limit to most 25 recent bookmarks
@@ -352,10 +359,13 @@ async def create_feed(tag: str | None, bookmarks: List, publish=True, xml_file: 
         description = bm["description"].strip()
         description = description.replace('\n', ' ').replace('\r', '')
 
+        categories = format_categories(bm.get("tags", []))
+
         items += RSS_FEED_ITEM_TEMPLATE.format(
             title=escape(bm["title"]),
             link=escape(bm["url"]),
             description=escape(description),
+            categories=categories,
             email=escape(md["author"]["email"]),
             name=escape(md["author"]["name"]),
             enclosure=enclosure,
@@ -363,22 +373,22 @@ async def create_feed(tag: str | None, bookmarks: List, publish=True, xml_file: 
         )
 
     RSS_FEED_TEMPLATE = f"""\
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="rss.xsl" type="text/xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>{md["title"]}{": " + tag if tag else ""}</title>
-    <link>{md["link"]}/feeds/{tag + '/' if tag else ''}rss</link>
-    <description>{md["description"]}</description>
+    <title><![CDATA[{md["title"]}{": " + tag if tag else ""}]]></title>
+    <link>{md["link"]}/feeds/{tag + '/' if tag else ''}rss.xml</link>
+    <description><![CDATA[{md["description"]}]]></description>
     <webMaster>{md["author"]["email"]} ({md["author"]["name"]})</webMaster>
     <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
-    <atom:link href="{md["link"]}/feeds/{tag + '/' if tag else ''}rss" rel="self" type="application/rss+xml"/>
+    <atom:link href="{md["link"]}/feeds/{tag + '/' if tag else ''}rss.xml" rel="self" type="application/rss+xml"/>
     <docs>http://www.rssboard.org/rss-specification</docs>
     <generator>{md["title"]} 2024.09.05</generator>
     <image>
-      <url>{md["logo"]}</url>
+      <url>/{md["logo"]}</url>
       <title>{md["title"]}{": " + tag if tag else ""}</title>
       <link>{md["link"]}</link>
-      <width>80</width>
-      <height>80</height>
     </image>
     <language>{md["language"]}</language>
     <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
