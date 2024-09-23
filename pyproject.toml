@@ -20,7 +20,6 @@ flask = "^3.0.3"
 peewee = "^3.17.5"
 openai = "^1.35.7"
 
-feedgen = "^1.0.0"
 aiofiles = "^24.1.0"
 shot-scraper = "^1.4"
 [tool.poetry.group.dev.dependencies]
