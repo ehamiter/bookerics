@@ -477,7 +477,7 @@ async def create_bookmark(
             await create_feed(tag=tag, bookmarks=bookmarks, publish=publish)
 
     schedule_thumbnail_fetch_and_save(bookmark)
-    schedule_upload_to_s3()
+    # schedule_upload_to_s3()
     return bookmark
 
 
@@ -533,6 +533,7 @@ async def update_bookmark_tags(bookmark_id: int, tags: List[str]):
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     if isinstance(bookmark, dict) and "thumbnail_url" in bookmark:
         img_url = bookmark["thumbnail_url"]
+        # print('>get_bookmark_thumbnail_image: ', img_url)
     else:
         # Handle cases where bookmark is not as expected (log, raise error, etc.)
         logger.error(f"💥 Bookmark is not a valid dictionary: {bookmark}")
@@ -598,7 +599,7 @@ async def update_bookmarks_with_thumbnails(bookmarks):
             return bookmarks
 
         img_url = bookmark.get("thumbnail_url")
-        if img_url is None:
+        if img_url in ('', None):
             if isinstance(bookmark, dict):
                 task = asyncio.create_task(get_bookmark_thumbnail_image(bookmark))
                 tasks.append(task)
@@ -612,4 +613,6 @@ async def update_bookmarks_with_thumbnails(bookmarks):
         if thumbnail_url:
             bookmarks[i]["thumbnail_url"] = thumbnail_url
 
+    # upload bookerics.db to s3 so all thumbnail_urls are updated
+    schedule_upload_to_s3()
     return bookmarks
