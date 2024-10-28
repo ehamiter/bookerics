@@ -272,8 +272,6 @@ async def update():
         )
     except Exception as e:
         logger.error(f"Error in update route: {e}")
-        # Re-initialize database connection if needed
-        load_db_on_startup()
         return JSONResponse(
             {"status": "error", "message": str(e)}, status_code=500
         )

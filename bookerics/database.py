@@ -12,6 +12,8 @@ import json
 import sqlite3
 from io import BytesIO
 from xml.sax.saxutils import escape
+from contextlib import contextmanager
+import threading
 
 from PIL import Image
 
@@ -32,6 +34,21 @@ S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
 S3_KEY = f"{BOOKMARK_NAME}s.db"
 DB_PATH = f"./{BOOKMARK_NAME}s.db"
 
+# Global connection storage per thread
+_connection = threading.local()
+
+@contextmanager
+def get_db_connection():
+    """Get a database connection for the current thread."""
+    if not hasattr(_connection, 'db'):
+        _connection.db = sqlite3.connect(DB_PATH)
+        _connection.db.row_factory = sqlite3.Row
+    
+    try:
+        yield _connection.db
+    except Exception as e:
+        _connection.db.rollback()
+        raise e
 
 def download_file_from_s3(bucket_name, s3_key, local_path):
     s3 = boto3.client("s3")
@@ -46,6 +63,11 @@ def load_db_on_startup():
     logger.info("🔖 Bookerics starting up…")
     if not os.path.exists(DB_PATH):
         download_file_from_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
+    
+    # Test the connection
+    with get_db_connection() as conn:
+        conn.execute("SELECT 1")
+    
     logger.info("☑️ Database loaded!")
 
 
@@ -93,28 +115,24 @@ def enter_the_multiverse(query, cursor, table_name):
     return final_query
 
 def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks", allow_external_db: bool = True) -> Any:
-    connection = sqlite3.connect(DB_PATH)
-    cursor = connection.cursor()
+    with get_db_connection() as connection:
+        cursor = connection.cursor()
 
-    if allow_external_db:
-        # params are passed in to fetch thumbnails, so do not attach additional dbs if that is the case
-        if not params and ADDITIONAL_DB_PATHS:
-            query = enter_the_multiverse(query, cursor, table_name)
+        if allow_external_db:
+            if not params and ADDITIONAL_DB_PATHS:
+                query = enter_the_multiverse(query, cursor, table_name)
 
-    try:
-        cursor.execute(query, params)
-        result = cursor.fetchall()
-        last_row_id = cursor.lastrowid
-        connection.commit()
-    except Exception as e:
-        logger.error(
-            f"💥 Error executing query: {query}\nParams: {params}\nException: {e}"
-        )
-        raise
-    finally:
-        connection.close()
-
-    return result, last_row_id
+        try:
+            cursor.execute(query, params)
+            result = cursor.fetchall()
+            last_row_id = cursor.lastrowid
+            connection.commit()
+            return result, last_row_id
+        except Exception as e:
+            logger.error(
+                f"💥 Error executing query: {query}\nParams: {params}\nException: {e}"
+            )
+            raise
 
 
 def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
@@ -241,29 +259,20 @@ def backup_bookerics_db():
     logger.info(f"☑️ Backup created at {dest_path}")
 
 
-def schedule_upload_to_s3():
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.create_task(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
-    else:
-        asyncio.run(upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH))
+async def schedule_upload_to_s3():
+    """Schedule an S3 upload and return the task."""
+    return await upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
 
 
-def schedule_feed_creation(tag, bookmarks, publish):
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.create_task(create_feed(tag=tag, bookmarks=bookmarks, publish=publish))
-    else:
-        asyncio.run(create_feed(tag=tag, bookmarks=bookmarks, publish=publish))
+async def schedule_feed_creation(tag, bookmarks, publish):
+    """Schedule feed creation and return the task."""
+    return await create_feed(tag=tag, bookmarks=bookmarks, publish=publish)
 
 
-def schedule_thumbnail_fetch_and_save(bookmark):
+async def schedule_thumbnail_fetch_and_save(bookmark):
+    """Schedule thumbnail fetching and return the task."""
     bookmarks = [bookmark]
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.create_task(update_bookmarks_with_thumbnails(bookmarks))
-    else:
-        asyncio.run(update_bookmarks_with_thumbnails(bookmarks))
+    return await update_bookmarks_with_thumbnails(bookmarks)
 
 
 def verify_table_structure(table_name: str = "bookmarks"):
