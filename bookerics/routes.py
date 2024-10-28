@@ -286,16 +286,13 @@ async def update_thumbnail(request: Request):
 
 
 @app.delete("/delete/{bookmark_id}")
-async def delete_bookmark(request: Request):
-    bookmark_id = request.path_params["bookmark_id"]
+async def delete_bookmark(bookmark_id: str):
     try:
-        delete_bookmark_by_id(bookmark_id)
-        # Return a minimal response to trigger the swap
-        return HTMLResponse("", status_code=200)
+        await delete_bookmark_by_id(int(bookmark_id))
+        return HTMLResponse("")
     except Exception as e:
-        # Log the error for debugging purposes
         logger.error(f"Error deleting bookmark: {e}")
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+        return HTMLResponse(f"Failed to delete: {str(e)}", status_code=500)
 
 
 # misc

@@ -235,12 +235,12 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
     return fetch_data(query, (tag,))
 
 
-def delete_bookmark_by_id(bookmark_id: int) -> None:
+async def delete_bookmark_by_id(bookmark_id: int) -> None:
     try:
         query = "DELETE FROM bookmarks WHERE id = ?"
         execute_query(query, (bookmark_id,))
         logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
-        schedule_upload_to_s3()
+        await schedule_upload_to_s3()
     except Exception as e:
         logger.error(f"💥 Error deleting bookmark with id {bookmark_id}: {e}")
         raise e
@@ -485,8 +485,8 @@ async def create_bookmark(
             bookmarks = fetch_bookmarks_by_tag(tag)
             await create_feed(tag=tag, bookmarks=bookmarks, publish=publish)
 
-    schedule_thumbnail_fetch_and_save(bookmark)
-    # schedule_upload_to_s3()
+    await schedule_thumbnail_fetch_and_save(bookmark)
+    await schedule_upload_to_s3()
     return bookmark
 
 
@@ -638,6 +638,6 @@ async def update_bookmarks_with_thumbnails(bookmarks):
         if thumbnail_url:
             bookmarks[i]["thumbnail_url"] = thumbnail_url
 
-    # upload bookerics.db to s3 so all thumbnail_urls are updated
-    schedule_upload_to_s3()
+    # Properly await the S3 upload
+    await schedule_upload_to_s3()
     return bookmarks
