@@ -533,62 +533,78 @@ async def update_bookmark_tags(bookmark_id: int, tags: List[str]):
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     if isinstance(bookmark, dict) and "thumbnail_url" in bookmark:
         img_url = bookmark["thumbnail_url"]
-        # print('>get_bookmark_thumbnail_image: ', img_url)
     else:
-        # Handle cases where bookmark is not as expected (log, raise error, etc.)
         logger.error(f"💥 Bookmark is not a valid dictionary: {bookmark}")
         return ""
 
     if img_url:
-        logger.info(
-            f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}."
-        )
+        logger.info(f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}.")
         return img_url
     else:
-        logger.info(
-            f"🐕 Fetching thumbnail URL from API for bookmark id {bookmark['id']}... "
-        )
-        api_root = f"https://api.thumbnail.ws/api/{THUMBNAIL_API_KEY}/thumbnail/get"
-        api_img_url = f'{api_root}?width=480&url={bookmark["url"]}'
+        logger.info(f"🐕 Generating thumbnail for bookmark id {bookmark['id']}... ")
+        
+        s3_bucket = S3_BUCKET_NAME
+        s3_key = f'thumbnails/{bookmark["id"]}.jpg'
+        local_path = f'/tmp/{bookmark["id"]}.jpg'
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(api_img_url) as response:
-                if response.status == 200:
-                    logger.info(
-                        f"🤝 Thumbnail API handshake successful for bookmark id {bookmark['id']}!"
+        try:
+            # Attempt to run shot-scraper
+            process = await asyncio.create_subprocess_exec(
+                "shot-scraper",
+                bookmark["url"],
+                "-o", local_path,
+                "--height", "800",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                error_output = stderr.decode()
+                if "Executable doesn't exist" in error_output and "Please run the following command to download new browsers" in error_output:
+                    logger.info("Installing Playwright browsers...")
+                    await asyncio.create_subprocess_exec("playwright", "install", check=True)
+                    
+                    # Retry shot-scraper after installation
+                    process = await asyncio.create_subprocess_exec(
+                        "shot-scraper",
+                        bookmark["url"],
+                        "-o", local_path,
+                        "--width", "480",
+                        check=True
                     )
-                    img_bytes = await response.read()
-                    img = Image.open(BytesIO(img_bytes))
-
-                    # Save the image to a BytesIO object
-                    img_byte_arr = BytesIO()
-                    img.save(img_byte_arr, format="JPEG")
-                    img_byte_arr.seek(0)
-
-                    # Upload to S3
-                    session = aioboto3.Session()
-                    async with session.client("s3") as s3:
-                        s3_bucket = S3_BUCKET_NAME
-                        s3_key = f'thumbnails/{bookmark["id"]}.jpg'
-                        await s3.upload_fileobj(
-                            img_byte_arr,
-                            s3_bucket,
-                            s3_key,
-                            ExtraArgs={"ContentType": "image/jpeg"},
-                        )
-
-                        img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
-
-                    await update_bookmark_thumbnail_url(bookmark["id"], img_url)
-                    logger.info(
-                        f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to S3!"
-                    )
-                    return img_url
+                    await process.communicate()
                 else:
-                    await log_warning_with_response(response)
+                    raise subprocess.CalledProcessError(process.returncode, "shot-scraper", stderr=error_output)
+
+            # Upload to S3
+            session = aioboto3.Session()
+            async with session.client("s3") as s3:
+                with open(local_path, 'rb') as file_obj:
+                    await s3.upload_fileobj(
+                        file_obj,
+                        s3_bucket,
+                        s3_key,
+                        ExtraArgs={"ContentType": "image/jpeg"},
+                    )
+
+            img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+
+            await update_bookmark_thumbnail_url(bookmark["id"], img_url)
+            logger.info(f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to S3!")
+            
+            # Clean up local file
+            os.remove(local_path)
+            
+            return img_url
+        except subprocess.CalledProcessError as e:
+            logger.error(f"💥 Error generating thumbnail: {e}")
+            return ""
+        except Exception as e:
+            logger.error(f"💥 Error uploading thumbnail to S3: {e}")
+            return ""
 
     return img_url
-
 
 async def update_bookmarks_with_thumbnails(bookmarks):
     tasks = []

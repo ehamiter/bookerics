@@ -512,7 +512,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
             ImageSwitcher(
                 PreviewImage(
                     src=bookmark["thumbnail_url"],
-                    height="270",
+                    height="300",
                     width="480",
                     id=f"thumbnail-{bookmark['id']}",
                     hx_get=f"/get_thumbnail/{bookmark['id']}",
