@@ -309,33 +309,28 @@ class BookmarkBox(div):
                 "margin": "1em .25em",
                 "font-size": "1em",
             },
-            ".update-btn": {
+            ".expand-button": {
                 "position": "absolute",
-                "bottom": "1rem;",
-                "right": "2rem;",
+                "top": "1rem",
+                "right": "0.5rem",
+                "display": "inline-block",
+            },
+            ".action-buttons": {
+                "position": "absolute",
+                "bottom": "1rem",
+                "right": "0.5rem",
+                "display": "flex",
+                "gap": "0.5rem",
+                "align-items": "center",
+            },
+            ".update-btn": {
                 "background": "none",
                 "border": "none",
                 "cursor": "pointer",
                 "font-size": "1rem",
                 "opacity": "0.75",
             },
-            ".update-bookmark": {
-                "text-align": "center",
-            },
-            ".toggle-image-preview-btn": {
-                "position": "absolute",
-                "top": "1rem;",
-                "right": "0.5rem;",
-                "background": "none",
-                "border": "none",
-                "font-size": "1rem",
-                "opacity": "0.25",
-                "cursor": "pointer",
-            },
             ".delete-btn": {
-                "position": "absolute",
-                "bottom": "1rem;",
-                "right": "0.5rem;",
                 "background": "none",
                 "border": "none",
                 "cursor": "not-allowed",
@@ -447,23 +442,32 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding"],
             ),
-            ToggleImagePreviewButton(
-                "➕",
-                hx_get=f"/id/{bookmark['id']}",
-                hx_target=f"#bookmark-{bookmark['id']}",
-                hx_swap="outerHTML",
+            # Separate container for expand icon
+            div(
+                ToggleImagePreviewButton(
+                    "➕",
+                    hx_get=f"/id/{bookmark['id']}",
+                    hx_target=f"#bookmark-{bookmark['id']}",
+                    hx_swap="outerHTML",
+                ),
+                classes=["expand-button"],
             ),
-            UpdateBookmarkButton(
-                "✒️",
-                hx_get=f"/edit/{bookmark['id']}",
-            ),
-            HTMXDeleteButton(
-                "🗑️",
-                to="#",
-                classes=["delete-btn"],
-                hx_target=f"#bookmark-{bookmark['id']}",
-                hx_swap="outerHTML",
-                hx_delete=f"/delete/{bookmark['id']}",
+            # Action buttons container
+            div(
+                UpdateBookmarkButton(
+                    "✒️",
+                    hx_get=f"/edit/{bookmark['id']}",
+                    classes=["update-btn"],
+                ),
+                HTMXDeleteButton(
+                    "🗑️",
+                    to="#",
+                    classes=["delete-btn"],
+                    hx_target=f"#bookmark-{bookmark['id']}",
+                    hx_swap="outerHTML",
+                    hx_delete=f"/delete/{bookmark['id']}",
+                ),
+                classes=["action-buttons"],
             ),
             id=f"bookmark-{bookmark['id']}",
             classes=["bookmark-box"],
@@ -534,23 +538,32 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
                 ),
                 classes=["no-border no-inline-padding no-block-padding"],
             ),
-            UpdateBookmarkButton(
-                "✒️",
-                hx_get=f"/edit/{bookmark['id']}",
+            # Move collapse button to top right
+            div(
+                ToggleImagePreviewButton(
+                    "➖",
+                    hx_get=f"/id/c/{bookmark['id']}",
+                    hx_target=f"#bmb-{bookmark['id']}",
+                    hx_swap="outerHTML",
+                ),
+                classes=["expand-button"],  # Use same class as expand button
             ),
-            ToggleImagePreviewButton(
-                "➖",
-                hx_get=f"/id/c/{bookmark['id']}",
-                hx_target=f"#bmb-{bookmark['id']}",
-                hx_swap="outerHTML",
-            ),
-            HTMXDeleteButton(
-                "🗑️",
-                to="#",
-                classes=["delete-btn"],
-                hx_target=f"#bmb-{bookmark['id']}",
-                hx_swap="outerHTML",
-                hx_delete=f"/delete/{bookmark['id']}",
+            # Action buttons at bottom right
+            div(
+                UpdateBookmarkButton(
+                    "✒️",
+                    hx_get=f"/edit/{bookmark['id']}",
+                    classes=["update-btn"],
+                ),
+                HTMXDeleteButton(
+                    "🗑️",
+                    to="#",
+                    classes=["delete-btn"],
+                    hx_target=f"#bmb-{bookmark['id']}",
+                    hx_swap="outerHTML",
+                    hx_delete=f"/delete/{bookmark['id']}",
+                ),
+                classes=["action-buttons"],
             ),
             id=f"bmb-{bookmark['id']}",
             classes=["bookmark-box"],
