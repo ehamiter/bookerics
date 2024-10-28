@@ -83,3 +83,12 @@ app.add_middleware(
 
 import bookerics.errors as _  # noqa
 import bookerics.routes as _  # noqa
+
+def start():
+    import uvicorn
+    uvicorn.run(
+        "bookerics.main:app",
+        host="0.0.0.0",
+        port=8080,
+        reload=True
+    )

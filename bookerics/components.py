@@ -1,13 +1,14 @@
 import asyncio
-from typing import override
-
+from typing import Annotated, override
+import json
 import requests
-from ludic.attrs import GlobalAttrs, ImgAttrs
+from ludic.attrs import GlobalAttrs, ImgAttrs, Attrs
 from ludic.base import NoChildren
-from ludic.catalog.buttons import ButtonLink
-from ludic.catalog.forms import InputField
+from ludic.catalog.buttons import ButtonLink, ButtonPrimary
+from ludic.catalog.forms import FieldMeta, Form, InputField
 from ludic.catalog.layouts import Box, Center, Cluster, Switcher
 from ludic.catalog.typography import CodeBlock, Link, LinkAttrs, Paragraph
+from ludic.components import Component
 from ludic.html import a, div, i, img, style
 from ludic.types import Component, ComponentStrict, NoChildren, PrimitiveChildren
 
@@ -405,18 +406,9 @@ class GetTagsForBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
         return a(self.children[0], **attrs)
 
 
-class UpdateBookmarkButton(ComponentStrict[PrimitiveChildren, LinkAttrs]):
-    classes = ["btn update-btn"]
-
-    @override
-    def render(self) -> a:
-        attrs = {
-            "href": self.attrs.get("to", "#"),
-            "hx-swap": "none",
-            "hx-get": self.attrs.get("hx_get"),
-            "class": " ".join(self.classes + self.attrs.get("classes", [])),
-        }
-        return a(self.children[0], **attrs)
+class UpdateBookmarkButton(ButtonLink):
+    def __init__(self, text: str, **attrs):
+        super().__init__(text, to=attrs.pop("hx_get"), **attrs)
 
 
 class BookmarkList(Component[NoChildren, GlobalAttrs]):
@@ -463,7 +455,7 @@ class BookmarkList(Component[NoChildren, GlobalAttrs]):
             ),
             UpdateBookmarkButton(
                 "✒️",
-                hx_get=f"/update/{bookmark['id']}",
+                hx_get=f"/edit/{bookmark['id']}",
             ),
             HTMXDeleteButton(
                 "🗑️",
@@ -544,7 +536,7 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
             ),
             UpdateBookmarkButton(
                 "✒️",
-                hx_get=f"/update/{bookmark['id']}",
+                hx_get=f"/edit/{bookmark['id']}",
             ),
             ToggleImagePreviewButton(
                 "➖",
@@ -567,3 +559,48 @@ class BookmarkImageList(Component[NoChildren, GlobalAttrs]):
     @override
     def render(self) -> Switcher:
         return Switcher(*[self.render_bookmark(bm) for bm in self.bookmarks])
+
+
+class BookmarkAttrs(Attrs):
+    title: Annotated[str, FieldMeta(label="Title")]
+    url: Annotated[str, FieldMeta(label="URL")]
+    description: Annotated[str, FieldMeta(label="Description")]
+    tags: Annotated[str, FieldMeta(label="Tags")]
+
+class EditBookmarkForm(Component[NoChildren, BookmarkAttrs]):
+    @override
+    def render(self) -> Form:
+        bookmark = self.attrs["bookmark"]
+        tags = bookmark.get("tags", [])
+        if isinstance(tags, str):
+            tags = json.loads(tags)
+            
+        return Form(
+            InputField(
+                name="title",
+                value=bookmark.get("title", ""),
+                label="Title"
+            ),
+            InputField(
+                name="url", 
+                value=bookmark.get("url", ""),
+                label="URL"
+            ),
+            InputField(
+                name="description",
+                value=bookmark.get("description", ""),
+                label="Description"
+            ),
+            InputField(
+                name="tags",
+                value=" ".join(tags),
+                label="Tags"
+            ),
+            ButtonPrimary(
+                "Save Changes",
+                classes=["small"]  # Add small class for sizing
+            ),
+            method="POST"
+        )
+
+

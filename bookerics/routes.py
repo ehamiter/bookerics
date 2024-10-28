@@ -4,7 +4,7 @@ import webbrowser
 
 from ludic.catalog.layouts import Stack
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from .ai import get_tags_and_description_from_bookmark_url
 from .components import (
@@ -14,6 +14,7 @@ from .components import (
     SearchBar,
     TableStructure,
     TagCloud,
+    EditBookmarkForm,
 )
 from .constants import UPDATE_BASE_URL
 from .database import (
@@ -33,6 +34,7 @@ from .database import (
     update_bookmark_tags,
     update_bookmark_title,
     verify_table_structure,
+    load_db_on_startup,
 )
 from .main import app
 from .pages import Page
@@ -253,16 +255,28 @@ async def add_bookmark(request: Request):
 
 @app.get("/update")
 async def update():
-    backup_bookerics_db()
-    schedule_upload_to_s3()
+    try:
+        # First get the bookmarks while we know the connection is good
+        bookmarks = fetch_bookmarks(kind="newest")
+        bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+        
+        # Then do the backup operations
+        backup_bookerics_db()
+        await schedule_upload_to_s3()
+        
+        # Finally schedule feed creation
+        await schedule_feed_creation(tag=None, bookmarks=bookmarks, publish=True)
 
-    bookmarks = fetch_bookmarks(kind="newest")
-    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
-    schedule_feed_creation(tag=None, bookmarks=bookmarks, publish=True)
-
-    return JSONResponse(
-        {"status": "success", "message": "File backed up locally and uploaded to S3. Feed created."}
-    )
+        return JSONResponse(
+            {"status": "success", "message": "File backed up locally and uploaded to S3. Feed created."}
+        )
+    except Exception as e:
+        logger.error(f"Error in update route: {e}")
+        # Re-initialize database connection if needed
+        load_db_on_startup()
+        return JSONResponse(
+            {"status": "error", "message": str(e)}, status_code=500
+        )
 
 
 @app.get("/update_thumbnail/{id}")
@@ -298,3 +312,30 @@ async def table_structure():
         SearchBar(),
         TableStructure(structure=structure),
     )
+
+
+@app.get("/edit/{bookmark_id}")
+async def edit_bookmark(bookmark_id: str):
+    bookmark = await fetch_bookmark_by_id(id=bookmark_id)
+    if not bookmark:
+        return HTMLResponse("Bookmark not found", status_code=404)
+    
+    return Page(
+        NavMenu(),
+        EditBookmarkForm(bookmark=bookmark),
+    )
+
+@app.post("/edit/{bookmark_id}")
+async def update_bookmark(bookmark_id: str, request: Request):
+    form = await request.form()
+    title = form.get("title")
+    url = form.get("url")
+    description = form.get("description")
+    tags = form.get("tags", "").split(" ")
+    
+    await update_bookmark_title(bookmark_id, title)
+    await update_bookmark_description(bookmark_id, description)
+    await update_bookmark_tags(bookmark_id, tags)
+    
+    # Redirect to home page after saving
+    return RedirectResponse(url="/", status_code=303)

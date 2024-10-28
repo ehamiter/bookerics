@@ -13,22 +13,7 @@ def run_apps():
             "8080",
         ]
     )
-    sqlite_web_process = subprocess.Popen(
-        [
-            "poetry",
-            "run",
-            "python",
-            "-m",
-            "sqlite_web.sqlite_web",
-            "bookerics.db",
-            "-p",
-            "8888",
-            "-x",
-        ]
-    )
-
     uvicorn_process.wait()
-    sqlite_web_process.wait()
 
 
 if __name__ == "__main__":
