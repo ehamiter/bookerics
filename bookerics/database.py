@@ -497,7 +497,7 @@ async def update_bookmark_thumbnail_url(bookmark_id: int, img_url: str):
     SET thumbnail_url = ?, updated_at = ?
     WHERE id = ?
     """
-    current_timestamp = datetime.utcnow().isoformat()
+    current_timestamp = datetime.now(timezone.utc).isoformat()
     params = (img_url, current_timestamp, bookmark_id)
     await execute_query_async(query, params)
 
@@ -508,7 +508,7 @@ async def update_bookmark_description(bookmark_id: int, description: str):
     SET description = ?, updated_at = ?
     WHERE id = ?
     """
-    current_timestamp = datetime.utcnow().isoformat()
+    current_timestamp = datetime.now(timezone.utc).isoformat()
     params = (description, current_timestamp, bookmark_id)
     await execute_query_async(query, params)
 
@@ -518,7 +518,7 @@ async def update_bookmark_title(bookmark_id: int, title: str):
     SET title = ?, updated_at = ?
     WHERE id = ?
     """
-    current_timestamp = datetime.utcnow().isoformat()
+    current_timestamp = datetime.now(timezone.utc).isoformat()
     params = (title, current_timestamp, bookmark_id)
     await execute_query_async(query, params)
 
@@ -613,7 +613,6 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
             logger.error(f"💥 Error uploading thumbnail to S3: {e}")
             return ""
 
-    return img_url
 
 async def update_bookmarks_with_thumbnails(bookmarks):
     tasks = []
