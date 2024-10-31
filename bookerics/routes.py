@@ -1,6 +1,4 @@
-import base64
 import secrets
-import webbrowser
 
 from ludic.catalog.layouts import Stack
 from starlette.requests import Request
@@ -16,7 +14,6 @@ from .components import (
     TagCloud,
     EditBookmarkForm,
 )
-from .constants import UPDATE_BASE_URL
 from .database import (
     backup_bookerics_db,
     create_bookmark,
@@ -34,7 +31,6 @@ from .database import (
     update_bookmark_tags,
     update_bookmark_title,
     verify_table_structure,
-    load_db_on_startup,
 )
 from .main import app
 from .pages import Page
@@ -151,14 +147,6 @@ async def bookmark_by_id_compact(id: str):
 
     bookmarks = [bookmark]
     return BookmarkList(bookmarks=bookmarks)
-
-
-@app.get("/update/{bookmark_id}")
-def update_bookmark_by_id(bookmark_id: str):
-    pk_b64_id = base64.b64encode(bookmark_id.encode()).decode("utf8")
-    update_url = f"{UPDATE_BASE_URL}/{pk_b64_id}/"
-    webbrowser.open_new_tab(update_url)
-
 
 @app.get("/search")
 async def search(request: Request):

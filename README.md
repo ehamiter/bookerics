@@ -49,5 +49,5 @@ mv .env.example .env  # and update it with relevant bits
 
 poetry install
 
-poetry run app
+poetry run bookerics
 ```

@@ -52,7 +52,6 @@ combine_as_imports = true
 line_length = 88
 
 [tool.poetry.scripts]
-app = "bookerics.run_apps:run_apps"
 bookerics = "bookerics.main:start"
 
 [tool.pyright]
