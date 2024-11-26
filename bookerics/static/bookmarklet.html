@@ -13,21 +13,40 @@
         textarea { min-height: 100px; }
         button { margin-top: 15px; padding: 10px; background-color: hsl(207deg 44% 59%); color: #f8f8f8; border: none; cursor: pointer; max-width: 30%; }
         button:hover { box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px; }
+        body {
+            transition: opacity 0.15s ease-out;
+        }
+        .hiding {
+            opacity: 0;
+            pointer-events: none;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: #f8f8f8;
+            transition: opacity 0.15s ease-out;
+        }
+        .container {
+            padding: 5px 10px;
+        }
     </style>
 </head>
 <body>
-    <form id="bookmarkForm" action="http://localhost:8080/add" method="post">
-        <label for="title">Title:</label>
-        <input type="text" id="title" name="title">
-        <label for="description">Description:</label>
-        <textarea id="description" name="description"></textarea>
-        <label for="url">URL:</label>
-        <input type="text" id="url" name="url">
-        <label for="tags">Tags (separate by spaces):</label>
-        <input type="text" id="tags" name="tags">
-        <input type="hidden" id="forceUpdate" name="forceUpdate">
-        <button type="submit">Save</button>
-    </form>
+    <div class="container">
+        <form id="bookmarkForm" action="http://localhost:8080/add" method="post">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title">
+            <label for="description">Description:</label>
+            <textarea id="description" name="description"></textarea>
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url">
+            <label for="tags">Tags (separate by spaces):</label>
+            <input type="text" id="tags" name="tags">
+            <input type="hidden" id="forceUpdate" name="forceUpdate">
+            <button type="submit">Save</button>
+        </form>
+    </div>
     <script>
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -91,21 +110,34 @@
                 }
             });
 
-            document.getElementById('bookmarkForm').onsubmit = async function(event) {
-                event.preventDefault();
-                const form = event.target;
-                const formData = new FormData(form);
-                const response = await fetch(form.action, {
+            document.getElementById('bookmarkForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                // Send the form data in the background
+                fetch('/add', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    // Add these headers to ensure the request completes
+                    headers: {
+                        'Keep-Alive': 'timeout=5, max=1000'
+                    },
+                    keepalive: true  // This is the key addition
+                }).then(response => {
+                    if (!response.ok) {
+                        console.error('Error saving bookmark');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
                 });
-                const result = await response.json();
-                if (result.status === "success") {
-                    window.close();
-                } else {
-                    alert("Error: " + result.message);
+                
+                // Close the window immediately, don't wait for the response
+                if (window.opener) {
+                    window.opener.postMessage('bookmark_saving', '*');
                 }
-            };
+                window.close();
+            });
         };
     </script>
 </body>

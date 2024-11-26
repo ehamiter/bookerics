@@ -244,22 +244,12 @@ async def add_bookmark(request: Request):
 @app.get("/update")
 async def update():
     try:
-        # First get the bookmarks while we know the connection is good
-        bookmarks = fetch_bookmarks(kind="newest")
-        bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
-        
-        # Then do the backup operations
         backup_bookerics_db()
-        await schedule_upload_to_s3()
-        
-        # Finally schedule feed creation
-        await schedule_feed_creation(tag=None, bookmarks=bookmarks, publish=True)
-
         return JSONResponse(
-            {"status": "success", "message": "File backed up locally and uploaded to S3. Feed created."}
+            {"status": "success", "message": "Database backed up locally"}
         )
     except Exception as e:
-        logger.error(f"Error in update route: {e}")
+        logger.error(f"Error in backup operation: {e}")
         return JSONResponse(
             {"status": "error", "message": str(e)}, status_code=500
         )

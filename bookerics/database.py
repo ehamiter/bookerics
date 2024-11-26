@@ -6,7 +6,7 @@ import aioboto3
 import aiohttp
 import aiofiles
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import json
 import sqlite3
@@ -25,6 +25,7 @@ from .constants import (
     RSS_FEED_CREATION_TAGS,
     RSS_METADATA,
     THUMBNAIL_API_KEY,
+    FEEDS_DIR,
 )
 
 from .utils import log_warning_with_response, logger
@@ -237,9 +238,29 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Dict[str, Any]]:
 
 async def delete_bookmark_by_id(bookmark_id: int) -> None:
     try:
+        # Get the bookmark's tags before deletion
+        bookmark = await fetch_bookmark_by_id(bookmark_id)
+        tags = bookmark.get('tags', [])
+
+        # Delete the bookmark
         query = "DELETE FROM bookmarks WHERE id = ?"
         execute_query(query, (bookmark_id,))
         logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
+
+        # Update RSS feeds
+        bookmarks = fetch_bookmarks(kind="newest")
+        bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+        
+        # Update main feed
+        await create_feed(tag=None, bookmarks=bookmarks, publish=True)
+        
+        # Update affected tag feeds
+        for tag in tags:
+            if tag in RSS_FEED_CREATION_TAGS:
+                tag_bookmarks = fetch_bookmarks_by_tag(tag)
+                await create_feed(tag=tag, bookmarks=tag_bookmarks, publish=True)
+
+        # Upload to S3 once at the end
         await schedule_upload_to_s3()
     except Exception as e:
         logger.error(f"💥 Error deleting bookmark with id {bookmark_id}: {e}")
@@ -269,10 +290,10 @@ async def schedule_feed_creation(tag, bookmarks, publish):
     return await create_feed(tag=tag, bookmarks=bookmarks, publish=publish)
 
 
-async def schedule_thumbnail_fetch_and_save(bookmark):
+async def schedule_thumbnail_fetch_and_save(bookmark, schedule_s3_upload=True):
     """Schedule thumbnail fetching and return the task."""
     bookmarks = [bookmark]
-    return await update_bookmarks_with_thumbnails(bookmarks)
+    return await update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=schedule_s3_upload)
 
 
 def verify_table_structure(table_name: str = "bookmarks"):
@@ -316,112 +337,42 @@ async def push_changes_up(tag):
 
 DEFAULT_THUMBNAIL_URL = "https://bookerics.s3.amazonaws.com/thumbnails/1651.jpg"
 
-async def create_feed(tag: str | None, bookmarks: List, publish=True, xml_file: str = "rss.xml"):
-    directory_path = os.path.join(feeds_directory, tag) if tag else feeds_directory
-
-    if not os.path.exists(directory_path):
-        print(f"Directory {directory_path} does not exist.")
-        return
-
-    md = RSS_METADATA
-
-    RSS_FEED_ITEM_TEMPLATE = """\
-    <item>
-      <title>{title}</title>
-      <link>{link}</link>
-      <description>{description}</description>
-      {categories}
-      <author>{email} ({name})</author>
-      <guid isPermaLink="true">{link}</guid>
-      {enclosure}
-      <pubDate>{created_at}</pubDate>
-    </item>
-"""
-
-    def format_categories(tags):
-        # If tags exist, create <category> elements for each tag
-        if tags:
-            return "\n  ".join(f"<category>{escape(tag)}</category>" for tag in tags)
-        return ""
-
-    if not tag:
-        # we're doing an entire dump-- limit to most 25 recent bookmarks
-        bookmarks = bookmarks[:25]
-
-    # if we have more than 50 bookmarks, do not fetch the img size for each thumbnail
-    img_size = 0 if len(bookmarks) > 25 else 25000  # the img_size `length` means filesize. 25000 is an average
-
-    items = ""
-    for bm in bookmarks:
-        thumbnail_url = bm.get("thumbnail_url") or DEFAULT_THUMBNAIL_URL
-        enclosure = ""
-        img_size = img_size if img_size > 0 else await get_file_size(thumbnail_url)
-        enclosure = f'<enclosure url="{thumbnail_url}" length="{img_size}" type="image/jpeg"/>'
-
-        created_at_str = bm["created_at"]
-        naive_created_at_datetime = datetime.fromisoformat(created_at_str)
-        aware_created_at_datetime = naive_created_at_datetime.replace(tzinfo=timezone.utc)
-
-        formatted_created_at = aware_created_at_datetime.strftime('%a, %d %b %Y %H:%M:%S %z')
-
-        # Clean up the description
-        description = bm["description"].strip()
-        description = description.replace('\n', ' ').replace('\r', '')
-
-        categories = format_categories(bm.get("tags", []))
-
-        items += RSS_FEED_ITEM_TEMPLATE.format(
-            title=escape(bm["title"]),
-            link=escape(bm["url"]),
-            description=escape(description),
-            categories=categories,
-            email=escape(md["author"]["email"]),
-            name=escape(md["author"]["name"]),
-            enclosure=enclosure,
-            created_at=formatted_created_at,
-        )
-
-    RSS_FEED_TEMPLATE = f"""\
-<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet href="rss.xsl" type="text/xsl"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title><![CDATA[{md["title"]}{": " + tag if tag else ""}]]></title>
-    <link>{md["link"]}/feeds/{tag + '/' if tag else ''}rss.xml</link>
-    <description><![CDATA[{md["description"]}]]></description>
-    <webMaster>{md["author"]["email"]} ({md["author"]["name"]})</webMaster>
-    <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
-    <atom:link href="{md["link"]}/feeds/{tag + '/' if tag else ''}rss.xml" rel="self" type="application/rss+xml"/>
-    <docs>http://www.rssboard.org/rss-specification</docs>
-    <generator>{md["title"]} 2024.09.05</generator>
-    <image>
-      <url>/{md["logo"]}</url>
-      <title>{md["title"]}{": " + tag if tag else ""}</title>
-      <link>{md["link"]}</link>
-    </image>
-    <language>{md["language"]}</language>
-    <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
-    {items}  </channel>
-</rss>"""
-
-    file_path = os.path.join(directory_path, xml_file)
-
+async def create_feed(tag: Optional[str], bookmarks: List[Dict], publish: bool = False) -> None:
+    """Create an RSS feed for the given tag (or main feed if tag is None)."""
     try:
-        async with aiofiles.open(file_path, mode="w") as f:
-            await f.write(RSS_FEED_TEMPLATE)
-        print(f"Feed written successfully to {file_path}")
+        feed_path = os.path.join(FEEDS_DIR, 'rss.xml')
+        
+        # Create the feed content with updated XSL path
+        feed = create_rss_feed(bookmarks, tag)
+        
+        # Save locally first
+        with open(feed_path, 'w', encoding='utf-8') as f:
+            f.write(feed)
+        logger.info(f"Feed written successfully to {feed_path}")
+        
+        if publish:
+            # Upload to S3 using aws cli
+            process = await asyncio.create_subprocess_exec(
+                'aws', 's3', 'cp',
+                feed_path,
+                f's3://{S3_BUCKET_NAME}/feeds/rss.xml',
+                '--content-type', 'application/xml',
+                '--cache-control', 'no-cache',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode == 0:
+                logger.info(f"RSS feed uploaded to S3: feeds/rss.xml")
+            else:
+                logger.error(f"Error uploading RSS feed to S3: {stderr.decode()}")
+                raise Exception(stderr.decode())
+            
     except Exception as e:
-        print(f"Failed to write feed: {e}")
-
-
-    print('rss_feed -> ', str(file_path))
-
-    if publish:
-        await push_changes_up(tag)
-        print("RSS feed updated and pushed to GitHub Pages!")
-    else:
-        print("RSS feed updated!")
-
+        logger.error(f"Error creating feed: {e}")
+        raise e
 
 
 async def execute_query_async(query: str, params: tuple = ()):
@@ -443,51 +394,74 @@ async def fetch_bookmark_by_url(url: str) -> Dict[str, Any]:
 
 
 async def upload_file_to_s3(bucket_name, s3_key, local_path):
-    session = aioboto3.Session()
-    async with session.client("s3") as s3:
-        try:
-            await s3.upload_file(local_path, bucket_name, s3_key)
-            logger.info(
-                f"☑️ Uploaded {local_path} to bucket {bucket_name} with key {s3_key}"
-            )
-        except Exception as e:
-            logger.error(f"💥 Error uploading file to S3: {e}")
+    try:
+        # Run AWS CLI command asynchronously
+        process = await asyncio.create_subprocess_exec(
+            'aws', 's3', 'cp',
+            local_path,
+            f's3://{bucket_name}/{s3_key}',
+            '--content-type', 'application/xml',
+            '--cache-control', 'no-cache',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            logger.info(f"☑️ Uploaded {local_path} to bucket {bucket_name}/{s3_key}")
+        else:
+            logger.error(f"💥 Error uploading to S3: {stderr.decode()}")
+            
+    except Exception as e:
+        logger.error(f"💥 Error running aws command: {e}")
 
 
-async def create_bookmark(
-    title: str, url: str, description: str, tags: List[str]
-) -> dict:
+async def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> dict:
+    try:
+        # We get both from AI in the same call so if there's one missing, generate them both
+        if tags == [""] or not description:
+            try:
+                _tags, _description = await get_tags_and_description_from_bookmark_url(url)
+                # Only use AI-generated values if the user didn't provide them
+                tags = _tags if tags == [""] else tags
+                description = _description if not description else description
+            except Exception as e:
+                logger.error(f"Error generating AI tags/description: {e}")
+                # Use defaults if AI generation fails
+                tags = tags if tags != [""] else [""]
+                description = description if description else url
 
-    # We get both from AI in the same call so if there's one missing, generate them both
-    if tags == [""] or not description:
-        _tags, _description = await get_tags_and_description_from_bookmark_url(url)
+        tags_json = json.dumps(tags)
+        current_timestamp = datetime.utcnow().isoformat()
+        query = """
+        INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """
+        _, bookmark_id = execute_query(
+            query,
+            (title, url, description, tags_json, current_timestamp, current_timestamp),
+        )
+        bookmark = await fetch_bookmark_by_id(bookmark_id)
 
-    tags = _tags if tags == [""] else tags
-    description = _description if not description else description
+        # Update thumbnail without triggering S3 upload yet
+        await schedule_thumbnail_fetch_and_save(bookmark, schedule_s3_upload=False)
 
-    tags_json = json.dumps(tags)
-    current_timestamp = datetime.utcnow().isoformat()
-    query = """
-    INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """
-    _, bookmark_id = execute_query(
-        query,
-        (title, url, description, tags_json, current_timestamp, current_timestamp),
-    )
-    bookmark = await fetch_bookmark_by_id(bookmark_id)
+        # Update RSS feeds for relevant tags and main feed
+        bookmarks = fetch_bookmarks(kind="newest")
+        bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+        
+        # Create/update the RSS feed
+        await create_feed(tag=None, bookmarks=bookmarks, publish=True)
 
-    # feed hack debugging
-    publish = True
-    for tag in tags:
-        if tag in RSS_FEED_CREATION_TAGS:
-            print('>feed tag: ', tag)
-            bookmarks = fetch_bookmarks_by_tag(tag)
-            await create_feed(tag=tag, bookmarks=bookmarks, publish=publish)
-
-    await schedule_thumbnail_fetch_and_save(bookmark)
-    await schedule_upload_to_s3()
-    return bookmark
+        # Finally, upload to S3 once at the end
+        await schedule_upload_to_s3()
+        
+        return bookmark
+        
+    except Exception as e:
+        logger.error(f"Error in create_bookmark: {e}")
+        raise e
 
 
 
@@ -614,7 +588,7 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
             return ""
 
 
-async def update_bookmarks_with_thumbnails(bookmarks):
+async def update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=True):
     tasks = []
     for bookmark in bookmarks:
         # Don't look up thumbnails for db entries we're just browsing
@@ -640,3 +614,38 @@ async def update_bookmarks_with_thumbnails(bookmarks):
     # Properly await the S3 upload
     await schedule_upload_to_s3()
     return bookmarks
+
+def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
+    """Create RSS feed content from bookmarks."""
+    rss_items = []
+    for bookmark in bookmarks:
+        title = escape(bookmark['title'])
+        link = escape(bookmark['url'])
+        description = escape(bookmark.get('description', ''))
+        pub_date = bookmark['created_at']
+        
+        item = f"""
+        <item>
+            <title>{title}</title>
+            <link>{link}</link>
+            <description>{description}</description>
+            <pubDate>{pub_date}</pubDate>
+            <guid>{link}</guid>
+        </item>
+        """
+        rss_items.append(item)
+
+    rss_content = f"""<?xml version="1.0" encoding="UTF-8" ?>
+    <?xml-stylesheet type="text/xsl" href="rss.xsl"?>
+    <rss version="2.0">
+        <channel>
+            <title>Bookerics{f' - {tag}' if tag else ''}</title>
+            <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
+            <description>Bookmarks, but for Erics</description>
+            <language>en-us</language>
+            {''.join(rss_items)}
+        </channel>
+    </rss>
+    """
+    
+    return rss_content
