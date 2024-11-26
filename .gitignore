@@ -133,3 +133,7 @@ cython_debug/
 
 # Chrome browser extension certificates
 *.pem
+
+# Feeds directory (local copies before S3 upload)
+feeds/
+feeds/*
