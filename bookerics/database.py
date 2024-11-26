@@ -240,19 +240,21 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
     try:
         # Get the bookmark's tags before deletion
         bookmark = await fetch_bookmark_by_id(bookmark_id)
-        tags = bookmark.get('tags', [])
+        if not bookmark:
+            logger.warning(f"Bookmark {bookmark_id} not found for deletion")
+            return
 
         # Delete the bookmark
         query = "DELETE FROM bookmarks WHERE id = ?"
         execute_query(query, (bookmark_id,))
         logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
 
-        # Start background tasks individually
         try:
-            # Update RSS feeds
+            # Update RSS feeds with fresh bookmark list
             bookmarks = fetch_bookmarks(kind="newest")
-            bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
-            asyncio.create_task(create_feed(tag=None, bookmarks=bookmarks, publish=True))
+            bookmarks = [bm for bm in bookmarks if bm and bm.get('source') == 'internal']
+            if bookmarks:  # Only create feed if we have valid bookmarks
+                asyncio.create_task(create_feed(tag=None, bookmarks=bookmarks, publish=True))
         except Exception as e:
             logger.error(f"Error scheduling RSS feed update: {e}")
 
@@ -417,6 +419,15 @@ async def upload_file_to_s3(bucket_name, s3_key, local_path):
         logger.error(f"💥 Error running aws command: {e}")
 
 
+async def wait_for_thumbnail(bookmark_id: int, max_retries: int = 5) -> Optional[dict]:
+    """Wait for thumbnail to be available with retries."""
+    for attempt in range(max_retries):
+        bookmark = await fetch_bookmark_by_id(bookmark_id)
+        if bookmark and bookmark.get('thumbnail_url'):
+            return bookmark
+        await asyncio.sleep(1)  # Wait 1 second between attempts
+    return None
+
 async def create_bookmark(title: str, url: str, description: str, tags: List[str]) -> dict:
     try:
         # We get both from AI in the same call so if there's one missing, generate them both
@@ -432,6 +443,7 @@ async def create_bookmark(title: str, url: str, description: str, tags: List[str
                 tags = tags if tags != [""] else [""]
                 description = description if description else url
 
+        # Save the bookmark first
         tags_json = json.dumps(tags)
         current_timestamp = datetime.utcnow().isoformat()
         query = """
@@ -444,20 +456,29 @@ async def create_bookmark(title: str, url: str, description: str, tags: List[str
         )
         bookmark = await fetch_bookmark_by_id(bookmark_id)
 
-        # Update thumbnail without triggering S3 upload yet
-        await schedule_thumbnail_fetch_and_save(bookmark, schedule_s3_upload=False)
-
-        # Update RSS feeds for relevant tags and main feed
-        bookmarks = fetch_bookmarks(kind="newest")
-        bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
-        
-        # Create/update the RSS feed
-        await create_feed(tag=None, bookmarks=bookmarks, publish=True)
-
-        # Finally, upload to S3 once at the end
-        await schedule_upload_to_s3()
-        
-        return bookmark
+        try:
+            # Generate and upload thumbnail
+            await schedule_thumbnail_fetch_and_save(bookmark, schedule_s3_upload=True)
+            
+            # Wait for thumbnail to be ready
+            updated_bookmark = await wait_for_thumbnail(bookmark_id)
+            if not updated_bookmark:
+                logger.warning(f"Thumbnail not ready after retries for bookmark {bookmark_id}")
+                return bookmark
+            
+            # Now create and upload the RSS feed
+            bookmarks = fetch_bookmarks(kind="newest")
+            bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+            await create_feed(tag=None, bookmarks=bookmarks, publish=True)
+            
+            # Finally, upload the database
+            await schedule_upload_to_s3()
+            
+            return updated_bookmark
+            
+        except Exception as e:
+            logger.error(f"Error in background tasks: {e}")
+            return bookmark
         
     except Exception as e:
         logger.error(f"Error in create_bookmark: {e}")
@@ -619,11 +640,18 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
     """Create RSS feed content from bookmarks."""
     rss_items = []
     for bookmark in bookmarks:
-        title = escape(bookmark['title'])
-        link = escape(bookmark['url'])
-        description = escape(bookmark.get('description', ''))
-        pub_date = bookmark['created_at']
-        thumbnail = escape(bookmark.get('thumbnail_url', ''))
+        if not isinstance(bookmark, dict):
+            logger.warning(f"Skipping invalid bookmark: {bookmark}")
+            continue
+            
+        title = escape(str(bookmark.get('title', '')))
+        link = escape(str(bookmark.get('url', '')))
+        description = escape(str(bookmark.get('description', '')))
+        pub_date = bookmark.get('created_at', '')
+        
+        # Handle None values for thumbnail_url more defensively
+        thumbnail_url = bookmark.get('thumbnail_url')
+        thumbnail = escape(str(thumbnail_url)) if thumbnail_url is not None else ''
         
         # Add thumbnail as media:content if available
         thumbnail_element = f'<media:content url="{thumbnail}" type="image/jpeg" />' if thumbnail else ''
