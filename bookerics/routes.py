@@ -1,8 +1,9 @@
 import secrets
+import asyncio
 
 from ludic.catalog.layouts import Stack
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from .ai import get_tags_and_description_from_bookmark_url
 from .components import (
@@ -133,8 +134,7 @@ async def untagged_bookmarks():
 async def bookmark_by_id(id: str):
     bookmark = await fetch_bookmark_by_id(id=id)
     if not bookmark:
-        return HTMLResponse("Bookmark not found", status_code=404)
-
+        return None
     bookmarks = [bookmark]
     return BookmarkImageList(bookmarks=bookmarks)
 
@@ -143,8 +143,7 @@ async def bookmark_by_id(id: str):
 async def bookmark_by_id_compact(id: str):
     bookmark = await fetch_bookmark_by_id(id=id)
     if not bookmark:
-        return HTMLResponse("Bookmark not found", status_code=404)
-
+        return None
     bookmarks = [bookmark]
     return BookmarkList(bookmarks=bookmarks)
 
@@ -183,9 +182,9 @@ async def get_thumbnail(request: Request):
     if bookmark:
         thumbnail_html = f'<img src="{bookmark["thumbnail_url"]}" height="270" width="480" id="thumbnail-{bookmark_id}" />'
         return HTMLResponse(thumbnail_html, headers=headers)
-
+    
     logging.error(f"💥 Bookmark not found for id: {bookmark_id}")
-    return HTMLResponse("<p>Bookmark not found</p>", status_code=404)
+    return None
 
 
 @app.get("/check")
@@ -264,13 +263,15 @@ async def update_thumbnail(request: Request):
 
 
 @app.delete("/delete/{bookmark_id}")
-async def delete_bookmark(bookmark_id: str):
+async def delete_bookmark(bookmark_id: int):
     try:
-        await delete_bookmark_by_id(int(bookmark_id))
-        return HTMLResponse("")
+        asyncio.create_task(delete_bookmark_by_id(bookmark_id))
+        return None
     except Exception as e:
         logger.error(f"Error deleting bookmark: {e}")
-        return HTMLResponse(f"Failed to delete: {str(e)}", status_code=500)
+        return JSONResponse(
+            {"status": "error", "message": str(e)}, status_code=500
+        )
 
 
 # misc

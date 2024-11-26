@@ -247,23 +247,23 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
         execute_query(query, (bookmark_id,))
         logger.info(f"☑️ Deleted bookmark id: {bookmark_id}")
 
-        # Update RSS feeds
-        bookmarks = fetch_bookmarks(kind="newest")
-        bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
-        
-        # Update main feed
-        await create_feed(tag=None, bookmarks=bookmarks, publish=True)
-        
-        # Update affected tag feeds
-        for tag in tags:
-            if tag in RSS_FEED_CREATION_TAGS:
-                tag_bookmarks = fetch_bookmarks_by_tag(tag)
-                await create_feed(tag=tag, bookmarks=tag_bookmarks, publish=True)
+        # Start background tasks individually
+        try:
+            # Update RSS feeds
+            bookmarks = fetch_bookmarks(kind="newest")
+            bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+            asyncio.create_task(create_feed(tag=None, bookmarks=bookmarks, publish=True))
+        except Exception as e:
+            logger.error(f"Error scheduling RSS feed update: {e}")
 
-        # Upload to S3 once at the end
-        await schedule_upload_to_s3()
+        try:
+            # Upload to S3
+            asyncio.create_task(schedule_upload_to_s3())
+        except Exception as e:
+            logger.error(f"Error scheduling S3 upload: {e}")
+
     except Exception as e:
-        logger.error(f"💥 Error deleting bookmark with id {bookmark_id}: {e}")
+        logger.error(f"💥 Error in delete_bookmark_by_id: {e}")
         raise e
 
 
@@ -623,6 +623,10 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
         link = escape(bookmark['url'])
         description = escape(bookmark.get('description', ''))
         pub_date = bookmark['created_at']
+        thumbnail = escape(bookmark.get('thumbnail_url', ''))
+        
+        # Add thumbnail as media:content if available
+        thumbnail_element = f'<media:content url="{thumbnail}" type="image/jpeg" />' if thumbnail else ''
         
         item = f"""
         <item>
@@ -631,17 +635,18 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
             <description>{description}</description>
             <pubDate>{pub_date}</pubDate>
             <guid>{link}</guid>
+            {thumbnail_element}
         </item>
         """
         rss_items.append(item)
 
     rss_content = f"""<?xml version="1.0" encoding="UTF-8" ?>
     <?xml-stylesheet type="text/xsl" href="rss.xsl"?>
-    <rss version="2.0">
+    <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
         <channel>
-            <title>Bookerics{f' - {tag}' if tag else ''}</title>
+            <title>bookerics{f' - {tag}' if tag else ''}</title>
             <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
-            <description>Bookmarks, but for Erics</description>
+            <description>bookmarks, but for Erics</description>
             <language>en-us</language>
             {''.join(rss_items)}
         </channel>

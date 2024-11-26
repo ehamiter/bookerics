@@ -2,19 +2,11 @@
     <?xml-stylesheet type="text/xsl" href="rss.xsl"?>
     <rss version="2.0">
         <channel>
-            <title>Bookerics</title>
+            <title>bookerics</title>
             <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
             <description>Bookmarks, but for Erics</description>
             <language>en-us</language>
             
-        <item>
-            <title>2-fly-4-ai/V0-system-prompt</title>
-            <link>https://github.com/2-fly-4-ai/V0-system-prompt</link>
-            <description>Contribute to 2-fly-4-ai/V0-system-prompt development by creating an account on GitHub.</description>
-            <pubDate>2024-11-26T19:57:20.495903</pubDate>
-            <guid>https://github.com/2-fly-4-ai/V0-system-prompt</guid>
-        </item>
-        
         <item>
             <title>presubmit/ai-reviewer: Context-aware AI reviewer for Pull Requests. Instant summary, line-by-line comments, title generation and more</title>
             <link>https://github.com/presubmit/ai-reviewer</link>
