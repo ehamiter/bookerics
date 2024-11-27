@@ -658,15 +658,20 @@ async def update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=True):
 def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
     """Create RSS feed content from bookmarks."""
     try:
-        items = []
-        # Sort bookmarks by created_at in descending order and take only first 25
         sorted_bookmarks = sorted(
             [b for b in bookmarks if b],
-            key=lambda x: x.get('created_at', ''),
+            key=lambda x: x['created_at'],
             reverse=True
         )[:25]
-        
+        items = []
         for bookmark in sorted_bookmarks:
+            if not bookmark:
+                continue
+                
+            created_at = bookmark['created_at']
+            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            pub_date = dt.strftime('%a, %d %b %Y %H:%M:%S %z')
+
             title = bookmark.get('title', '').strip()
             title = safe_escape(title) or "Untitled"
 
@@ -679,23 +684,13 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
             thumbnail = bookmark.get('thumbnail_url', None)
             if thumbnail is None: thumbnail = DEFAULT_THUMBNAIL_URL
             
-            # Convert ISO timestamp to RFC 822 format for RSS
-            created_at = bookmark.get('created_at', '')
-            if created_at:
-                try:
-                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                    pub_date = dt.strftime('%a, %d %b %Y %H:%M:%S %z')
-                except ValueError:
-                    pub_date = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')
-            else:
-                pub_date = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')
-
             item = f"""
                 <item>
-                    <title>{title}</title>
-                    <link>{link}</link>
-                    <description><![CDATA[<img src="{thumbnail}" alt="{title}"/><br/>{description}]]></description>
                     <pubDate>{pub_date}</pubDate>
+                    <title><![CDATA[{title}]]></title>
+                    <link>{link}</link>
+                    <description><![CDATA[{description}]]></description>
+                    <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
                     <guid isPermaLink="false">{link}</guid>
                 </item>
             """
