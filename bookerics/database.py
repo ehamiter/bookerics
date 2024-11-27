@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import subprocess
 import boto3
@@ -29,6 +30,17 @@ from .constants import (
 )
 
 from .utils import log_warning_with_response, logger
+
+
+def clean_html(raw_html):
+    return re.sub(r'<.*?>', '', raw_html)
+
+def safe_escape(text):
+    return escape(clean_html(text), {
+        '"': "&quot;",
+        "'": "&apos;"
+    })
+
 
 # S3/DB setup
 S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
@@ -647,24 +659,43 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
     """Create RSS feed content from bookmarks."""
     try:
         items = []
-        for bookmark in bookmarks:
-            if not bookmark:
-                continue
-                
-            title = escape(str(bookmark.get('title', '')))
-            link = escape(str(bookmark.get('url', '')))
-            description = escape(str(bookmark.get('description', '')))
+        # Sort bookmarks by created_at in descending order and take only first 25
+        sorted_bookmarks = sorted(
+            [b for b in bookmarks if b],
+            key=lambda x: x.get('created_at', ''),
+            reverse=True
+        )[:25]
+        
+        for bookmark in sorted_bookmarks:
+            title = bookmark.get('title', '').strip()
+            title = safe_escape(title) or "Untitled"
+
+            description = bookmark.get('description', '').strip()
+            description = safe_escape(description)
+
+            link = bookmark.get('url', '')
+            link = safe_escape(link)
+
             thumbnail = bookmark.get('thumbnail_url', None)
             if thumbnail is None: thumbnail = DEFAULT_THUMBNAIL_URL
             
+            # Convert ISO timestamp to RFC 822 format for RSS
+            created_at = bookmark.get('created_at', '')
+            if created_at:
+                try:
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    pub_date = dt.strftime('%a, %d %b %Y %H:%M:%S %z')
+                except ValueError:
+                    pub_date = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')
+            else:
+                pub_date = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')
+
             item = f"""
                 <item>
                     <title>{title}</title>
                     <link>{link}</link>
-                    <description>{description}</description>
-                    <media:content url="{thumbnail}" type="image/jpeg" />
-                    <media:thumbnail url="{thumbnail}" />
-                    <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
+                    <description><![CDATA[<img src="{thumbnail}" alt="{title}"/><br/>{description}]]></description>
+                    <pubDate>{pub_date}</pubDate>
                     <guid isPermaLink="false">{link}</guid>
                 </item>
             """
