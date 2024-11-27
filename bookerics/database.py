@@ -274,12 +274,19 @@ def backup_bookerics_db():
     today_str = datetime.now().strftime("%Y-%m-%d")
     dest_dir = LOCAL_BACKUP_PATH
     dest_path = os.path.join(dest_dir, f"{today_str}-{src_path}")
-
-    if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
-
-    shutil.copy2(src_path, dest_path)
-    logger.info(f"☑️ Backup created at {dest_path}")
+    
+    # Only create backup if it doesn't exist for today
+    if not os.path.exists(dest_path):
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        shutil.copy2(src_path, dest_path)
+        logger.info(f"☑️ Backup created at {dest_path}")
+    
+    # Regenerate RSS feed
+    bookmarks = fetch_bookmarks(kind="newest")
+    bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
+    if bookmarks:
+        asyncio.create_task(create_feed(tag=None, bookmarks=bookmarks, publish=True))
 
 
 async def schedule_upload_to_s3():
@@ -638,47 +645,55 @@ async def update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=True):
 
 def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
     """Create RSS feed content from bookmarks."""
-    rss_items = []
-    for bookmark in bookmarks:
-        if not isinstance(bookmark, dict):
-            logger.warning(f"Skipping invalid bookmark: {bookmark}")
-            continue
+    try:
+        items = []
+        for bookmark in bookmarks:
+            if not bookmark:
+                continue
+                
+            title = escape(str(bookmark.get('title', '')))
+            link = escape(str(bookmark.get('url', '')))
+            description = escape(str(bookmark.get('description', '')))
+            thumbnail = bookmark.get('thumbnail_url', None)
+            if thumbnail is None: thumbnail = DEFAULT_THUMBNAIL_URL
             
-        title = escape(str(bookmark.get('title', '')))
-        link = escape(str(bookmark.get('url', '')))
-        description = escape(str(bookmark.get('description', '')))
-        pub_date = bookmark.get('created_at', '')
-        
-        # Handle None values for thumbnail_url more defensively
-        thumbnail_url = bookmark.get('thumbnail_url')
-        thumbnail = escape(str(thumbnail_url)) if thumbnail_url is not None else ''
-        
-        # Add thumbnail as media:content if available
-        thumbnail_element = f'<media:content url="{thumbnail}" type="image/jpeg" />' if thumbnail else ''
-        
-        item = f"""
-        <item>
-            <title>{title}</title>
-            <link>{link}</link>
-            <description>{description}</description>
-            <pubDate>{pub_date}</pubDate>
-            <guid>{link}</guid>
-            {thumbnail_element}
-        </item>
-        """
-        rss_items.append(item)
+            item = f"""
+                <item>
+                    <title>{title}</title>
+                    <link>{link}</link>
+                    <description>{description}</description>
+                    <media:content url="{thumbnail}" type="image/jpeg" />
+                    <media:thumbnail url="{thumbnail}" />
+                    <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
+                    <guid isPermaLink="false">{link}</guid>
+                </item>
+            """
+            items.append(item)
 
-    rss_content = f"""<?xml version="1.0" encoding="UTF-8" ?>
-    <?xml-stylesheet type="text/xsl" href="rss.xsl"?>
-    <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
-        <channel>
-            <title>bookerics{f' - {tag}' if tag else ''}</title>
-            <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
-            <description>bookmarks, but for Erics</description>
-            <language>en-us</language>
-            {''.join(rss_items)}
-        </channel>
-    </rss>
-    """
-    
-    return rss_content
+        rss = f"""<?xml version="1.0" encoding="UTF-8" ?>
+        <?xml-stylesheet type="text/xsl" href="rss.xsl"?>
+        <rss version="2.0" 
+             xmlns:content="http://purl.org/rss/1.0/modules/content/"
+             xmlns:media="http://search.yahoo.com/mrss/"
+             xmlns:atom="http://www.w3.org/2005/Atom">
+            <channel>
+                <title>bookerics</title>
+                <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
+                <description>bookmarks, but for erics</description>
+                <atom:icon>https://bookerics.s3.amazonaws.com/favicon.ico</atom:icon>
+                <atom:link href="https://bookerics.s3.amazonaws.com/feeds/rss.xml" rel="self" type="application/rss+xml" />
+                <image>
+                    <url>https://bookerics.s3.amazonaws.com/bookerics.png</url>
+                    <title>bookerics</title>
+                    <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
+                    <width>144</width>
+                    <height>144</height>
+                </image>
+                {''.join(items)}
+            </channel>
+        </rss>
+        """
+        return rss
+    except Exception as e:
+        logger.error(f"Error creating RSS feed: {e}")
+        raise e

@@ -245,10 +245,10 @@ async def update():
     try:
         backup_bookerics_db()
         return JSONResponse(
-            {"status": "success", "message": "Database backed up locally"}
+            {"status": "success", "message": "Database backed up and RSS feed regenerated"}
         )
     except Exception as e:
-        logger.error(f"Error in backup operation: {e}")
+        logger.error(f"Error in backup/feed operation: {e}")
         return JSONResponse(
             {"status": "error", "message": str(e)}, status_code=500
         )

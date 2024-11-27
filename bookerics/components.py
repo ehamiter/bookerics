@@ -24,7 +24,7 @@ class NavMenu(Component[NoChildren, GlobalAttrs]):
             bookericz = BOOKMARK_NAME if bookmark_count == 1 else f"{BOOKMARK_NAME}s"
             bookmark_result = f"{bookmark_count:,} {bookericz}"
             link_display = HiddenLink(
-                bookmark_result, to="/update", title="Backup on S3 now"
+                bookmark_result, to="/update", title="Backup / refresh feed on S3 now"
             )
         else:
             link_display = f"{BOOKMARK_NAME}s"
