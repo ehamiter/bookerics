@@ -673,10 +673,10 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
             pub_date = dt.strftime('%a, %d %b %Y %H:%M:%S %z')
 
             title = bookmark.get('title', '').strip()
-            title = safe_escape(title) or "Untitled"
+            title = clean_html(title) or "Untitled"
 
             description = bookmark.get('description', '').strip()
-            description = safe_escape(description)
+            description = clean_html(description)
 
             link = bookmark.get('url', '')
             link = safe_escape(link)
