@@ -7,7 +7,7 @@ chrome.action.onClicked.addListener((tab) => {
                       document.querySelector("meta[property='og:description']");
       const description = metaDesc ? encodeURIComponent(metaDesc.content) : '';
       const url = encodeURIComponent(window.location.href);
-      const popupUrl = `http://localhost:8080/static/bookmarklet.html?title=${title}&description=${description}&url=${url}`;
+      const popupUrl = `http://localhost:50667/static/bookmarklet.html?title=${title}&description=${description}&url=${url}`;
       
       // Store the popup reference in window.bookericsPopup
       window.bookericsPopup = window.open(popupUrl, 'Save Bookeric', 'top=200,left=400,width=666,height=444');

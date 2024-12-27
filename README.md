@@ -51,3 +51,64 @@ poetry install
 
 poetry run bookerics
 ```
+
+### Running the App as a service
+
+##### Create a launch agent configuration file
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bookerics</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/poetry</string>
+        <string>run</string>
+        <string>bookerics</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/YOUR_USERNAME/bookerics</string>
+    <key>StandardOutPath</key>
+    <string>/Users/YOUR_USERNAME/Library/Logs/bookerics.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOUR_USERNAME/Library/Logs/bookerics.error.log</string>
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>
+```
+
+##### Load the service (starts it and enables on boot)
+
+```
+launchctl load ~/Library/LaunchAgents/com.bookerics.plist
+```
+
+##### Unload the service (stops it and disables on boot)
+
+```
+launchctl unload ~/Library/LaunchAgents/com.bookerics.plist
+```
+
+##### Check the status
+
+```
+launchctl list | grep bookerics
+```
+
+##### View logs in real-time
+
+```
+tail -f ~/Library/Logs/bookerics.log
+tail -f ~/Library/Logs/bookerics.error.log
+```
