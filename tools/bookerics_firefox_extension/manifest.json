@@ -1,0 +1,60 @@
+{
+  "name": "bookerics",
+  "description": "Bookmarks, but for Erics",
+  "version": "0.1",
+  "manifest_version": 2,
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    },
+    "default_title": "Save to bookerics",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "<all_urls>",
+    "webRequest",
+    "storage",
+    "http://localhost:50667/*",
+    "http://127.0.0.1:50667/*",
+    "notifications"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    "popup.html"
+  ],
+  "homepage_url": "http://127.0.0.1:50667/",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "bookerics@example.com",
+      "strict_min_version": "57.0"
+    }
+  },
+  "commands": {
+    "save-bookmark": {
+      "suggested_key": {
+        "default": "Ctrl+D",
+        "mac": "Alt+D"
+      },
+      "description": "Save current page to Bookerics"
+    }
+  }
+} 

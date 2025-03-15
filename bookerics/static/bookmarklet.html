@@ -34,7 +34,7 @@
 </head>
 <body>
     <div class="container">
-        <form id="bookmarkForm" action="http://localhost:8080/add" method="post">
+        <form id="bookmarkForm" action="/add" method="post">
             <label for="title">Title:</label>
             <input type="text" id="title" name="title">
             <label for="description">Description:</label>
@@ -75,7 +75,7 @@
             forceUpdate.value = 0;
 
             const encodedUrlValue = encodeURIComponent(urlField.value);
-            const checkUrl = `http://localhost:8080/check?url=${encodedUrlValue}`;
+            const checkUrl = `/check?url=${encodedUrlValue}`;
 
             fetch(checkUrl)
                 .then(response => response.json())
@@ -102,6 +102,16 @@
                 descriptionField.focus();
             } else {
                 tagsField.focus();
+                
+                // Auto-submit if this was loaded from the Firefox extension
+                // Check if we have URL parameters and no window.opener (Firefox extension XHR case)
+                if (urlParams.has('url') && !window.opener) {
+                    console.log('Auto-submitting form from Firefox extension');
+                    // Small delay to ensure the form is fully populated
+                    setTimeout(() => {
+                        document.getElementById('bookmarkForm').dispatchEvent(new Event('submit'));
+                    }, 500);
+                }
             }
 
             document.addEventListener('keydown', function(event) {
