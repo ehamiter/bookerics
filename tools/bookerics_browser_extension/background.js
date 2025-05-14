@@ -10,7 +10,7 @@ chrome.action.onClicked.addListener((tab) => {
       const popupUrl = `http://localhost:50667/static/bookmarklet.html?title=${title}&description=${description}&url=${url}`;
       
       // Store the popup reference in window.bookericsPopup
-      window.bookericsPopup = window.open(popupUrl, 'Save Bookeric', 'top=200,left=400,width=666,height=444');
+      window.bookericsPopup = window.open(popupUrl, 'Save Bookeric', 'top=200,left=400,width=666,height=500');
       
       // Listen for the message from the popup
       window.addEventListener('message', function(e) {
