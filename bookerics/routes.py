@@ -5,7 +5,7 @@ from ludic.catalog.layouts import Stack
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from .ai import get_tags_and_description_from_bookmark_url
+from .ai import get_tags_and_description_from_bookmark
 from .components import (
     BookmarkImageList,
     BookmarkList,
@@ -164,8 +164,8 @@ async def search(request: Request):
 @app.get("/ai/{id}")
 async def get_ai_info_for_bookmark_by_id(id: str):
     bookmark = await fetch_bookmark_by_id(id=id)
-    tags, description = await get_tags_and_description_from_bookmark_url(
-        bookmark["url"]
+    tags, description = await get_tags_and_description_from_bookmark(
+        bookmark
     )
 
     await update_bookmark_tags(bookmark["id"], tags)

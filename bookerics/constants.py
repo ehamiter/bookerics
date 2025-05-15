@@ -38,6 +38,7 @@ GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
 ## OpenAI
 BOOKERICS_OPENAI_KEY = os.getenv("BOOKERICS_OPENAI_KEY")
 GPT_MODEL = "gpt-4o"
+TAG_GPT_MODEL = "gpt-3.5-turbo"
 
 ## Additional DBs
 ADDITIONAL_DB_PATHS = os.getenv("ADDITIONAL_DB_PATHS", "").split(",")

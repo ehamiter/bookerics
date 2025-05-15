@@ -18,7 +18,7 @@ import threading
 
 from PIL import Image
 
-from .ai import get_tags_and_description_from_bookmark_url
+from .ai import get_tags_and_description_from_bookmark
 from .constants import (
     ADDITIONAL_DB_PATHS,
     BOOKMARK_NAME,
@@ -452,7 +452,7 @@ async def create_bookmark(title: str, url: str, description: str, tags: List[str
         # We get both from AI in the same call so if there's one missing, generate them both
         if tags == [""] or not description:
             try:
-                _tags, _description = await get_tags_and_description_from_bookmark_url(url)
+                _tags, _description = await get_tags_and_description_from_bookmark(url)
                 # Only use AI-generated values if the user didn't provide them
                 tags = _tags if tags == [""] else tags
                 description = _description if not description else description
