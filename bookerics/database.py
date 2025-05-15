@@ -452,7 +452,12 @@ async def create_bookmark(title: str, url: str, description: str, tags: List[str
         # We get both from AI in the same call so if there's one missing, generate them both
         if tags == [""] or not description:
             try:
-                _tags, _description = await get_tags_and_description_from_bookmark(url)
+                bookmark_data = {
+                    "title": title,
+                    "url": url,
+                    "description": description
+                }
+                _tags, _description = await get_tags_and_description_from_bookmark(bookmark_data)
                 # Only use AI-generated values if the user didn't provide them
                 tags = _tags if tags == [""] else tags
                 description = _description if not description else description
