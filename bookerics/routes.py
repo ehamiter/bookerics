@@ -2,7 +2,6 @@ import secrets
 import asyncio
 import logging # Added for get_thumbnail error logging
 
-# from ludic.catalog.layouts import Stack # Removed
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse # Response not directly used
 
@@ -17,8 +16,8 @@ from .components import (
     TableStructure,
     EditBookmarkForm,
     _render_tags_html, # Helper for AI route
-    PreviewImage, # For get_thumbnail
-    Img # For get_thumbnail, if used
+    PreviewImage # For get_thumbnail
+    # Img removed as PreviewImage is used for its .to_html() method
 )
 from .database import (
     backup_bookerics_db,
@@ -39,7 +38,6 @@ from .database import (
     verify_table_structure,
 )
 from .main import rt # Changed from 'app' to 'rt'
-# from .pages import Page # Changed to .core
 from .utils import logger
 
 # main routes
@@ -175,12 +173,13 @@ async def bookmark_by_id_compact_partial(id: str): # Renamed
 async def search_route(request: Request): # Renamed
     query = request.query_params.get("query", "")
     searched_bookmarks = search_bookmarks(query) # Renamed
-    # Replace Stack with direct components as children of Page
-    return Page(
+    # Return a tuple of components for HTMX innerHTML swap into #results-container
+    # No Page() wrapper here.
+    return (
         NavMenu(bookmark_count=len(searched_bookmarks)),
         SearchBar(query=query),
         BookmarkList(bookmarks=searched_bookmarks),
-        title_str=f"Bookerics - Search: {query}"
+        # title_str is not applicable here as we are not rendering a full page
     )
 
 

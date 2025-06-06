@@ -3,17 +3,8 @@ from typing import Annotated # Keep for potential future use with Pydantic model
 # from typing import override # Not used in functional components
 import json # Uncommented
 import requests # Uncommented
-# from ludic.attrs import GlobalAttrs, ImgAttrs, Attrs # Commented out
-# from ludic.base import NoChildren # Commented out
-# from ludic.catalog.buttons import ButtonLink, ButtonPrimary # Commented out
-# from ludic.catalog.forms import FieldMeta, Form, InputField # Commented out
-# from ludic.catalog.layouts import Box, Center, Cluster, Switcher # Commented out
-# from ludic.catalog.typography import CodeBlock, Link, LinkAttrs, Paragraph # Commented out
-# from ludic.components import Component # Commented out
-# from ludic.html import a, div, i, img, style # Commented out
-# from ludic.types import Component, ComponentStrict, NoChildren, PrimitiveChildren # Commented out
 
-from fasthtml.common import Div, A, Input, P, Img, I, Pre, Code, Button, Form, Label, Textarea # Added Form, Label, Textarea
+from fasthtml.common import Div, A, Input, P, Img, I, Pre, Code, Button, Form, Label, Textarea
 # For attributes, use dicts e.g. {'hx_get': '/search'}
 
 from .constants import GIPHY_API_KEY # Keep
@@ -259,9 +250,10 @@ def BookmarkBox(*children, **attrs): # FastHTML functional component
 #     def render(self) -> a: ...
 def HTMXDeleteButton(*children, to: str = "#", hx_target: str, hx_swap: str, hx_delete: str, cls: str = "", **attrs): # FastHTML
     # Original classes: ["btn"] + self.attrs.get("classes", [])
-    # data-delete-url becomes hx_delete
     # data-confirmed is a state managed by JS, but can be set initially
     final_cls = f"btn delete-btn {cls}".strip()
+    # Ensure hx_delete is passed to **attrs if it's also used for data_delete_url
+    attrs['data_delete_url'] = hx_delete # Make hx_delete value accessible as dataset.deleteUrl
     return A(*children, href=to, hx_target=hx_target, hx_swap=hx_swap, hx_delete=hx_delete, # type: ignore
              data_confirmed="false", # JS will toggle this
              cls=final_cls, **attrs)
