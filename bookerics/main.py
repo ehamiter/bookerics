@@ -33,7 +33,7 @@ async def app_lifespan(app_instance) -> AsyncIterator[None]: # Renamed from 'lif
     # Ludic style.load(cache=True) was here, already noted as replaced by CSS.
     yield
 
-app, rt = fast_app(debug=True, lifespan=app_lifespan) # Added debug and lifespan
+app, rt = fast_app(debug=True, lifespan=app_lifespan)
 
 # Add static file mounts
 app.router.routes.append(
@@ -50,6 +50,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+# Import routes after app and rt are fully created to avoid circular import issues
 # import bookerics.errors as _  # noqa # Commented out
 import bookerics.routes as _  # noqa # Uncommented
 
