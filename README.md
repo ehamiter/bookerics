@@ -4,6 +4,8 @@
 
 This is like a self-hosted [pinboard.in](https://pinboard.in), but not nearly as nice or feature-rich. It's also only for Erics.
 
+Built with Python using the [FastHTML](https://fastht.ml/) web framework and [HTMX](https://htmx.org/) for dynamic frontend interactions.
+
 ![screenshot](/bookerics/static/images/screenshot.webp)
 
 
@@ -21,7 +23,7 @@ Can I use this if my name isn't Eric?
 
 ### This is a continual work in progress.
 
-Things will definitely break in here, but if you want to tinker around with it, be my guest.
+Things will definitely break in here, but if you want to tinker around with it, be my guest. It was recently refactored to use the FastHTML framework.
 
 
 ### Import bookmarks
