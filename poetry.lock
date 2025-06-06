@@ -1651,30 +1651,30 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-fasthtml"
-version = "0.1.4"
+version = "0.12.18"
 description = "The fastest way to create an HTML app"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "python_fasthtml-0.1.4-py3-none-any.whl", hash = "sha256:25d3d3417049463805200e3df18d6d984955bef1aea4546e3df9bd5effca0a52"},
-    {file = "python_fasthtml-0.1.4.tar.gz", hash = "sha256:c4c7dbbe926b300d5905cf87b46d5c041419e484f3d6aa2cc066665f9e0a3036"},
+    {file = "python_fasthtml-0.12.18-py3-none-any.whl", hash = "sha256:6d2b7eca316870d55cb43115efecc3feb3fce65d293419e40ec17aa1e33bbefd"},
+    {file = "python_fasthtml-0.12.18.tar.gz", hash = "sha256:e025429858c79b59c5cd1f35024ab0892696056dab653cd1fb1d7d629419a43a"},
 ]
 
 [package.dependencies]
 beautifulsoup4 = "*"
-fastcore = ">=1.5.46"
-fastlite = ">=0.0.6"
+fastcore = ">=1.8.1"
+fastlite = ">=0.1.1"
 httpx = "*"
 itsdangerous = "*"
 oauthlib = "*"
 python-dateutil = "*"
 python-multipart = "*"
 starlette = ">0.33"
-uvicorn = {version = "*", extras = ["standard"]}
+uvicorn = {version = ">=0.30", extras = ["standard"]}
 
 [package.extras]
-dev = ["ipython", "lxml"]
+dev = ["ipython", "lxml", "monsterui", "pysymbol_llm"]
 
 [[package]]
 name = "python-multipart"
@@ -1958,14 +1958,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "uvicorn"
-version = "0.27.1"
+version = "0.30.6"
 description = "The lightning-fast ASGI server."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "uvicorn-0.27.1-py3-none-any.whl", hash = "sha256:5c89da2f3895767472a35556e539fd59f7edbe9b1e9c0e1c99eebeadc61838e4"},
-    {file = "uvicorn-0.27.1.tar.gz", hash = "sha256:3d9a267296243532db80c83a959a3400502165ade2c1338dea4e67915fd4745a"},
+    {file = "uvicorn-0.30.6-py3-none-any.whl", hash = "sha256:65fd46fe3fda5bdc1b03b94eb634923ff18cd35b2f084813ea79d1f103f711b5"},
+    {file = "uvicorn-0.30.6.tar.gz", hash = "sha256:4b15decdda1e72be08209e860a1e10e92439ad5b97cf44cc945fcbee66fc5788"},
 ]
 
 [package.dependencies]
@@ -2397,4 +2397,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "2c36996829f3e1e937ede01e2f4df7ac9988602588780a3926aa42a1f2159431"
+content-hash = "a7e66df2654498f3589c840b30969d4391d4e8e07a5a45c1f7ec60c9782d5705"
