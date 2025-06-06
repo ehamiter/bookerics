@@ -1,0 +1,42 @@
+html {
+    background: url("/static/images/bg.png") no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; /* From BookericsTheme.fonts.plain */
+    color: #414549; /* From BookericsTheme.colors.dark, as a base text color */
+    line-height: 1.6;
+}
+
+body {
+    margin: 0; /* Remove default browser margin */
+    padding: 0; /* Remove default browser padding */
+    /* The background is on html, body can be transparent or have its own if needed for specific layouts */
+}
+
+/* General link styling, can be overridden by more specific component styles */
+a {
+    color: #0096ff; /* From BookericsTheme.colors.primary */
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Container class from core.py Body's Div */
+.container {
+    max-width: 1200px; /* Or your preferred max-width */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.mx-auto { /* if still used, though .container does this */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.p-2 { /* if still used, example padding */
+    padding: 0.5rem; /* 2 * 0.25rem if using a 0.25rem base unit */
+}
