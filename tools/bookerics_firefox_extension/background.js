@@ -8,10 +8,10 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Create the URL for the bookmarklet endpoint
     // Try both localhost and 127.0.0.1 versions
     const bookmarkletUrls = [
-      `http://localhost:50667/static/bookmarklet.html`,
-      `http://127.0.0.1:50667/static/bookmarklet.html`,
-      `http://localhost:50667/api/bookmarks`,
-      `http://127.0.0.1:50667/api/bookmarks`
+      `http://localhost:50113/static/bookmarklet.html`,
+      `http://127.0.0.1:50113/static/bookmarklet.html`,
+      `http://localhost:50113/api/bookmarks`,
+      `http://127.0.0.1:50113/api/bookmarks`
     ];
     
     console.log('Attempting to save bookmark to:', bookmarkletUrls[0]);
@@ -56,10 +56,10 @@ browser.commands.onCommand.addListener((command) => {
         
         // Save the bookmark
         const bookmarkletUrls = [
-          `http://localhost:50667/static/bookmarklet.html`,
-          `http://127.0.0.1:50667/static/bookmarklet.html`,
-          `http://localhost:50667/api/bookmarks`,
-          `http://127.0.0.1:50667/api/bookmarks`
+          `http://localhost:50113/static/bookmarklet.html`,
+          `http://127.0.0.1:50113/static/bookmarklet.html`,
+          `http://localhost:50113/api/bookmarks`,
+          `http://127.0.0.1:50113/api/bookmarks`
         ];
         
         console.log('Keyboard shortcut: Quick saving bookmark for', data.url);
@@ -97,8 +97,8 @@ browser.commands.onCommand.addListener((command) => {
         
         // Save with basic info
         const bookmarkletUrls = [
-          `http://localhost:50667/static/bookmarklet.html`,
-          `http://127.0.0.1:50667/static/bookmarklet.html`
+          `http://localhost:50113/static/bookmarklet.html`,
+          `http://127.0.0.1:50113/static/bookmarklet.html`
         ];
         
         saveBookmarkToAnyEndpoint(bookmarkletUrls, data.title, data.description, data.tags, data.url)

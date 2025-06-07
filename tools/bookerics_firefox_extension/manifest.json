@@ -27,8 +27,8 @@
     "<all_urls>",
     "webRequest",
     "storage",
-    "http://localhost:50667/*",
-    "http://127.0.0.1:50667/*",
+            "http://localhost:50113/*",
+        "http://127.0.0.1:50113/*",
     "notifications"
   ],
   "content_scripts": [
@@ -41,7 +41,7 @@
   "web_accessible_resources": [
     "popup.html"
   ],
-  "homepage_url": "http://127.0.0.1:50667/",
+      "homepage_url": "http://127.0.0.1:50113/",
   "browser_specific_settings": {
     "gecko": {
       "id": "bookerics@example.com",

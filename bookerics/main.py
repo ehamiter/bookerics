@@ -56,6 +56,6 @@ def start():
     uvicorn.run(
         "bookerics.main:app",
         host="0.0.0.0",
-        port=50667,  # ASCII sum of "bookerics" modulo 16384 + 49152
+        port=50113,  # ASCII sum of "bookerics" modulo 16384 + 49152
         reload=True
     )

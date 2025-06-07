@@ -43,7 +43,7 @@ If you encounter issues with the extension:
    - The extension tries multiple endpoints and both localhost and 127.0.0.1 addresses
 
 3. **Server Connection**:
-   - Make sure your Bookerics server is running at `http://localhost:50667`
+   - Make sure your Bookerics server is running at `http://localhost:50113`
    - The extension will try both `localhost` and `127.0.0.1` addresses
    - It will attempt to use both `/static/bookmarklet.html` and `/api/bookmarks` endpoints
 
@@ -65,7 +65,7 @@ If you encounter issues with the extension:
 
 ## Notes
 
-- The extension expects the Bookerics service to be running at `http://localhost:50667`
+- The extension expects the Bookerics service to be running at `http://localhost:50113`
 - This approach uses both the extension's built-in popup system and a separate popup window for server communication
 - The extension will try multiple methods to save bookmarks, increasing the chances of success
 - The extension now prioritizes GET requests since they were successful in testing 
