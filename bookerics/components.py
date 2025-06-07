@@ -310,8 +310,12 @@ def _render_tags_html(tags: list[str] | str):
 
 def _render_created_at_html(created_at: str | None) -> Div:
     if created_at:
-        # Assuming created_at is a string that can be parsed
-        return Div(f"Created: {created_at}", cls="created-at-display")
+        # Use HTML5 time element with datetime attribute for JavaScript formatting
+        from fasthtml.common import Time
+        return Div(
+            Time(created_at, datetime=created_at, cls="created-at-time"),
+            cls="created-at-display"
+        )
     return Div("", cls="created-at-display")
 
 

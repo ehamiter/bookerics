@@ -300,15 +300,39 @@ async def update_thumbnail_route(request: Request): # Renamed
 
 
 @main_fasthtml_router("/delete/{bookmark_id}", methods=["DELETE"]) # Changed from @app.delete
-async def delete_bookmark_route(bookmark_id: int): # Renamed
+async def delete_bookmark_route(bookmark_id: int, request: Request): # Added request parameter
     try:
+        print(f"🔥 DELETE_BOOKMARK_ROUTE CALLED: bookmark_id={bookmark_id}")
+        
         # delete_bookmark_by_id is async, so await it directly
         await delete_bookmark_by_id(bookmark_id)
+        print(f"🔥 DELETE_BOOKMARK_ROUTE: Successfully deleted bookmark {bookmark_id}")
+        
+        # Check if the request came from the random page by checking the Referer header
+        referer = request.headers.get("referer", "")
+        print(f"🔥 DELETE_BOOKMARK_ROUTE: Referer header: {referer}")
+        
+        if "/random" in referer:
+            print(f"🔥 DELETE_BOOKMARK_ROUTE: Request came from random page, returning new random bookmark")
+            # If deleting from the random page, return a new random bookmark
+            bookmarks = fetch_bookmarks(kind="newest") # Fetch all to get a random one
+            if bookmarks: # Make sure we have bookmarks left
+                selected_bookmarks = [secrets.choice(bookmarks)]
+                print(f"🔥 DELETE_BOOKMARK_ROUTE: Selected new random bookmark: {selected_bookmarks[0].get('title', 'N/A')}")
+                # Return the BookmarkImageList component directly for HTMX swap
+                return BookmarkImageList(bookmarks=selected_bookmarks)
+            else:
+                print(f"🔥 DELETE_BOOKMARK_ROUTE: No bookmarks left to show")
+                # No bookmarks left
+                return HTMLResponse("No more bookmarks available to choose from.", status_code=200)
+        
         # For HTMX, an empty response with 200 status usually means "success, do nothing to the target"
         # Or, if the target is the item itself, it will be removed by hx-swap="outerHTML" on success (empty response).
+        print(f"🔥 DELETE_BOOKMARK_ROUTE: Normal delete, returning empty response")
         return HTMLResponse(status_code=200) # Empty 200 signals success to HTMX for outerHTML swap
     except Exception as e:
         logger.error(f"Error deleting bookmark: {e}")
+        print(f"🔥 DELETE_BOOKMARK_ROUTE: Exception occurred: {str(e)}")
         # Return an error response that HTMX can handle, e.g., display an error message
         return HTMLResponse(f"Error deleting bookmark: {str(e)}", status_code=500)
 

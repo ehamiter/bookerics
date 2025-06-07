@@ -148,4 +148,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Format dates in user's local timezone
+    function formatDates() {
+        const timeElements = document.querySelectorAll('.created-at-time');
+        timeElements.forEach(timeEl => {
+            const isoDate = timeEl.getAttribute('datetime');
+            if (isoDate) {
+                try {
+                    const date = new Date(isoDate);
+                    const options = {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    };
+                    const friendlyDate = date.toLocaleDateString('en-US', options);
+                    timeEl.textContent = friendlyDate;
+                } catch (e) {
+                    console.error('Error formatting date:', e);
+                }
+            }
+        });
+    }
+
+    // Format dates on initial load
+    formatDates();
+
+    // Also format dates after HTMX content swaps
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        console.log('HTMX: Content swapped for target:', evt.detail.target.id);
+        formatDates(); // Re-format dates in newly loaded content
+    });
 });
