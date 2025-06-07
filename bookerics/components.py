@@ -1,20 +1,17 @@
-import asyncio # Uncommented
-from typing import Annotated # Keep for potential future use with Pydantic models if EditBookmarkForm is converted
-# from typing import override # Not used in functional components
 import json # Uncommented
 import requests # Uncommented
 
-from fasthtml.common import Div, A, Input, P, Img, I, Pre, Code, Button, Form, Label, Textarea
+from fasthtml.common import Div, A, Input, P, Img, Pre, Code, Button, Form, Label, Textarea
 # For attributes, use dicts e.g. {'hx_get': '/search'}
 
 from .constants import GIPHY_API_KEY # Keep
-from .database import BOOKMARK_NAME, update_bookmarks_with_thumbnails # Keep
+from .database import BOOKMARK_NAME # Keep
 
 
 # class NavMenu(Component[NoChildren, GlobalAttrs]): # Ludic Component
 #     @override
 #     def render(self) -> Cluster:
-def NavMenu(bookmark_count: int | bool = False): # FastHTML functional component
+def NavMenu(bookmark_count: int | bool = False, active: str = ""): # FastHTML functional component
     if bookmark_count is not False and isinstance(bookmark_count, int):
         bookericz = BOOKMARK_NAME if bookmark_count == 1 else f"{BOOKMARK_NAME}s"
         bookmark_result = f"{bookmark_count:,} {bookericz}"
@@ -24,15 +21,19 @@ def NavMenu(bookmark_count: int | bool = False): # FastHTML functional component
     else:
         link_display = f"{BOOKMARK_NAME}s" # type: ignore
 
+    # Helper function to add active class
+    def nav_link_class(link_name):
+        return "active" if active == link_name else ""
+    
     return Div( # Was Cluster
         link_display,
         Div( # Was Cluster
-            A("newest", href="/"), # Was Link
-            A("oldest", href="/oldest"), # Was Link
-            A("random", href="/random"), # Was Link
-            A("untagged", href="/untagged"), # Was Link
+            A("newest", href="/", cls=nav_link_class("newest")), # Was Link
+            A("oldest", href="/oldest", cls=nav_link_class("oldest")), # Was Link
+            A("random", href="/random", cls=nav_link_class("random")), # Was Link
+            A("untagged", href="/untagged", cls=nav_link_class("untagged")), # Was Link
         ),
-        Div(A("tags", href="#", id="tags-link")), # Was Cluster(a(...))
+        Div(A("tags", href="#", id="tags-link", cls=nav_link_class("tags"))), # Was Cluster(a(...))
         cls="nav-menu justify-space-between", # Added nav-menu class for styling
     )
 
@@ -252,10 +253,10 @@ def HTMXDeleteButton(*children, to: str = "#", hx_target: str, hx_swap: str, hx_
     # Original classes: ["btn"] + self.attrs.get("classes", [])
     # data-confirmed is a state managed by JS, but can be set initially
     final_cls = f"btn delete-btn {cls}".strip()
-    # Ensure hx_delete is passed to **attrs if it's also used for data_delete_url
-    attrs['data_delete_url'] = hx_delete # Make hx_delete value accessible as dataset.deleteUrl
-    return A(*children, href=to, hx_target=hx_target, hx_swap=hx_swap, hx_delete=hx_delete, # type: ignore
-             data_confirmed="false", # JS will toggle this
+    # Store the delete URL in data attribute and remove hx_delete initially
+    # JS will add hx_delete back when confirmed
+    return A(*children, href=to, hx_target=hx_target, hx_swap=hx_swap,
+             **{"data-delete-url": hx_delete, "data-confirmed": "false"},  # Use dict for hyphenated attributes
              cls=final_cls, **attrs)
 
 
@@ -280,65 +281,81 @@ def GetTagsForBookmarkButton(*children, to: str = "#", hx_swap: str, hx_target: 
 # class UpdateBookmarkButton(ButtonLink): # Ludic ButtonLink
 #     def __init__(self, text: str, **attrs):
 #         super().__init__(text, to=attrs.pop("hx_get"), **attrs)
-def UpdateBookmarkButton(text: str, hx_get: str, cls: str = "", **attrs): # FastHTML
+def UpdateBookmarkButton(text: str, hx_get: str, cls: str = "", hx_target: str = "", **attrs): # FastHTML
     # Original Ludic component was a ButtonLink, which is an A tag styled as a button
     # It used 'to' for the href, but hx_get for the actual action URL.
     final_cls = f"btn update-btn {cls}".strip() # Added 'update-btn' for specific styling
-    return A(text, hx_get=hx_get, cls=final_cls, **attrs) # type: ignore
+    attrs_dict = {"hx_get": hx_get, "cls": final_cls}
+    if hx_target:
+        attrs_dict["hx_target"] = hx_target
+    attrs_dict.update(attrs)
+    return A(text, **attrs_dict) # type: ignore
 
 
-def _render_tags_html(tags: list) -> Div: # Helper for BookmarkList and BookmarkImageList
+def _render_tags_html(tags: list[str] | str):
     """Renders a list of tags as A elements within a Div."""
+    if isinstance(tags, str):
+        # Handle case where tags might be passed as a string
+        try:
+            tags = json.loads(tags)
+        except json.JSONDecodeError:
+            tags = tags.split() if tags else []
+    
+    if not tags:
+        return Div(cls="tags-container")
+    
     # Using 'btn tag info' for consistency with previous TagCloud, adjust if needed
-    return Div(*[A(tag, href=f"/tags/{tag}", cls="btn tag info") for tag in tags])
+    return Div(*[A(tag, href=f"/tags/{tag}", cls="btn tag info") for tag in tags], cls="tags-container")
+
+def _render_created_at_html(created_at: str | None) -> Div:
+    if created_at:
+        # Assuming created_at is a string that can be parsed
+        return Div(f"Created: {created_at}", cls="created-at-display")
+    return Div("", cls="created-at-display")
 
 
 def _render_bookmark_html(bookmark: dict, is_image_list: bool = False): # Helper for list components
-    """Renders a single bookmark item."""
-    bookmark_id = bookmark.get('id', '')
-    title = bookmark.get('title', 'No Title')
-    url = bookmark.get('url', '#')
-    description = bookmark.get('description')
-    tags = bookmark.get('tags', [])
-    thumbnail_url = bookmark.get('thumbnail_url') # Used if is_image_list
+    bookmark_id = bookmark.get("id")
+    title = bookmark.get("title", "")
+    url = bookmark.get("url", "")
+    description = bookmark.get("description", "")
+    tags = bookmark.get("tags", [])
+    thumbnail_url = bookmark.get("thumbnail_url")
+    created_at = bookmark.get("created_at")
 
+    tags_html = _render_tags_html(tags)
+    created_at_html = _render_created_at_html(created_at)
+
+    toggle_btn_target_id = f"bmb-{bookmark_id}"
+
+    # Prepare content list for BookmarkBox
     content = [
         BookericLink(title, to=url),
-        P(url, cls="url"),
+        created_at_html,
     ]
 
-    if is_image_list:
-        content.append(
-            ImageSwitcher(
-                PreviewImage(src=thumbnail_url, height="300", width="480", id=f"thumbnail-{bookmark_id}",
-                             hx_get=f"/get_thumbnail/{bookmark_id}", hx_target=f"#thumbnail-{bookmark_id}",
-                             hx_trigger="loadThumbnail from:body", hx_swap="outerHTML"),
-                P(url, cls="image-url") # Repetitive URL, but matches original structure
-            )
-        )
-        content.append(
-            P(description, cls="image-description") if description
-            else P(I("Add a description… "), cls="image-description") # Italicized placeholder
-        )
-    else: # Not image list
-        content.append(
-            P(description, cls="description") if description
-            else P(I("Add a description… "), cls="description") # Italicized placeholder
-        )
+    if is_image_list and thumbnail_url:
+        content.append(PreviewImage(src=thumbnail_url, id=f"thumbnail-{bookmark_id}", height="270", width="480"))
 
-    # Tags section
+    if description:
+        content.append(P(description))
+
+    # Add tags display or 'get tags' button
     tags_container_id = f"tags-{bookmark_id}"
     if tags:
-        tags_element = _render_tags_html(tags)
+        tags_element = tags_html
     else:
         tags_element = GetTagsForBookmarkButton(
-            "none", cls="tag warning", # type: ignore
-            hx_get=f"/ai/{bookmark_id}", hx_swap="outerHTML", hx_target=f"#{tags_container_id}"
+            "Get Tags",
+            hx_get=f"/ai/{bookmark_id}",
+            hx_target=f"#{tags_container_id}",
+            hx_swap="outerHTML",
+            cls="btn small",
         )
-    content.append(Div(tags_element, id=tags_container_id, cls="box no-border no-inline-padding")) # Assuming .box is generic
+    content.append(Div(tags_element, id=tags_container_id))
+
 
     # Expand/Collapse button
-    toggle_btn_target_id = f"bmb-{bookmark_id}" if is_image_list else f"bookmark-{bookmark_id}"
     toggle_btn_text = "➖" if is_image_list else "➕"
     toggle_btn_hx_get = f"/id/c/{bookmark_id}" if is_image_list else f"/id/{bookmark_id}"
 
@@ -355,7 +372,7 @@ def _render_bookmark_html(bookmark: dict, is_image_list: bool = False): # Helper
     # Action buttons
     content.append(
         Div(
-            UpdateBookmarkButton("✒️", hx_get=f"/edit/{bookmark_id}", cls="update-btn"), # type: ignore
+            UpdateBookmarkButton("✒️", hx_get=f"/edit/{bookmark_id}/modal", hx_target="#modal-container", hx_swap="innerHTML", cls="update-btn"), # type: ignore
             HTMXDeleteButton(
                 "🗑️", to="#", hx_target=f"#{toggle_btn_target_id}", hx_swap="outerHTML", # type: ignore
                 hx_delete=f"/delete/{bookmark_id}", cls="delete-btn"
@@ -364,7 +381,7 @@ def _render_bookmark_html(bookmark: dict, is_image_list: bool = False): # Helper
         )
     )
 
-    return BookmarkBox(*content, id=toggle_btn_target_id) # id is bmb- or bookmark-
+    return BookmarkBox(*content, id=toggle_btn_target_id)
 
 
 # class BookmarkList(Component[NoChildren, GlobalAttrs]): # Ludic
@@ -425,6 +442,23 @@ def EditBookmarkForm(bookmark: dict, **attrs): # FastHTML functional component
     form_method = attrs.pop('method', "POST") # Default to POST, allow override
     form_action = attrs.pop('action', f"/edit/{bookmark.get('id', '')}") # Example action
 
+    # If this is for a modal, add HTMX attributes for inline submission
+    form_attrs = {
+        "method": form_method,
+        "action": form_action,
+        "cls": "edit-bookmark-form"
+    }
+    
+    # Check if this is a modal form (has hx_target in attrs)
+    if attrs.get("hx_target"):
+        form_attrs["hx_post"] = form_action
+        form_attrs["hx_target"] = attrs.get("hx_target")
+        form_attrs["hx_swap"] = attrs.get("hx_swap", "innerHTML")
+        # Remove action for HTMX form to prevent standard form submission
+        del form_attrs["action"]
+    
+    form_attrs.update({k: v for k, v in attrs.items() if not k.startswith("hx_")})
+
     return Form(
         Div(
             Label("Title", for_="title"),
@@ -443,10 +477,7 @@ def EditBookmarkForm(bookmark: dict, **attrs): # FastHTML functional component
             Input(name="tags", id="tags", value=tags_str),
         ),
         Button("Save Changes", type="submit", cls="btn primary small"),
-        method=form_method,
-        action=form_action,
-        cls="edit-bookmark-form", # For styling the form
-        **attrs
+        **form_attrs
     )
 
 

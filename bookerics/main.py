@@ -33,12 +33,9 @@ async def app_lifespan(app_instance) -> AsyncIterator[None]: # Renamed from 'lif
     # Ludic style.load(cache=True) was here, already noted as replaced by CSS.
     yield
 
-app, rt = fast_app(debug=True, lifespan=app_lifespan)
+app, rt = fast_app(debug=True, lifespan=app_lifespan, static_path=base_dir)
 
-# Add static file mounts
-app.router.routes.append(
-    Mount("/static", StaticFiles(directory=static_dir), name="static")
-)
+# Add feeds route manually since FastHTML doesn't handle this by default
 app.router.routes.append(
     Mount("/feeds", StaticFiles(directory=feeds_dir), name="feeds")
 )
@@ -51,7 +48,7 @@ app.add_middleware(
 )
 
 # Import routes after app and rt are fully created to avoid circular import issues
-# import bookerics.errors as _  # noqa # Commented out
+import bookerics.errors as _  # noqa # Uncommented
 import bookerics.routes as _  # noqa # Uncommented
 
 def start():

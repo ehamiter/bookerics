@@ -23,7 +23,9 @@ def Page(*children, title_str: str = "bookerics"):
             # Title() is automatically handled by Titled component
         ),
         Body(
-            Div(*children, id="results-container", cls="container mx-auto p-2")
+            Div(*children, id="results-container", cls="container mx-auto p-2"),
+            # Modal container - empty div that will be populated by HTMX
+            Div(id="modal-container")
             # The class "container mx-auto p-2" assumes a CSS framework like PicoCSS or Tailwind/Bootstrap.
             # For PicoCSS, just "container" might be enough for centering.
             # Padding "p-2" is a utility class example.

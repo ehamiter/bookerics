@@ -1,15 +1,15 @@
-from ludic.catalog.headers import H1
-from ludic.catalog.typography import Paragraph
+from fasthtml.common import H1, P
 
 from .main import app
-from .pages import Page
+from .core import Page
 
 
 @app.exception_handler(404)
 async def not_found() -> Page:
     return Page(
         H1("Page Not Found"),
-        Paragraph("The page you are looking for was not found."),
+        P("The page you are looking for was not found."),
+        title_str="404 - Page Not Found"
     )
 
 
@@ -17,5 +17,6 @@ async def not_found() -> Page:
 async def server_error() -> Page:
     return Page(
         H1("Server Error"),
-        Paragraph("Server encountered an error during processing."),
+        P("Server encountered an error during processing."),
+        title_str="500 - Server Error"
     )

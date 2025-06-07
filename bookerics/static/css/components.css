@@ -3,37 +3,90 @@
 /* Styles for NavMenu */
 .nav-menu {
     display: flex;
-    justify-content: space-between; /* Corresponds to Ludic's justify-space-between */
+    justify-content: space-between;
     align-items: center;
-    padding: 0.5em 1em;
-    background-color: #f0f0f0; /* Example background */
+    padding: 1rem 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
 }
 .nav-menu > div { /* Direct children Divs of nav-menu */
     display: flex;
-    gap: 1em; /* Spacing between links within groups */
+    gap: 1.5rem; /* More spacing between links */
 }
 .nav-menu a {
     text-decoration: none;
+    color: #0096ff;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Soft left-to-right animation on hover */
+.nav-menu a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 150, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.nav-menu a:hover::before {
+    left: 100%;
+}
+
+.nav-menu a:hover {
+    background-color: #f0f8ff;
+    text-decoration: none;
+    color: #005bb5;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 150, 255, 0.15);
+}
+
+/* Active state styling - subtle but noticeable */
+.nav-menu a.active {
+    background: linear-gradient(135deg, #e6f3ff, #f0f8ff);
+    color: #004080;
+    font-weight: 600;
+    border: 1px solid rgba(0, 150, 255, 0.2);
+    box-shadow: inset 0 1px 3px rgba(0, 150, 255, 0.1);
+}
+
+.nav-menu a.active:hover {
+    background: linear-gradient(135deg, #ddeeff, #e6f3ff);
+    transform: none;
+}
+/* Style the first element (bookmark count) differently */
+.nav-menu > *:first-child {
+    font-weight: 600;
     color: #333;
 }
 
 /* Styles for SearchBar */
-.search-bar-input { /* Class for the input element itself */
-    width: 100%; /* Was on .search-bar in Ludic */
-    padding: 0.5em;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #f8f8f8;
-    border-color: #b0b0b0;
+.search-bar-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    background-color: #fafafa;
     color: #333;
-    max-inline-size: none; /* from Ludic */
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .search-bar-input::placeholder {
-    color: #aaa;
+    color: #888;
 }
 .search-bar-input:focus {
-    border-color: #888;
+    border-color: #0096ff;
+    background-color: #fff;
     outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 150, 255, 0.1);
 }
 
 /* Styles for HiddenLink */
@@ -46,14 +99,18 @@
 
 /* Styles for BookericLink */
 .bookeric-link.external {
-    font-weight: normal;
-    font-size: 1rem;
-    color: #0086e5; /* Original color */
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #0086e5;
     text-decoration: none;
     outline: none;
+    line-height: 1.3;
+    display: block;
+    margin-bottom: 0.5rem;
 }
 .bookeric-link.external:hover {
-    text-decoration: underline !important; /* From BookmarkBox styles */
+    color: #005bb5;
+    text-decoration: none !important;
 }
 
 /* Styles for TableStructure */
@@ -80,15 +137,18 @@
     padding: 0.5em 0;
 }
 
-.tag-cloud .btn.tag { /* Styles from Ludic's TagCloud.styles */
-    border: 1px solid #4a4a4a4a;
-    font-size: 0.8em;
-    padding: clamp(0.23rem, 0.23rem + 0vw, 0.28rem) clamp(0.47rem, 0.47rem + 0.1vw, 0.59rem);
+.tag-cloud .btn.tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     text-decoration: none;
-    color: #333; /* Default text color, info class might override */
-    background-color: #f0f0f0; /* Default background */
-    border-radius: 4px;
-    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    color: #555;
+    background-color: #f0c14b;
+    border: 1px solid #d4a017;
+    border-radius: 12px;
+    transition: all 0.2s ease;
 }
 
 .tag-cloud .btn.tag.info { /* Example for info class if used */
@@ -97,25 +157,26 @@
     color: #2c3e50;
 }
 
-.tag-cloud .btn.tag:hover { /* Styles from Ludic's TagCloud.styles */
-    filter: none;
-    border: 1px solid #4a4a4a77;
+.tag-cloud .btn.tag:hover {
     background-color: #fff59b;
+    border-color: #b8860b;
+    color: #333;
     text-decoration: none;
-    box-shadow: rgba(0, 0, 0, 0.18) 0px 2px 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
 }
 
 /* Styles for PreviewImage */
 .image-placeholder {
     height: auto;
     width: 100%;
-    max-width: 480px; /* from Ludic styles */
-    margin-top: 1em; /* from Ludic styles */
-    box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset; /* from Ludic styles */
-    background: #85acc934; /* from Ludic styles */
-    display: block; /* Ensure it behaves as a block for margin auto if needed */
-    margin-left: auto;
-    margin-right: auto;
+    max-width: 480px;
+    margin: 1rem auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: #f5f5f5;
+    display: block;
+    border: 1px solid #e0e0e0;
 }
 
 /* Styles for ImageSwitcher */
@@ -138,12 +199,13 @@
 /* Styles for BookmarkBox */
 .bookmark-box {
     position: relative;
-    padding: 1em; /* Was theme.sizes.m */
-    color: #333; /* Was theme.colors.dark */
+    padding: 1.5rem;
+    color: #333;
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    border: 1px solid #bababa;
-    border-radius: 0.375rem; /* Was theme.rounding.more */
-    background-color: #fff; /* Was theme.colors.light */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .bookmark-box.small {
     padding: 0.5em; /* Was theme.sizes.xs */
@@ -164,8 +226,9 @@
     border: 1px solid #333; /* Was theme.borders.thin solid theme.colors.dark */
 }
 .bookmark-box:hover {
-    background-color: #f8f8f8; /* Was theme.colors.light.lighten(1) */
-    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    background-color: #f8fafb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #d0d0d0;
 }
 .bookmark-box .bookeric-link.external:hover {
     text-decoration: underline !important;
@@ -173,16 +236,18 @@
 .bookmark-box .box {
     padding: 1em 0 0 0;
 }
-.bookmark-box p.url, .bookmark-box div p.url { /* Made selector more specific for p.url inside divs */
-    margin: 0.75em 0;
-    font-size: 0.88em;
+.bookmark-box p.url, .bookmark-box div p.url {
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
     font-weight: 500;
     color: #5c744a;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
-.bookmark-box p.description, .bookmark-box div p.description { /* Made selector more specific */
-    color: #10140d;
-    margin: 1em 0 0 0;
-    font-size: 1em;
+.bookmark-box p.description, .bookmark-box div p.description {
+    color: #444;
+    margin: 0.75rem 0 1rem 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
 }
 .bookmark-box p.image-url, .bookmark-box div p.image-url { /* Made selector more specific */
     text-align: center;
@@ -203,6 +268,12 @@
     display: inline-block;
     cursor: pointer;
 }
+.bookmark-box .expand-button a {
+    text-decoration: none;
+}
+.bookmark-box .expand-button a:hover {
+    text-decoration: none;
+}
 .bookmark-box .action-buttons {
     position: absolute;
     bottom: 1rem;
@@ -218,9 +289,11 @@
     font-size: 1rem;
     opacity: 0.75;
     padding: 0.25em;
+    text-decoration: none;
 }
 .bookmark-box .update-btn:hover, .bookmark-box .delete-btn:hover {
     opacity: 1;
+    text-decoration: none;
 }
 .bookmark-box .delete-btn {
     cursor: not-allowed;
@@ -231,14 +304,17 @@
 }
 
 .bookmark-box .btn.tag {
-    border: 1px solid #4a4a4a4a;
-    font-size: 0.8em;
-    padding: clamp(0.23rem, 0.23rem + 0vw, 0.28rem) clamp(0.47rem, 0.47rem + 0.1vw, 0.59rem);
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    margin: 0.25rem 0.5rem 0.25rem 0;
+    font-size: 0.75rem;
+    font-weight: 500;
     text-decoration: none;
-    color: #333;
-    background-color: #f0f0f0;
-    border-radius: 4px;
-    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    color: #555;
+    background-color: #f0c14b;
+    border: 1px solid #d4a017;
+    border-radius: 12px;
+    transition: all 0.2s ease;
 }
 .bookmark-box .btn.tag.info {
     background-color: #e0efff;
@@ -251,11 +327,12 @@
     color: #665000;
 }
 .bookmark-box .btn.tag:hover {
-    filter: none;
-    border: 1px solid #4a4a4a77;
     background-color: #fff59b;
+    border-color: #b8860b;
+    color: #333;
     text-decoration: none;
-    box-shadow: rgba(0, 0, 0, 0.18) 0px 2px 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
 }
 
 /* General .btn class for other buttons if needed */
@@ -281,15 +358,106 @@
 }
 
 .toggle-image-preview-btn {
-    /* Specific styles if different from generic .btn or text */
+    text-decoration: none;
+}
+.toggle-image-preview-btn:hover {
+    text-decoration: none;
 }
 
 /* Styles for BookmarkList / BookmarkImageList Switcher */
 .bookmark-list-switcher, .bookmark-image-list-switcher {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1em; /* Adjust gap as needed */
-    justify-content: center; /* Or left, as preferred */
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Make bookmark boxes more compact and card-like */
+.bookmark-list-switcher .bookmark-box {
+    margin-bottom: 0;
+    max-width: 100%;
+}
+
+.bookmark-image-list-switcher .bookmark-box {
+    margin-bottom: 0;
+    max-width: 100%;
+}
+
+/* Modal styles */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-header {
+    padding: 1.5rem 2rem 1rem;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #333;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background-color: #f5f5f5;
+    color: #555;
+}
+
+.modal-body {
+    padding: 1.5rem 2rem 2rem;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+    from { 
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* Styles for EditBookmarkForm */
@@ -300,16 +468,31 @@
     display: block;
     margin-bottom: 0.25em;
     font-weight: bold;
+    color: #333;
 }
 .edit-bookmark-form input[type="text"],
 .edit-bookmark-form input[type="url"],
 .edit-bookmark-form textarea { /* Added textarea for description */
     width: 100%;
-    padding: 0.5em;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    padding: 0.75em;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.edit-bookmark-form input:focus,
+.edit-bookmark-form textarea:focus {
+    outline: none;
+    border-color: #0096ff;
+    box-shadow: 0 0 0 3px rgba(0, 150, 255, 0.1);
 }
 .edit-bookmark-form textarea {
-    min-height: 80px; /* Give some space for description */
+    min-height: 100px; /* Give some space for description */
+    resize: vertical;
+}
+.edit-bookmark-form .btn {
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
 }
