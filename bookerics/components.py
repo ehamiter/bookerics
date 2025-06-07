@@ -1,7 +1,7 @@
 import json # Uncommented
 import requests # Uncommented
 
-from fasthtml.common import Div, A, Input, P, Img, Pre, Code, Button, Form, Label, Textarea
+from fasthtml.common import Div, A, Input, P, Img, Pre, Code, Button, Form, Label, Textarea, Span
 # For attributes, use dicts e.g. {'hx_get': '/search'}
 
 from .constants import GIPHY_API_KEY # Keep
@@ -32,8 +32,9 @@ def NavMenu(bookmark_count: int | bool = False, active: str = ""): # FastHTML fu
             A("oldest", href="/oldest", cls=nav_link_class("oldest")), # Was Link
             A("random", href="/random", cls=nav_link_class("random")), # Was Link
             A("untagged", href="/untagged", cls=nav_link_class("untagged")), # Was Link
+            Span(" | ", cls="nav-separator"), # Pipe separator
+            A("tags", href="#", id="tags-link", cls=nav_link_class("tags")), # Moved from separate div
         ),
-        Div(A("tags", href="#", id="tags-link", cls=nav_link_class("tags"))), # Was Cluster(a(...))
         cls="nav-menu justify-space-between", # Added nav-menu class for styling
     )
 
@@ -335,7 +336,7 @@ def _render_bookmark_html(bookmark: dict, is_image_list: bool = False): # Helper
     ]
 
     if is_image_list and thumbnail_url:
-        content.append(PreviewImage(src=thumbnail_url, id=f"thumbnail-{bookmark_id}", height="270", width="480"))
+        content.append(PreviewImage(src=thumbnail_url, id=f"thumbnail-{bookmark_id}"))
 
     if description:
         content.append(P(description))
@@ -462,7 +463,7 @@ def EditBookmarkForm(bookmark: dict, **attrs): # FastHTML functional component
     return Form(
         Div(
             Label("Title", for_="title"),
-            Input(name="title", id="title", value=bookmark.get("title", "")),
+            Input(type="text", name="title", id="title", value=bookmark.get("title", "")),
         ),
         Div(
             Label("URL", for_="url"),
@@ -474,7 +475,7 @@ def EditBookmarkForm(bookmark: dict, **attrs): # FastHTML functional component
         ),
         Div(
             Label("Tags (space-separated)", for_="tags"),
-            Input(name="tags", id="tags", value=tags_str),
+            Input(type="text", name="tags", id="tags", value=tags_str),
         ),
         Button("Save Changes", type="submit", cls="btn primary small"),
         **form_attrs

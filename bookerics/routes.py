@@ -209,12 +209,12 @@ async def get_thumbnail_route(request: Request): # Renamed
     if bookmark and bookmark.get("thumbnail_url"):
         # Using PreviewImage component to render the image tag for consistency
         # PreviewImage itself handles placeholder logic if thumbnail_url is empty, though here we check it.
-        img_html = PreviewImage(src=bookmark["thumbnail_url"], id=f"thumbnail-{bookmark_id}", height="270", width="480").to_html()
+        img_html = PreviewImage(src=bookmark["thumbnail_url"], id=f"thumbnail-{bookmark_id}").to_html()
         return HTMLResponse(img_html, headers=headers)
 
     logging.error(f"💥 Bookmark or thumbnail not found for id: {bookmark_id}")
     # Return a placeholder or an empty response with appropriate status
-    img_html = PreviewImage(src=None, id=f"thumbnail-{bookmark_id}", height="270", width="480").to_html() # Shows placeholder
+    img_html = PreviewImage(src=None, id=f"thumbnail-{bookmark_id}").to_html() # Shows placeholder
     return HTMLResponse(img_html, headers=headers, status_code=404)
 
 

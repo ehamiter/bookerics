@@ -1,12 +1,12 @@
-from fasthtml.common import Titled, Head, Meta, Link, Script, Body, Div, Html, Title
+from fasthtml.common import Head, Meta, Link, Script, Body, Div, Html, Title
 
 def Page(*children, title_str: str = "bookerics"):
     """
     Constructs a basic HTML page structure using FastHTML components.
     """
-    return Titled(
-        title_str,
+    return Html(
         Head(
+            Title(title_str),
             Meta(charset="utf-8"),
             Meta(name="viewport", content="width=device-width, initial-scale=1, shrink-to-fit=no"),
             Meta(name="description", content="Bookmarks, but for Erics."),
@@ -20,7 +20,6 @@ def Page(*children, title_str: str = "bookerics"):
             Script(src="/static/js/htmx.min.js", defer=True),
             Script(src="/static/js/custom.js", defer=True),
             Meta(name="htmx-config", content='{"defaultSwapStyle": "outerHTML"}')
-            # Title() is automatically handled by Titled component
         ),
         Body(
             Div(*children, id="results-container", cls="container mx-auto p-2"),

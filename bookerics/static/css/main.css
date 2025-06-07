@@ -57,3 +57,30 @@ h1 {
     font-weight: 600;
     color: #333;
 }
+
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+    .container {
+        padding: 0.5rem;
+        max-width: 100%;
+    }
+    
+    body {
+        font-size: 14px;
+    }
+    
+    h1 {
+        font-size: 1.25rem;
+        margin: 0.5rem 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0.25rem;
+    }
+    
+    body {
+        font-size: 13px;
+    }
+}
