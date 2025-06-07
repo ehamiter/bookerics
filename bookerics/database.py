@@ -710,7 +710,7 @@ def create_rss_feed(bookmarks: List[Dict], tag: Optional[str] = None) -> str:
             <channel>
                 <title>bookerics</title>
                 <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
-                <description>bookmarks, but for erics</description>
+                <description>bookmarks, but for Erics</description>
                 <atom:icon>https://bookerics.s3.amazonaws.com/favicon.ico</atom:icon>
                 <atom:link href="https://bookerics.s3.amazonaws.com/feeds/rss.xml" rel="self" type="application/rss+xml" />
                 <image>
