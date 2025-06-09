@@ -327,6 +327,11 @@ def _render_bookmark_html(bookmark: dict, is_image_list: bool = False): # Helper
     tags = bookmark.get("tags", [])
     thumbnail_url = bookmark.get("thumbnail_url")
     created_at = bookmark.get("created_at")
+    
+    # Check if this is the last bookmark in the list for infinite scroll
+    is_last = bookmark.get("is_last", False)
+    next_page = bookmark.get("next_page", 2)
+    kind = bookmark.get("kind", "newest")
 
     tags_html = _render_tags_html(tags)
     created_at_html = _render_created_at_html(created_at)
@@ -386,7 +391,27 @@ def _render_bookmark_html(bookmark: dict, is_image_list: bool = False): # Helper
         )
     )
 
-    return BookmarkBox(*content, id=toggle_btn_target_id)
+    # If this is the last bookmark, add infinite scroll attributes and loading indicator
+    box_attrs = {"id": toggle_btn_target_id}
+    if is_last:
+        box_attrs.update({
+            "hx_get": f"/bookmarks?page={next_page}&kind={kind}",
+            "hx_trigger": "revealed",
+            "hx_swap": "afterend",
+            "hx_indicator": f"#{toggle_btn_target_id}-loading"
+        })
+        
+        # Add loading indicator after the bookmark box content
+        content.append(
+            Div(
+                "Loading more bookerics...",
+                id=f"{toggle_btn_target_id}-loading",
+                cls="htmx-indicator loading-indicator",
+                style="text-align: center; padding: 1rem; color: #666; font-style: italic;"
+            )
+        )
+
+    return BookmarkBox(*content, **box_attrs)
 
 
 # class BookmarkList(Component[NoChildren, GlobalAttrs]): # Ludic

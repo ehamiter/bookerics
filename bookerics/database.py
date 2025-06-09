@@ -189,7 +189,20 @@ def fetch_data(query: str, params: tuple = ()) -> List[Dict[str, Any]]:
     return bookmarks
 
 
-def fetch_bookmarks(kind: str) -> List[Dict[str, Any]]:
+def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 50) -> List[Dict[str, Any]]:
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks "
+    offset = (page - 1) * per_page
+    
+    queries = {
+        "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC LIMIT {per_page} OFFSET {offset};",
+        "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC LIMIT {per_page} OFFSET {offset};",
+        "untagged": f"{bq} WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC LIMIT {per_page} OFFSET {offset};",
+    }
+    query = queries.get(kind, queries["newest"])
+    return fetch_data(query)
+
+def fetch_bookmarks_all(kind: str) -> List[Dict[str, Any]]:
+    """Fetch all bookmarks without pagination - for compatibility with existing code that needs all bookmarks"""
     bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks "
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
@@ -263,7 +276,7 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
 
         try:
             # Update RSS feeds with fresh bookmark list
-            bookmarks = fetch_bookmarks(kind="newest")
+            bookmarks = fetch_bookmarks_all(kind="newest")
             bookmarks = [bm for bm in bookmarks if bm and bm.get('source') == 'internal']
             if bookmarks:  # Only create feed if we have valid bookmarks
                 asyncio.create_task(create_feed(tag=None, bookmarks=bookmarks, publish=True))
@@ -295,7 +308,7 @@ def backup_bookerics_db():
         logger.info(f"☑️ Backup created at {dest_path}")
     
     # Regenerate RSS feed
-    bookmarks = fetch_bookmarks(kind="newest")
+    bookmarks = fetch_bookmarks_all(kind="newest")
     bookmarks = [bm for bm in bookmarks if bm.get('source') == 'internal']
     if bookmarks:
         asyncio.create_task(create_feed(tag=None, bookmarks=bookmarks, publish=True))

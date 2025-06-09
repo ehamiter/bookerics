@@ -18,7 +18,6 @@ from .components import (
     EditBookmarkForm,
     _render_tags_html, # Helper for AI route
     PreviewImage, # For get_thumbnail
-    _render_bookmark_html
     # Img removed as PreviewImage is used for its .to_html() method
 )
 from .database import (
@@ -29,6 +28,7 @@ from .database import (
     fetch_bookmark_by_id,
     fetch_bookmark_by_url,
     fetch_bookmarks,
+    fetch_bookmarks_all,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
     search_bookmarks,
@@ -45,20 +45,76 @@ from .utils import logger
 
 @main_fasthtml_router("/")
 async def index():
-    bookmarks = fetch_bookmarks(kind="newest")
+    print("🏠 INDEX ROUTE: Loading first page of bookmarks")
+    bookmarks = fetch_bookmarks(kind="newest", page=1, per_page=50)
+    all_bookmarks = fetch_bookmarks_all(kind="newest")  # For count
+    print(f"🏠 INDEX ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
+    
+    # Add infinite scroll trigger to the last bookmark if we have bookmarks
+    if bookmarks:
+        # Add HTMX attributes to the last bookmark for infinite scroll
+        last_bookmark = bookmarks[-1]
+        last_bookmark['is_last'] = True
+        last_bookmark['next_page'] = 2
+        last_bookmark['kind'] = "newest"
+    
     # Pass components as children to Page
     return Page(
-        NavMenu(bookmark_count=len(bookmarks), active="newest"),
+        NavMenu(bookmark_count=len(all_bookmarks), active="newest"),
         SearchBar(),
         BookmarkList(bookmarks=bookmarks)
     )
 
+@main_fasthtml_router("/bookmarks")
+async def bookmarks_page(request: Request):
+    """HTMX endpoint for infinite scroll pagination"""
+    page = int(request.query_params.get("page", 2))
+    kind = request.query_params.get("kind", "newest")
+    
+    print(f"📄 BOOKMARKS_PAGE: Loading page {page} for kind {kind}")
+    bookmarks = fetch_bookmarks(kind=kind, page=page, per_page=50)
+    print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} bookmarks for page {page}")
+    
+    # If no bookmarks, return empty response
+    if not bookmarks:
+        print(f"📄 BOOKMARKS_PAGE: No more bookmarks found for page {page}")
+        return HTMLResponse("", status_code=200)
+    
+    # Add infinite scroll trigger to the last bookmark
+    last_bookmark = bookmarks[-1]
+    last_bookmark['is_last'] = True
+    last_bookmark['next_page'] = page + 1
+    last_bookmark['kind'] = kind
+    
+    # Create individual bookmark HTML elements and join them
+    from bookerics.components import _render_bookmark_html
+    bookmark_elements = [_render_bookmark_html(bm, is_image_list=False) for bm in bookmarks]
+    
+    # Convert to HTML strings and join them
+    from fasthtml.common import to_xml
+    html_parts = [to_xml(element) for element in bookmark_elements]
+    combined_html = "\n".join(html_parts)
+    
+    print(f"📄 BOOKMARKS_PAGE: Returning {len(bookmark_elements)} bookmark elements as HTML")
+    return HTMLResponse(combined_html, status_code=200)
+
 
 @main_fasthtml_router("/oldest")
 async def oldest():
-    bookmarks = fetch_bookmarks(kind="oldest")
+    print("📅 OLDEST ROUTE: Loading first page of oldest bookmarks")
+    bookmarks = fetch_bookmarks(kind="oldest", page=1, per_page=50)
+    all_bookmarks = fetch_bookmarks_all(kind="oldest")  # For count
+    print(f"📅 OLDEST ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
+    
+    # Add infinite scroll trigger to the last bookmark if we have bookmarks
+    if bookmarks:
+        last_bookmark = bookmarks[-1]
+        last_bookmark['is_last'] = True
+        last_bookmark['next_page'] = 2
+        last_bookmark['kind'] = "oldest"
+    
     return Page(
-        NavMenu(bookmark_count=len(bookmarks), active="oldest"),
+        NavMenu(bookmark_count=len(all_bookmarks), active="oldest"),
         SearchBar(),
         BookmarkList(bookmarks=bookmarks)
     )
@@ -66,7 +122,7 @@ async def oldest():
 
 @main_fasthtml_router("/random")
 async def random_bookmark():
-    bookmarks = fetch_bookmarks(kind="newest") # Fetch all to get a random one
+    bookmarks = fetch_bookmarks_all(kind="newest") # Fetch all to get a random one
     bookmark_count = len(bookmarks)
     if not bookmarks: # Handle case with no bookmarks
         return Page(NavMenu(bookmark_count=0, active="random"), SearchBar(), "No bookmarks available to choose from.")
@@ -81,7 +137,7 @@ async def random_bookmark():
 
 @main_fasthtml_router("/tags")
 async def tags_route(): # Renamed from 'tags' to avoid conflict with variable name
-    all_bookmarks = fetch_bookmarks(kind="newest") # To get total count
+    all_bookmarks = fetch_bookmarks_all(kind="newest") # To get total count
     internal_bookmarks_count = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
     tag_list = fetch_unique_tags(kind="frequency") # Renamed variable 'tags' to 'tag_list'
     return Page(
@@ -93,7 +149,7 @@ async def tags_route(): # Renamed from 'tags' to avoid conflict with variable na
 
 @main_fasthtml_router("/tags/newest")
 async def tags_newest_route(): # Renamed from 'tags'
-    all_bookmarks = fetch_bookmarks(kind="newest")
+    all_bookmarks = fetch_bookmarks_all(kind="newest")
     internal_bookmarks_count = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
     tag_list = fetch_unique_tags(kind="newest") # Renamed variable 'tags' to 'tag_list'
     return Page(
@@ -133,10 +189,22 @@ async def create_feed_for_tag_route(tag: str): # Renamed
 
 @main_fasthtml_router("/untagged") # Changed from @app.get
 async def untagged_bookmarks_route(): # Renamed
-    untagged = fetch_bookmarks(kind="untagged") # Renamed variable
+    print("🏷️ UNTAGGED ROUTE: Loading first page of untagged bookmarks")
+    untagged = fetch_bookmarks(kind="untagged", page=1, per_page=50) # Renamed variable
+    all_untagged = fetch_bookmarks_all(kind="untagged")  # For count
     internal_untagged = [bm for bm in untagged if bm.get('source') == 'internal']
+    all_internal_untagged = [bm for bm in all_untagged if bm.get('source') == 'internal']
+    print(f"🏷️ UNTAGGED ROUTE: Loaded {len(internal_untagged)} bookmarks from page 1, total: {len(all_internal_untagged)}")
+    
+    # Add infinite scroll trigger to the last bookmark if we have bookmarks
+    if internal_untagged:
+        last_bookmark = internal_untagged[-1]
+        last_bookmark['is_last'] = True
+        last_bookmark['next_page'] = 2
+        last_bookmark['kind'] = "untagged"
+    
     return Page(
-        NavMenu(bookmark_count=len(internal_untagged), active="untagged"),
+        NavMenu(bookmark_count=len(all_internal_untagged), active="untagged"),
         SearchBar(),
         BookmarkList(bookmarks=internal_untagged)
     )
@@ -315,7 +383,7 @@ async def delete_bookmark_route(bookmark_id: int, request: Request): # Added req
         if "/random" in referer:
             print(f"🔥 DELETE_BOOKMARK_ROUTE: Request came from random page, returning new random bookmark")
             # If deleting from the random page, return a new random bookmark
-            bookmarks = fetch_bookmarks(kind="newest") # Fetch all to get a random one
+            bookmarks = fetch_bookmarks_all(kind="newest") # Fetch all to get a random one
             if bookmarks: # Make sure we have bookmarks left
                 selected_bookmarks = [secrets.choice(bookmarks)]
                 print(f"🔥 DELETE_BOOKMARK_ROUTE: Selected new random bookmark: {selected_bookmarks[0].get('title', 'N/A')}")
@@ -343,7 +411,7 @@ async def delete_bookmark_route(bookmark_id: int, request: Request): # Added req
 @main_fasthtml_router("/table") # Changed from @app.get
 async def table_structure_route(): # Renamed
     structure = verify_table_structure() # Assuming this is synchronous
-    all_bookmarks = fetch_bookmarks(kind="newest") # Renamed
+    all_bookmarks = fetch_bookmarks_all(kind="newest") # Renamed
     return Page(
         NavMenu(bookmark_count=len(all_bookmarks)),
         SearchBar(),

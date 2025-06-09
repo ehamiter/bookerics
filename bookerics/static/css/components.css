@@ -663,3 +663,51 @@
         font-size: 0.85rem;
     }
 }
+
+/* Infinite Scroll Loading Indicator Styles */
+.loading-indicator {
+    text-align: center;
+    padding: 1.5rem;
+    color: #666;
+    font-style: italic;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin: 1rem 0;
+    border: 1px solid #e9ecef;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-indicator::before {
+    content: "⏳ ";
+    margin-right: 0.5rem;
+}
+
+/* HTMX indicator - hidden by default, shown during requests */
+.htmx-indicator {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.htmx-request .htmx-indicator {
+    opacity: 1;
+}
+
+/* Pulse animation for loading indicator */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Smooth scrolling for better infinite scroll experience */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Ensure bookmark boxes have proper spacing for infinite scroll */
+.bookmark-list-switcher > .bookmark-box:last-child {
+    margin-bottom: 2rem;
+}
