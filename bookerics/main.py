@@ -25,12 +25,9 @@ if not os.path.exists(static_dir):
 if not os.path.exists(feeds_dir):
     raise RuntimeError(f"Directory '{feeds_dir}' does not exist")
 
-# Ludic style.load(cache=True) removed, CSS is used now.
-
 @asynccontextmanager
-async def app_lifespan(app_instance) -> AsyncIterator[None]: # Renamed from 'lifespan' to avoid conflict if fast_app uses 'lifespan' internally
+async def app_lifespan(app_instance) -> AsyncIterator[None]:
     load_db_on_startup()
-    # Ludic style.load(cache=True) was here, already noted as replaced by CSS.
     yield
 
 app, rt = fast_app(debug=True, lifespan=app_lifespan, static_path=base_dir)
