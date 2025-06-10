@@ -12,7 +12,7 @@ from .database import BOOKMARK_NAME, Bookmark
 AnyComponent = Any
 
 
-def NavMenu(bookmark_count: Union[int, bool] = False, active: str = "") -> Div:
+def NavMenu(bookmark_count: Union[int, bool] = False, active: str = "") -> AnyComponent:
     if bookmark_count is not False and isinstance(bookmark_count, int):
         bookericz = BOOKMARK_NAME if bookmark_count == 1 else f"{BOOKMARK_NAME}s"
         bookmark_result = f"{bookmark_count:,} {bookericz}"
@@ -40,7 +40,7 @@ def NavMenu(bookmark_count: Union[int, bool] = False, active: str = "") -> Div:
     )
 
 
-def SearchBar(query: str = "", **attrs: Any) -> Input:
+def SearchBar(query: str = "", **attrs: Any) -> AnyComponent:
     return Input(
         type="search",
         placeholder=f"Search {BOOKMARK_NAME}s",
@@ -56,7 +56,7 @@ def SearchBar(query: str = "", **attrs: Any) -> Input:
     )
 
 
-def HiddenLink(*children: AnyComponent, to: str, title: str, **attrs: Any) -> A:
+def HiddenLink(*children: AnyComponent, to: str, title: str, **attrs: Any) -> AnyComponent:
     return A(
         *children,
         href=to,
@@ -66,7 +66,7 @@ def HiddenLink(*children: AnyComponent, to: str, title: str, **attrs: Any) -> A:
     )
 
 
-def BookericLink(*children: AnyComponent, to: str, **attrs: Any) -> A:
+def BookericLink(*children: AnyComponent, to: str, **attrs: Any) -> AnyComponent:
     return A(
         *children,
         href=to,
@@ -75,7 +75,7 @@ def BookericLink(*children: AnyComponent, to: str, **attrs: Any) -> A:
         **attrs
     )
 
-def TableStructure(structure: Union[list, None] = None, **attrs: Any) -> Div:
+def TableStructure(structure: Union[list, None] = None, **attrs: Any) -> AnyComponent:
     if structure is None:
         structure = []
 
@@ -89,7 +89,7 @@ def TableStructure(structure: Union[list, None] = None, **attrs: Any) -> Div:
     )
 
 
-def TagCloud(tags: Union[list, None] = None, **attrs: Any) -> Div:
+def TagCloud(tags: Union[list, None] = None, **attrs: Any) -> AnyComponent:
     if tags is None:
         tags = []
     # CSS class "tag-cloud" handles flex layout.
@@ -117,7 +117,7 @@ def _get_random_giphy_url() -> str:
         print(f"Error parsing Giphy response: {e}")
         return "/static/images/placeholder.gif"
 
-def PreviewImage(src: Union[str, None] = None, **attrs: Any) -> Img:
+def PreviewImage(src: Union[str, None] = None, **attrs: Any) -> AnyComponent:
     placeholder_src = ""
     if not src:
         placeholder_src = _get_random_giphy_url()
@@ -129,11 +129,11 @@ def PreviewImage(src: Union[str, None] = None, **attrs: Any) -> Img:
     return Img(src=src, cls="image-placeholder", **attrs)
 
 
-def ImageSwitcher(*children: AnyComponent, **attrs: Any) -> Div:
+def ImageSwitcher(*children: AnyComponent, **attrs: Any) -> AnyComponent:
     return Div(*children, cls="image-switcher", **attrs)
 
 
-def BookmarkBox(*children: AnyComponent, **attrs: Any) -> Div:
+def BookmarkBox(*children: AnyComponent, **attrs: Any) -> AnyComponent:
     # All styling and structure is handled by CSS via the 'bookmark-box' class and its modifiers.
     # Child elements like P, A, Div will be passed in *children.
     # Modifier classes like 'small', 'large', 'transparent', 'invert' should be part of attrs['cls']
@@ -175,7 +175,7 @@ def UpdateBookmarkButton(text: str, hx_get: str, cls: str = "", hx_target: str =
     return A(text, **attrs_dict) # type: ignore
 
 
-def _render_tags_html(tags: Union[list[str], str]) -> Div:
+def _render_tags_html(tags: Union[list[str], str]) -> AnyComponent:
     """Renders a list of tags as A elements within a Div."""
     if isinstance(tags, str):
         # Handle case where tags might be passed as a string
@@ -189,7 +189,7 @@ def _render_tags_html(tags: Union[list[str], str]) -> Div:
 
     return Div(*[A(tag, href=f"/tags/{tag}", cls="btn tag info") for tag in tags], cls="tags-container")
 
-def _render_created_at_html(created_at: Union[str, None]) -> Div:
+def _render_created_at_html(created_at: Union[str, None]) -> AnyComponent:
     if created_at:
         # Use HTML5 time element with datetime attribute for JavaScript formatting
         from fasthtml.common import Time
@@ -200,7 +200,7 @@ def _render_created_at_html(created_at: Union[str, None]) -> Div:
     return Div("", cls="created-at-display")
 
 
-def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> Div:
+def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> AnyComponent:
     bookmark_id = bookmark.get("id")
     title = bookmark.get("title", "")
     url = bookmark.get("url", "")
@@ -295,7 +295,7 @@ def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> Di
     return BookmarkBox(*content, **box_attrs)
 
 
-def BookmarkList(bookmarks: list[Bookmark], **attrs: Any) -> Div:
+def BookmarkList(bookmarks: list[Bookmark], **attrs: Any) -> AnyComponent:
     # Assuming 'bookmarks' is a list of bookmark dictionaries
     # The 'attrs' can be used for top-level Div attributes if needed (e.g. id, class)
     return Div(
@@ -305,7 +305,7 @@ def BookmarkList(bookmarks: list[Bookmark], **attrs: Any) -> Div:
     )
 
 
-def BookmarkImageList(bookmarks: list[Bookmark], **attrs: Any) -> Div:
+def BookmarkImageList(bookmarks: list[Bookmark], **attrs: Any) -> AnyComponent:
     # Relies on PreviewImage's HTMX attributes for lazy loading thumbnails.
     # The update_bookmarks_with_thumbnails can be called in the route handler if needed pre-render.
     return Div(
@@ -315,7 +315,7 @@ def BookmarkImageList(bookmarks: list[Bookmark], **attrs: Any) -> Div:
     )
 
 
-def EditBookmarkForm(bookmark: Bookmark, **attrs: Any) -> Form:
+def EditBookmarkForm(bookmark: Bookmark, **attrs: Any) -> AnyComponent:
     # 'bookmark' is a dictionary containing bookmark data
     # 'attrs' can include form attributes like 'action', 'method' (though method is POST by default here)
 
