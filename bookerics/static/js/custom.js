@@ -204,6 +204,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeTheme() {
     console.log('🎨 Initializing theme system...');
     
+    // Always set up the keyboard shortcut, regardless of initialization path
+    setupKeyboardShortcut();
+    
     // Check if the blocking script already set the theme
     if (window.__THEME_SET__ && window.__INITIAL_COLOR_MODE__) {
         console.log('🎨 Theme already set by blocking script:', window.__INITIAL_COLOR_MODE__);
@@ -243,7 +246,9 @@ function initializeTheme() {
             applyTheme(e.matches ? 'dark' : 'light');
         }
     });
-    
+}
+
+function setupKeyboardShortcut() {
     // Add keyboard shortcut for theme toggle (Cmd/Ctrl + Shift + D)
     document.addEventListener('keydown', function(event) {
         if ((event.metaKey || event.ctrlKey) && event.shiftKey && (event.key === 'D' || event.key === 'd')) {

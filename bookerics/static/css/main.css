@@ -139,7 +139,7 @@ a:hover {
 
 /* Container class from core.py Body's Div */
 .container {
-    max-width: 900px; /* Much more compact width like the original */
+    max-width: 800px; /* Much more compact width like the original */
     margin-left: auto;
     margin-right: auto;
     padding: 1rem; /* Add some padding to prevent edge touching */
