@@ -206,8 +206,8 @@ html[data-theme="dark"] .bookmark-box .btn.tag:hover {
 /* Styles for PreviewImage */
 .image-placeholder {
     height: auto;
-    width: calc(100% - 2rem); /* Full width minus padding for breathing room */
-    max-width: none; /* Remove the 480px limit */
+    width: calc(100% - 2rem);
+    max-width: none;
     margin: 1rem auto;
     border-radius: 8px;
     box-shadow: 0 4px 8px var(--shadow-medium), 0 2px 4px var(--shadow-light);
@@ -215,6 +215,11 @@ html[data-theme="dark"] .bookmark-box .btn.tag:hover {
     display: block;
     border: 1px solid var(--border-light);
     transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark mode override for image brightness */
+html[data-theme="dark"] .image-placeholder {
+    filter: brightness(50%);
 }
 
 /* Styles for ImageSwitcher */
