@@ -204,7 +204,23 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeTheme() {
     console.log('🎨 Initializing theme system...');
     
-    // Check if user has a saved theme preference
+    // Check if the blocking script already set the theme
+    if (window.__THEME_SET__ && window.__INITIAL_COLOR_MODE__) {
+        console.log('🎨 Theme already set by blocking script:', window.__INITIAL_COLOR_MODE__);
+        
+        // Just update the toggle button to match the theme that was already set
+        updateThemeToggleIcon(window.__INITIAL_COLOR_MODE__);
+        
+        // Store it in localStorage if it's not already there (in case it came from system preference)
+        if (!localStorage.getItem('bookerics-theme')) {
+            localStorage.setItem('bookerics-theme', window.__INITIAL_COLOR_MODE__);
+        }
+        
+        return;
+    }
+    
+    // Fallback: if blocking script didn't run (shouldn't happen), do the normal detection
+    console.log('🎨 Blocking script did not run, falling back to normal detection');
     const savedTheme = localStorage.getItem('bookerics-theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
@@ -247,8 +263,11 @@ function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', 'light');
     }
     
-    // Store the applied theme
+    // Store the applied theme in localStorage
     localStorage.setItem('bookerics-theme', theme);
+    
+    // Also set a cookie so the server can detect the theme preference
+    document.cookie = `bookerics-theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
     
     // Update theme toggle button icon
     updateThemeToggleIcon(theme);
