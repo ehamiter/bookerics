@@ -332,7 +332,7 @@ async def create_feed(
     if FEEDS_DIR and not os.path.exists(FEEDS_DIR):
         os.makedirs(FEEDS_DIR)
     feed_content = create_rss_feed(bookmarks, tag)
-    feed_filename = f"{tag}.xml" if tag else "all.xml"
+    feed_filename = f"{tag}.xml" if tag else "rss.xml"
     if FEEDS_DIR:
         feed_path = os.path.join(FEEDS_DIR, feed_filename)
         async with aiofiles.open(feed_path, "w") as f:
@@ -366,7 +366,18 @@ async def upload_file_to_s3(bucket_name: str, s3_key: str, local_path: str):
     session = aioboto3.Session()
     async with session.client("s3") as s3:  # type: ignore
         try:
-            await s3.upload_file(local_path, bucket_name, s3_key)
+            # Determine content type based on file extension
+            extra_args = {}
+            if s3_key.endswith('.xml'):
+                extra_args['ContentType'] = 'application/rss+xml'
+            elif s3_key.endswith('.png'):
+                extra_args['ContentType'] = 'image/png'
+            elif s3_key.endswith('.jpg') or s3_key.endswith('.jpeg'):
+                extra_args['ContentType'] = 'image/jpeg'
+            elif s3_key.endswith('.db'):
+                extra_args['ContentType'] = 'application/x-sqlite3'
+            
+            await s3.upload_file(local_path, bucket_name, s3_key, ExtraArgs=extra_args)
             logger.info(f"⬆️ Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
         except Exception as e:
             logger.error(f"💥 Error uploading {local_path} to S3: {e}")
@@ -609,6 +620,7 @@ def create_rss_feed(
         rss_items_str = "\n".join(rss_items)
 
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
+<?xml-stylesheet type="text/xsl" href="https://bookerics.s3.amazonaws.com/feeds/rss.xsl" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{channel_title}</title>
@@ -617,7 +629,7 @@ def create_rss_feed(
     <language>en-us</language>
     <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
     <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
-    <atom:link href="{RSS_METADATA.get('link', '')}/feeds/{tag or 'all'}.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="{RSS_METADATA.get('link', '')}/feeds/{tag if tag else 'rss'}.xml" rel="self" type="application/rss+xml" />
     {rss_items_str}
 </channel>
 </rss>

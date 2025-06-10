@@ -31,6 +31,7 @@ from .database import (
     fetch_bookmarks_all,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
+    schedule_upload_to_s3,
     search_bookmarks,
     update_bookmark_description,
     update_bookmark_tags,
@@ -382,10 +383,16 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
 async def update_route():
     try:
         backup_bookerics_db()
-        # schedule_feed_creation() # Assuming these are meant to be called
-        # schedule_upload_to_s3()
+        
+        # Create and upload the main RSS feed
+        all_bookmarks = fetch_bookmarks_all(kind="newest")
+        await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
+        
+        # Upload all feeds to S3
+        await schedule_upload_to_s3()
+        
         return JSONResponse(
-            {"status": "success", "message": "Database backed up. Feed creation/S3 upload scheduling (if any) initiated."}
+            {"status": "success", "message": "Database backed up and RSS feed updated successfully."}
         )
     except Exception as e:
         logger.error(f"Error in backup/feed operation: {e}")
