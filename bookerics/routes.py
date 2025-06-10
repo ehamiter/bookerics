@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
-from fasthtml.common import to_xml, Html
+from fasthtml.common import to_xml
 from .ai import get_tags_and_description_from_bookmark
 from .core import Page
 from .components import (
@@ -19,7 +19,6 @@ from .components import (
     EditBookmarkForm,
     _render_tags_html,
     PreviewImage,
-    AnyComponent,
 )
 from .database import (
     backup_bookerics_db,
@@ -41,9 +40,6 @@ from .database import (
 )
 from .main import rt as main_fasthtml_router
 from .utils import logger
-
-# Alias for consistency with existing code
-FastHTMLResponse = HTMLResponse
 
 # main routes
 
@@ -70,7 +66,7 @@ async def index():
     )
 
 @main_fasthtml_router("/bookmarks")
-async def bookmarks_page(request: Request) -> HTMLResponse:
+async def bookmarks_page(request: Request):
     """HTMX endpoint for infinite scroll pagination"""
     page: int = int(request.query_params.get("page", 2))
     kind: str = request.query_params.get("kind", "newest") or "newest"
@@ -90,16 +86,18 @@ async def bookmarks_page(request: Request) -> HTMLResponse:
     last_bookmark['next_page'] = page + 1
     last_bookmark['kind'] = kind
     
-    # Create individual bookmark HTML elements and join them
+    # Create individual bookmark HTML elements and return them
     from bookerics.components import _render_bookmark_html
     bookmark_elements = [_render_bookmark_html(bm, is_image_list=False) for bm in bookmarks]
     
-    # Convert to HTML strings and join them
-    html_parts: List[str] = [to_xml(element) for element in bookmark_elements]
-    combined_html: str = "\n".join(html_parts)
+    # Return as a container div - let FastHTML handle the HTML conversion automatically
+    from fasthtml.common import Div, to_xml
+    div_result = Div(*bookmark_elements)
     
-    print(f"📄 BOOKMARKS_PAGE: Returning {len(bookmark_elements)} bookmark elements as HTML")
-    return HTMLResponse(combined_html, status_code=200)
+    # Convert to HTML fragment for HTMX (not a full page)
+    html_fragment = to_xml(div_result)
+    
+    return HTMLResponse(html_fragment)
 
 
 @main_fasthtml_router("/oldest")
@@ -213,23 +211,25 @@ async def untagged_bookmarks_route():
 # partials
 
 @main_fasthtml_router("/id/{id}")
-async def bookmark_by_id_partial(id: str) -> Union[AnyComponent, HTMLResponse]:
+async def bookmark_by_id_partial(id: str):
     bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
         return HTMLResponse("Bookmark not found", status_code=404)
     bookmarks: List[Bookmark] = [bookmark]
-    # BookmarkImageList returns a Div component, which FastHTML can render directly
-    return BookmarkImageList(bookmarks=bookmarks)
+    # BookmarkImageList returns a Div component, convert to HTML fragment for HTMX
+    component = BookmarkImageList(bookmarks=bookmarks)
+    return HTMLResponse(to_xml(component))
 
 
 @main_fasthtml_router("/id/c/{id}") # Changed from @app.get
-async def bookmark_by_id_compact_partial(id: str) -> Union[AnyComponent, HTMLResponse]:
+async def bookmark_by_id_compact_partial(id: str):
     bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
         return HTMLResponse("Bookmark not found", status_code=404) # Return 404
     bookmarks: List[Bookmark] = [bookmark]
-    # BookmarkList returns a Div component
-    return BookmarkList(bookmarks=bookmarks)
+    # BookmarkList returns a Div component, convert to HTML fragment for HTMX
+    component = BookmarkList(bookmarks=bookmarks)
+    return HTMLResponse(to_xml(component))
 
 @main_fasthtml_router("/search") # Changed from @app.get
 async def search_route(request: Request) -> HTMLResponse:
@@ -247,10 +247,10 @@ async def search_route(request: Request) -> HTMLResponse:
 # utils
 
 @main_fasthtml_router("/ai/{id}")
-async def get_ai_info_for_bookmark_by_id_route(id: str) -> FastHTMLResponse:
+async def get_ai_info_for_bookmark_by_id_route(id: str) -> HTMLResponse:
     bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
-        return FastHTMLResponse("Bookmark not found for AI processing.", status_code=404)
+        return HTMLResponse("Bookmark not found for AI processing.", status_code=404)
 
     try:
         ai_tags, ai_description = await get_tags_and_description_from_bookmark(bookmark)
@@ -269,7 +269,7 @@ async def get_ai_info_for_bookmark_by_id_route(id: str) -> FastHTMLResponse:
         )
     except Exception as e:
         logger.error(f"Error getting AI info for bookmark {id}: {e}")
-        return FastHTMLResponse(f"Error: {e}", status_code=500)
+        return HTMLResponse(f"Error: {e}", status_code=500)
 
 
 @main_fasthtml_router("/get_thumbnail/{id}")
@@ -384,7 +384,7 @@ async def update_route():
 
 
 @main_fasthtml_router("/update_thumbnail/{id}") # Changed from @app.get
-async def update_thumbnail_route(request: Request) -> FastHTMLResponse:
+async def update_thumbnail_route(request: Request) -> JSONResponse:
     bookmark_id: str = request.path_params["id"]
     # The actual thumbnail URL is fetched by /get_thumbnail/{id} or embedded.
     headers = {"HX-Trigger": json.dumps({"loadThumbnail": f"#{bookmark_id}"})}
@@ -393,40 +393,31 @@ async def update_thumbnail_route(request: Request) -> FastHTMLResponse:
 
 
 @main_fasthtml_router("/delete/{bookmark_id}", methods=["DELETE"])
-async def delete_bookmark_route(bookmark_id: int, request: Request) -> FastHTMLResponse:
+async def delete_bookmark_route(bookmark_id: int, request: Request):
     try:
-        print(f"🔥 DELETE_BOOKMARK_ROUTE CALLED: bookmark_id={bookmark_id}")
-        
         # delete_bookmark_by_id is async, so await it directly
         await delete_bookmark_by_id(bookmark_id)
-        print(f"🔥 DELETE_BOOKMARK_ROUTE: Successfully deleted bookmark {bookmark_id}")
         
         # Check if the request came from the random page by checking the Referer header
         referer = request.headers.get("referer", "")
-        print(f"🔥 DELETE_BOOKMARK_ROUTE: Referer header: {referer}")
         
         if "/random" in referer:
-            print("🔥 DELETE_BOOKMARK_ROUTE: Request came from random page, returning new random bookmark")
             # If deleting from the random page, return a new random bookmark
             bookmarks = fetch_bookmarks_all(kind="newest")
             if bookmarks: # Make sure we have bookmarks left
                 selected_bookmarks = [secrets.choice(bookmarks)]
-                print(f"🔥 DELETE_BOOKMARK_ROUTE: Selected new random bookmark: {selected_bookmarks[0].get('title', 'N/A')}")
                 # Convert the BookmarkImageList component to HTML for HTMX swap
                 component = BookmarkImageList(bookmarks=selected_bookmarks)
                 return HTMLResponse(to_xml(component))
             else:
-                print("🔥 DELETE_BOOKMARK_ROUTE: No bookmarks left to show")
                 # No bookmarks left
                 return HTMLResponse("No more bookmarks available to choose from.", status_code=200)
         
         # For HTMX, an empty response with 200 status usually means "success, do nothing to the target"
         # Or, if the target is the item itself, it will be removed by hx-swap="outerHTML" on success (empty response).
-        print("🔥 DELETE_BOOKMARK_ROUTE: Normal delete, returning empty response")
         return HTMLResponse(status_code=200)
     except Exception as e:
         logger.error(f"Error deleting bookmark: {e}")
-        print(f"🔥 DELETE_BOOKMARK_ROUTE: Exception occurred: {str(e)}")
         return HTMLResponse(f"Error deleting bookmark: {str(e)}", status_code=500)
 
 
@@ -445,7 +436,7 @@ async def table_structure_route():
 
 
 @main_fasthtml_router("/edit/{bookmark_id}")
-async def edit_bookmark_form_route(bookmark_id: str) -> Union[Html, HTMLResponse]:
+async def edit_bookmark_form_route(bookmark_id: str):
     bookmark_data = await fetch_bookmark_by_id(id=bookmark_id)
     if not bookmark_data:
         return HTMLResponse("Bookmark not found", status_code=404)
@@ -456,7 +447,7 @@ async def edit_bookmark_form_route(bookmark_id: str) -> Union[Html, HTMLResponse
     )
 
 @main_fasthtml_router("/edit/{bookmark_id}/modal") # Modal version for HTMX
-async def edit_bookmark_modal_route(bookmark_id: str) -> Union[AnyComponent, Div, HTMLResponse]:
+async def edit_bookmark_modal_route(bookmark_id: str):
     bookmark_data = await fetch_bookmark_by_id(id=bookmark_id)
     if not bookmark_data:
         return HTMLResponse("Bookmark not found", status_code=404)
@@ -465,7 +456,7 @@ async def edit_bookmark_modal_route(bookmark_id: str) -> Union[AnyComponent, Div
     from fasthtml.common import Button, H2
     
     # Return complete modal structure using our CSS
-    return Div(
+    modal_div = Div(
         Div(
             Div(
                 H2(f"Edit {bookmark_data.get('title', 'Bookmark')}"),
@@ -488,15 +479,15 @@ async def edit_bookmark_modal_route(bookmark_id: str) -> Union[AnyComponent, Div
         cls="modal-backdrop",
         onclick="closeModal()"
     )
+    
+    return HTMLResponse(to_xml(modal_div))
 
 @main_fasthtml_router("/edit-test/{bookmark_id}", methods=["POST"])
-async def update_bookmark_route(bookmark_id: str, request: Request) -> FastHTMLResponse:
-    print(f"🔥 UPDATE_BOOKMARK_ROUTE CALLED: bookmark_id={bookmark_id}")
+async def update_bookmark_route(bookmark_id: str, request: Request):
     logging.getLogger().setLevel(logging.DEBUG)
     logging.info(f"UPDATE_BOOKMARK_ROUTE: Starting update for bookmark {bookmark_id}")
     
     form_data = await request.form()
-    print(f"🔥 FORM DATA: {dict(form_data)}")
     logging.info(f"UPDATE_BOOKMARK_ROUTE: Form data received: {dict(form_data)}")
     
     title: str = str(form_data.get("title", ""))
@@ -510,8 +501,6 @@ async def update_bookmark_route(bookmark_id: str, request: Request) -> FastHTMLR
     # Basic validation (can be expanded)
     if not title or not url:
         logging.error(f"UPDATE_BOOKMARK_ROUTE: Validation failed - title: {title}, url: {url}")
-        # This should ideally return the form with an error message
-        # For now, returning a simple error response
         return HTMLResponse("Title and URL are required.", status_code=400)
 
     try:
@@ -538,23 +527,12 @@ async def update_bookmark_route(bookmark_id: str, request: Request) -> FastHTMLR
         from bookerics.components import _render_bookmark_html
         component = _render_bookmark_html(updated_bookmark, is_image_list=False)
         
-        print(f"🔥 COMPONENT TYPE: {type(component)}")
-        print(f"🔥 COMPONENT: {component}")
-        print(f"🔥 HAS to_html: {hasattr(component, 'to_html')}")
-        print(f"🔥 HAS __html__: {hasattr(component, '__html__')}")
-        print(f"🔥 AVAILABLE METHODS: {[m for m in dir(component) if not m.startswith('_')]}")
-        if hasattr(component, 'to_html'):
-            print(f"🔥 to_html TYPE: {type(component.to_html)}")
-        
         # Set headers properly following the pattern from other routes
         headers = {"HX-Trigger": "closeModal"}
         logging.info(f"UPDATE_BOOKMARK_ROUTE: Setting HX-Trigger header for bookmark id: {bookmark_id}")
-        logging.info(f"UPDATE_BOOKMARK_ROUTE: Headers being set: {headers}")
         
         # Convert the component to HTML using fasthtml's to_xml function
-        print("🔥 CONVERTING: Component to HTML using to_xml")
         html_content = to_xml(component)
-        print(f"🔥 CONVERSION SUCCESS: {html_content[:100]}...")
         response = HTMLResponse(html_content, headers=headers)
         logging.info("UPDATE_BOOKMARK_ROUTE: Response created using to_xml(), returning to client")
         return response
@@ -573,5 +551,5 @@ async def chrome_devtools_handler() -> JSONResponse:
 
 # Close modal route - returns empty content to clear the modal
 @main_fasthtml_router("/close-modal")
-async def close_modal() -> FastHTMLResponse:
-    return FastHTMLResponse("", status_code=200)
+async def close_modal():
+    return HTMLResponse("", status_code=200)

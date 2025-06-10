@@ -98,8 +98,12 @@ def TagCloud(tags: Union[list, None] = None, **attrs: Any) -> AnyComponent:
     # CSS classes "btn tag info" are for styling individual tags.
     return Div(
         *[
-            A(tag, href=f"/tags/{tag}", cls="btn tag info") # Was ButtonLink
-            for tag in tags
+            A(
+                tag_item["tag"] if isinstance(tag_item, dict) else tag_item,
+                href=f"/tags/{tag_item['tag'] if isinstance(tag_item, dict) else tag_item}",
+                cls="btn tag info"
+            ) # Was ButtonLink
+            for tag_item in tags
         ],
         cls="tag-cloud",
         **attrs
@@ -189,7 +193,7 @@ def _render_tags_html(tags: Union[list[str], str]) -> AnyComponent:
     if not tags:
         return Div(cls="tags-container")
 
-    return Div(*[A(tag, href=f"/tags/{tag}", cls="btn tag info") for tag in tags], cls="tags-container")
+    return Div(*[A(tag_name, href=f"/tags/{tag_name}", cls="btn tag info") for tag_name in tags], cls="tags-container")
 
 def _render_created_at_html(created_at: Union[str, None]) -> AnyComponent:
     if created_at:
