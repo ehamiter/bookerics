@@ -10,19 +10,16 @@ from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import json
 import sqlite3
-from io import BytesIO
+import subprocess
 from xml.sax.saxutils import escape
 from contextlib import contextmanager
 import threading
-
-from PIL import Image
 
 from .constants import (
     BOOKMARK_NAME,
     LOCAL_BACKUP_PATH,
     RSS_FEED_CREATION_TAGS,
     RSS_METADATA,
-    THUMBNAIL_API_KEY,
     FEEDS_DIR,
 )
 
@@ -143,7 +140,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
     return bookmarks
 
 
-def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 50) -> List[Bookmark]:
+def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 25) -> List[Bookmark]:
     bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
     offset = (page - 1) * per_page
     
@@ -167,8 +164,29 @@ def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
     return fetch_data(query)
 
 
-def search_bookmarks(query: str) -> List[Bookmark]:
-    print(f"🔍 SEARCH_BOOKMARKS: Searching for query: '{query}'")
+def search_bookmarks(query: str, page: int = 1, per_page: int = 25) -> List[Bookmark]:
+    print(f"🔍 SEARCH_BOOKMARKS: Searching for query: '{query}', page: {page}, per_page: {per_page}")
+    search_query = f"%{query}%"
+    offset = (page - 1) * per_page
+    sql_query = """
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
+    FROM bookmarks
+    WHERE title LIKE ?
+    OR url LIKE ?
+    OR description LIKE ?
+    OR tags LIKE ?
+    ORDER BY created_at DESC, updated_at DESC
+    LIMIT ? OFFSET ?;
+    """
+    print(f"🔍 SEARCH_BOOKMARKS: Executing SQL with search_query: '{search_query}', limit: {per_page}, offset: {offset}")
+    results = fetch_data(sql_query, (search_query, search_query, search_query, search_query, per_page, offset))
+    print(f"🔍 SEARCH_BOOKMARKS: Found {len(results)} bookmarks")
+    return results
+
+
+def search_bookmarks_all(query: str) -> List[Bookmark]:
+    """Search all bookmarks without pagination - for compatibility and getting total count"""
+    print(f"🔍 SEARCH_BOOKMARKS_ALL: Searching for query: '{query}' (no pagination)")
     search_query = f"%{query}%"
     sql_query = """
     SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
@@ -179,9 +197,9 @@ def search_bookmarks(query: str) -> List[Bookmark]:
     OR tags LIKE ?
     ORDER BY created_at DESC, updated_at DESC;
     """
-    print(f"🔍 SEARCH_BOOKMARKS: Executing SQL with search_query: '{search_query}'")
+    print(f"🔍 SEARCH_BOOKMARKS_ALL: Executing SQL with search_query: '{search_query}'")
     results = fetch_data(sql_query, (search_query, search_query, search_query, search_query))
-    print(f"🔍 SEARCH_BOOKMARKS: Found {len(results)} bookmarks")
+    print(f"🔍 SEARCH_BOOKMARKS_ALL: Found {len(results)} bookmarks")
     return results
 
 
@@ -479,79 +497,111 @@ async def update_bookmark_tags(id: str, tags: List[str]):
     logger.info(f"🏷️ Tags updated for bookmark {id}")
 
 
-async def get_bookmark_thumbnail_image(bookmark: Bookmark) -> str:
-    url = bookmark.get("url")
-    bookmark_id = bookmark.get("id")
-
-    if not url or not bookmark_id:
+async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
+    if isinstance(bookmark, dict) and "thumbnail_url" in bookmark:
+        img_url = bookmark["thumbnail_url"]
+    else:
+        logger.error(f"💥 Bookmark is not a valid dictionary: {bookmark}")
         return ""
 
-    logger.info(f"🖼️ Getting thumbnail for {url}")
-    thumbnail_api_url = f"https://api.microlink.io/?url={url}&screenshot=true&meta=false&embed=screenshot.url"
-    headers = (
-        {"x-api-key": THUMBNAIL_API_KEY} if THUMBNAIL_API_KEY else {}
-    )
+    if img_url:
+        logger.info(f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}.")
+        return img_url
+    else:
+        logger.info(f"🐕 Generating thumbnail for bookmark id {bookmark['id']}... ")
+        
+        s3_bucket = S3_BUCKET_NAME
+        s3_key = f'thumbnails/{bookmark["id"]}.jpg'
+        local_path = f'/tmp/{bookmark["id"]}.jpg'
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(thumbnail_api_url, headers=headers) as response:
-                response.raise_for_status()
-                data = await response.json()
-                img_url = data.get("data", {}).get("screenshot", {}).get("url")
+        try:
+            # Attempt to run shot-scraper
+            process = await asyncio.create_subprocess_exec(
+                "shot-scraper",
+                bookmark["url"],
+                "-o", local_path,
+                "--height", "800",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
 
-                if img_url:
-                    async with session.get(img_url) as img_response:
-                        img_response.raise_for_status()
-                        image_data = await img_response.read()
+            if process.returncode != 0:
+                error_output = stderr.decode()
+                if "Executable doesn't exist" in error_output and "Please run the following command to download new browsers" in error_output:
+                    logger.info("Installing Playwright browsers...")
+                    install_process = await asyncio.create_subprocess_exec("playwright", "install")
+                    await install_process.communicate()
+                    
+                    # Retry shot-scraper after installation
+                    process = await asyncio.create_subprocess_exec(
+                        "shot-scraper",
+                        bookmark["url"],
+                        "-o", local_path,
+                        "--width", "480"
+                    )
+                    await process.communicate()
+                else:
+                    if process.returncode is not None:
+                        raise subprocess.CalledProcessError(process.returncode, "shot-scraper", stderr=error_output)
+                    else:
+                        raise Exception(f"shot-scraper failed: {error_output}")
 
-                        # Create a local path for the image
-                        local_img_dir = f"./{S3_BUCKET_NAME}"
-                        os.makedirs(local_img_dir, exist_ok=True)
-                        local_img_path = os.path.join(
-                            local_img_dir, f"{bookmark_id}.png"
-                        )
+            # Upload to S3
+            session = aioboto3.Session()
+            async with session.client("s3") as s3:  # type: ignore
+                with open(local_path, 'rb') as file_obj:
+                    await s3.upload_fileobj(
+                        file_obj,
+                        s3_bucket,
+                        s3_key,
+                        ExtraArgs={"ContentType": "image/jpeg"},
+                    )
 
-                        # Save the original image
-                        async with aiofiles.open(local_img_path, "wb") as f:
-                            await f.write(image_data)
-                        logger.info(f"✅ Saved original thumbnail to {local_img_path}")
+            img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
 
-                        # Create a thumbnail
-                        img = Image.open(BytesIO(image_data))
-                        img.thumbnail((200, 200))
-                        thumb_path = local_img_path.replace(".png", "_thumb.png")
-                        img.save(thumb_path, "PNG")
-                        logger.info(f"✅ Created thumbnail at {thumb_path}")
-
-                        # Upload original to S3
-                        s3_key = f"{bookmark_id}.png"
-                        await upload_file_to_s3(
-                            S3_BUCKET_NAME, s3_key, local_img_path
-                        )
-
-                        # Update the bookmark with the S3 URL
-                        s3_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
-                        await update_bookmark_thumbnail_url(bookmark_id, s3_url)
-
-                        return s3_url
-                return ""
-    except Exception as e:
-        logger.error(f"💥 Error getting thumbnail for {url}: {e}")
-        return ""
+            await update_bookmark_thumbnail_url(bookmark["id"], img_url)
+            logger.info(f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to S3!")
+            
+            # Clean up local file
+            os.remove(local_path)
+            
+            return img_url
+        except subprocess.CalledProcessError as e:
+            logger.error(f"💥 Error generating thumbnail: {e}")
+            return ""
+        except Exception as e:
+            logger.error(f"💥 Error uploading thumbnail to S3: {e}")
+            return ""
 
 
-async def update_bookmarks_with_thumbnails(
-    bookmarks: List[Bookmark], schedule_s3_upload=True
-):
-    tasks = [
-        get_bookmark_thumbnail_image(bookmark)
-        for bookmark in bookmarks
-        if not bookmark.get("thumbnail_url")
-    ]
-    if tasks:
-        await asyncio.gather(*tasks)
+async def update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=True):
+    tasks = []
+    for bookmark in bookmarks:
+        # Don't look up thumbnails for db entries we're just browsing
+        source = bookmark.get("source")
+        if source == "external":
+            return bookmarks
+
+        img_url = bookmark.get("thumbnail_url")
+        if img_url in ('', None):
+            if isinstance(bookmark, dict):
+                task = asyncio.create_task(get_bookmark_thumbnail_image(bookmark))
+                tasks.append(task)
+            else:
+                logger.error(f"💥 Bookmark is not a dictionary: {bookmark}")
+
+    # Await all thumbnail fetching tasks
+    thumbnails = await asyncio.gather(*tasks)
+
+    for i, thumbnail_url in enumerate(thumbnails):
+        if thumbnail_url:
+            bookmarks[i]["thumbnail_url"] = thumbnail_url
+
+    # Properly await the S3 upload
     if schedule_s3_upload:
         await schedule_upload_to_s3()
+    return bookmarks
 
 def create_rss_feed(
     bookmarks: List[Bookmark], tag: Optional[str] = None

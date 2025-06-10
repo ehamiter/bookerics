@@ -33,6 +33,7 @@ from .database import (
     fetch_unique_tags,
     schedule_upload_to_s3,
     search_bookmarks,
+    search_bookmarks_all,
     update_bookmark_description,
     update_bookmark_tags,
     update_bookmark_title,
@@ -47,7 +48,7 @@ from .utils import logger
 @main_fasthtml_router("/")
 async def index():
     print("🏠 INDEX ROUTE: Loading first page of bookmarks")
-    bookmarks: List[Bookmark] = fetch_bookmarks(kind="newest", page=1, per_page=50)
+    bookmarks: List[Bookmark] = fetch_bookmarks(kind="newest", page=1, per_page=25)
     all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")  # For count
     print(f"🏠 INDEX ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
     
@@ -63,7 +64,7 @@ async def index():
     return Page(
         NavMenu(bookmark_count=len(all_bookmarks), active="newest"),
         SearchBar(),
-        BookmarkList(bookmarks=bookmarks)
+        BookmarkImageList(bookmarks=bookmarks)
     )
 
 @main_fasthtml_router("/bookmarks")
@@ -71,25 +72,48 @@ async def bookmarks_page(request: Request):
     """HTMX endpoint for infinite scroll pagination"""
     page: int = int(request.query_params.get("page", 2))
     kind: str = request.query_params.get("kind", "newest") or "newest"
+    query: str = request.query_params.get("query", "")  # Add support for search query
     
-    print(f"📄 BOOKMARKS_PAGE: Loading page {page} for kind {kind}")
-    bookmarks: List[Bookmark] = fetch_bookmarks(kind=kind, page=page, per_page=50)
-    print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} bookmarks for page {page}")
+    print(f"📄 BOOKMARKS_PAGE: Loading page {page} for kind {kind}, query: '{query}'")
     
-    # If no bookmarks, return empty response
-    if not bookmarks:
-        print(f"📄 BOOKMARKS_PAGE: No more bookmarks found for page {page}")
-        return HTMLResponse("", status_code=200)
+    # Handle search pagination
+    if kind == "search" and query:
+        bookmarks: List[Bookmark] = search_bookmarks(query, page=page, per_page=25)
+        print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} search results for page {page}")
+        
+        # If no bookmarks, return empty response
+        if not bookmarks:
+            print(f"📄 BOOKMARKS_PAGE: No more search results found for page {page}")
+            return HTMLResponse("", status_code=200)
+        
+        # Add infinite scroll trigger to the last bookmark if there might be more results
+        all_search_results = search_bookmarks_all(query)
+        if len(all_search_results) > page * 25:
+            last_bookmark = bookmarks[-1]
+            last_bookmark['is_last'] = True  
+            last_bookmark['next_page'] = page + 1
+            last_bookmark['kind'] = "search"
+            last_bookmark['query'] = query
     
-    # Add infinite scroll trigger to the last bookmark
-    last_bookmark = bookmarks[-1]
-    last_bookmark['is_last'] = True
-    last_bookmark['next_page'] = page + 1
-    last_bookmark['kind'] = kind
+    else:
+        # Handle regular pagination (newest, oldest, untagged)
+        bookmarks: List[Bookmark] = fetch_bookmarks(kind=kind, page=page, per_page=25)
+        print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} bookmarks for page {page}")
+        
+        # If no bookmarks, return empty response
+        if not bookmarks:
+            print(f"📄 BOOKMARKS_PAGE: No more bookmarks found for page {page}")
+            return HTMLResponse("", status_code=200)
+        
+        # Add infinite scroll trigger to the last bookmark
+        last_bookmark = bookmarks[-1]
+        last_bookmark['is_last'] = True
+        last_bookmark['next_page'] = page + 1
+        last_bookmark['kind'] = kind
     
-    # Create individual bookmark HTML elements and return them
+    # Create individual bookmark HTML elements and return them - using is_image_list=True for screenshots
     from bookerics.components import _render_bookmark_html
-    bookmark_elements = [_render_bookmark_html(bm, is_image_list=False) for bm in bookmarks]
+    bookmark_elements = [_render_bookmark_html(bm, is_image_list=True) for bm in bookmarks]
     
     # Return as a container div - let FastHTML handle the HTML conversion automatically
     from fasthtml.common import Div, to_xml
@@ -104,7 +128,7 @@ async def bookmarks_page(request: Request):
 @main_fasthtml_router("/oldest")
 async def oldest():
     print("📅 OLDEST ROUTE: Loading first page of oldest bookmarks")
-    bookmarks: List[Bookmark] = fetch_bookmarks(kind="oldest", page=1, per_page=50)
+    bookmarks: List[Bookmark] = fetch_bookmarks(kind="oldest", page=1, per_page=25)
     all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="oldest")  # For count
     print(f"📅 OLDEST ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
     
@@ -118,7 +142,7 @@ async def oldest():
     return Page(
         NavMenu(bookmark_count=len(all_bookmarks), active="oldest"),
         SearchBar(),
-        BookmarkList(bookmarks=bookmarks)
+        BookmarkImageList(bookmarks=bookmarks)
     )
 
 
@@ -169,7 +193,7 @@ async def bookmarks_by_tag_route(tag: str):
     return Page(
         NavMenu(bookmark_count=len(bookmarks_for_tag)),
         SearchBar(),
-        BookmarkList(bookmarks=bookmarks_for_tag),
+        BookmarkImageList(bookmarks=bookmarks_for_tag),
         title_str=f"Bookerics - Tag: {tag}"
     )
 
@@ -191,7 +215,7 @@ async def create_feed_for_tag_route(tag: str):
 @main_fasthtml_router("/untagged")
 async def untagged_bookmarks_route():
     print("🏷️ UNTAGGED ROUTE: Loading first page of untagged bookmarks")
-    untagged: List[Bookmark] = fetch_bookmarks(kind="untagged", page=1, per_page=50)
+    untagged: List[Bookmark] = fetch_bookmarks(kind="untagged", page=1, per_page=25)
     all_untagged: List[Bookmark] = fetch_bookmarks_all(kind="untagged")
     print(f"🏷️ UNTAGGED ROUTE: Loaded {len(untagged)} bookmarks from page 1, total: {len(all_untagged)}")
     
@@ -205,7 +229,7 @@ async def untagged_bookmarks_route():
     return Page(
         NavMenu(bookmark_count=len(all_untagged), active="untagged"),
         SearchBar(),
-        BookmarkList(bookmarks=untagged)
+        BookmarkImageList(bookmarks=untagged)
     )
 
 
@@ -235,18 +259,37 @@ async def bookmark_by_id_compact_partial(id: str):
 @main_fasthtml_router("/search") # Changed from @app.get
 async def search_route(request: Request):
     query: str = request.query_params.get("query", "")
-    print(f"🔍 SEARCH_ROUTE: Received search request with query: '{query}'")
+    page: int = int(request.query_params.get("page", 1))
+    print(f"🔍 SEARCH_ROUTE: Received search request with query: '{query}', page: {page}")
+    
+    if not query.strip():
+        # Empty query, return empty result
+        return Div(
+            NavMenu(bookmark_count=0),
+            SearchBar(query=query),
+            Div("Enter a search term to find bookerics.", cls="bookmark-list-switcher")
+        )
     
     try:
-        searched_bookmarks: List[Bookmark] = search_bookmarks(query)
-        print(f"🔍 SEARCH_ROUTE: Search completed successfully, found {len(searched_bookmarks)} bookmarks")
+        # Get paginated search results and total count
+        searched_bookmarks: List[Bookmark] = search_bookmarks(query, page=page, per_page=25)
+        all_search_results: List[Bookmark] = search_bookmarks_all(query)  # For total count
+        print(f"🔍 SEARCH_ROUTE: Search completed successfully, found {len(searched_bookmarks)} bookmarks on page {page}, total: {len(all_search_results)}")
         
-        # Return all components since #results-container contains NavMenu, SearchBar, and BookmarkList
+        # Add infinite scroll trigger to the last bookmark if we have bookmarks and there might be more
+        if searched_bookmarks and len(all_search_results) > page * 25:
+            last_bookmark = searched_bookmarks[-1]
+            last_bookmark['is_last'] = True
+            last_bookmark['next_page'] = page + 1
+            last_bookmark['kind'] = "search"
+            last_bookmark['query'] = query
+        
+        # Return all components since #results-container contains NavMenu, SearchBar, and BookmarkImageList
         print(f"🔍 SEARCH_ROUTE: Creating components with {len(searched_bookmarks)} search results")
         return Div(
-            NavMenu(bookmark_count=len(searched_bookmarks)),
+            NavMenu(bookmark_count=len(all_search_results)),
             SearchBar(query=query),
-            BookmarkList(bookmarks=searched_bookmarks)
+            BookmarkImageList(bookmarks=searched_bookmarks)  # Changed to BookmarkImageList for screenshots by default
         )
     except Exception as e:
         print(f"💥 SEARCH_ROUTE: Error during search: {e}")
@@ -304,20 +347,39 @@ async def get_thumbnail_route(request: Request) -> HTMLResponse:
 
 
 @main_fasthtml_router("/check")
-async def check_if_bookmark_already_saved_route(request: Request) -> HTMLResponse:
+async def check_if_bookmark_already_saved_route(request: Request):
     url: Union[str, None] = request.query_params.get("url", "")
     if not url:
-        return HTMLResponse("URL is required.", status_code=400)
+        # For FastHTML routes, use the Response class with status_code parameter
+        from starlette.responses import Response
+        import json
+        return Response(
+            content=json.dumps({"status": "error", "message": "URL is required."}),
+            status_code=400,
+            media_type="application/json"
+        )
 
     bookmark: Optional[Bookmark] = await fetch_bookmark_by_url(url)
     if bookmark:
-        return HTMLResponse("Bookmark exists.", status_code=200)
+        from starlette.responses import Response
+        import json
+        return Response(
+            content=json.dumps({"status": "exists", "message": bookmark}),
+            status_code=200,
+            media_type="application/json"
+        )
     else:
-        return HTMLResponse("Bookmark does not exist.", status_code=404)
+        from starlette.responses import Response
+        import json
+        return Response(
+            content=json.dumps({"status": "not_found", "message": "Bookmark does not exist."}),
+            status_code=404,
+            media_type="application/json"
+        )
 
 
 @main_fasthtml_router("/add", methods=["POST"])
-async def add_bookmark_route(request: Request) -> HTMLResponse:
+async def add_bookmark_route(request: Request):
     form_data = await request.form()
     title: str = str(form_data.get("title", ""))
     url: str = str(form_data.get("url", ""))
@@ -328,7 +390,8 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
 
 
     if not url or not title:
-        return HTMLResponse("URL and Title are required.", status_code=400)
+        from starlette.responses import Response
+        return Response("URL and Title are required.", status_code=400)
 
     existing_bookmark = await fetch_bookmark_by_url(url)
     if existing_bookmark:
@@ -337,14 +400,12 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
             await update_bookmark_tags(existing_bookmark["id"], tags)
             await update_bookmark_title(existing_bookmark["id"], title)
             logger.info("Bookmark updated!")
-            return HTMLResponse(
-                "Bookmark updated successfully.", status_code=200
-            )
+            from starlette.responses import Response
+            return Response("Bookmark updated successfully.", status_code=200)
         else:
             # If not forcing update, and bookmark exists, this might be considered a conflict or specific state.
-            return HTMLResponse(
-                "Bookmark already exists. Not updated unless forceUpdate is true.", status_code=409
-            )
+            from starlette.responses import Response
+            return Response("Bookmark already exists. Not updated unless forceUpdate is true.", status_code=409)
 
     bookmark_id: Optional[int] = await create_bookmark(
         url=url,
@@ -353,11 +414,13 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
         tags=tags,
     )
     if not bookmark_id:
-        return HTMLResponse("Failed to create bookmark.", status_code=500)
+        from starlette.responses import Response
+        return Response("Failed to create bookmark.", status_code=500)
 
     new_bookmark = await fetch_bookmark_by_id(str(bookmark_id))
     if not new_bookmark:
-        return HTMLResponse("Failed to fetch new bookmark.", status_code=500)
+        from starlette.responses import Response
+        return Response("Failed to fetch new bookmark.", status_code=500)
 
     if not tags:
         try:
@@ -376,7 +439,8 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
     headers = {
         "HX-Trigger": json.dumps({"showToast": f"New bookmark added: {title}"})
     }
-    return HTMLResponse("Bookmark added successfully.", headers=headers)
+    from starlette.responses import Response
+    return Response("Bookmark added successfully.", headers=headers)
 
 
 @main_fasthtml_router("/update") # Changed from @app.get

@@ -281,8 +281,15 @@ def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> An
     # If this is the last bookmark, add infinite scroll attributes and loading indicator
     box_attrs = {"id": toggle_btn_target_id}
     if is_last:
+        # Build the URL for infinite scroll
+        query_param = bookmark.get("query", "")
+        if kind == "search" and query_param:
+            hx_get_url = f"/bookmarks?page={next_page}&kind={kind}&query={query_param}"
+        else:
+            hx_get_url = f"/bookmarks?page={next_page}&kind={kind}"
+        
         box_attrs.update({
-            "hx_get": f"/bookmarks?page={next_page}&kind={kind}",
+            "hx_get": hx_get_url,
             "hx_trigger": "revealed",
             "hx_swap": "afterend",
             "hx_indicator": f"#{toggle_btn_target_id}-loading"

@@ -279,7 +279,7 @@ html[data-theme="dark"] .bookmark-box .btn.tag:hover {
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--text-muted);
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-family: Edlo, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
     transition: color 0.3s ease;
 }
 .bookmark-box p.description, .bookmark-box div p.description {
@@ -289,7 +289,18 @@ html[data-theme="dark"] .bookmark-box .btn.tag:hover {
     line-height: 1.5;
     transition: color 0.3s ease;
 }
-.bookmark-box p.image-url, .bookmark-box div p.image-url { /* Made selector more specific */
+
+/* Created-at display styling */
+.created-at-display {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    opacity: 0.75;
+    margin: 0.25rem 0;
+    transition: color 0.3s ease, opacity 0.3s ease;
+}
+
+.bookmark-box p.image-url, .bookmark-box div p.image-url {
     text-align: center;
     font-size: 14px;
     margin: 2px auto;
@@ -297,7 +308,7 @@ html[data-theme="dark"] .bookmark-box .btn.tag:hover {
     font-style: italic;
     transition: color 0.3s ease;
 }
-.bookmark-box p.image-description, .bookmark-box div p.image-description { /* Made selector more specific */
+.bookmark-box p.image-description, .bookmark-box div p.image-description {
     color: var(--text-primary);
     margin: 1em 0.25em;
     font-size: 1em;
