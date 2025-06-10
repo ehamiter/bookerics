@@ -369,7 +369,9 @@ async def upload_file_to_s3(bucket_name: str, s3_key: str, local_path: str):
             # Determine content type based on file extension
             extra_args = {}
             if s3_key.endswith('.xml'):
-                extra_args['ContentType'] = 'application/rss+xml'
+                extra_args['ContentType'] = 'text/xml'
+            elif s3_key.endswith('.xsl'):
+                extra_args['ContentType'] = 'text/xsl'
             elif s3_key.endswith('.png'):
                 extra_args['ContentType'] = 'image/png'
             elif s3_key.endswith('.jpg') or s3_key.endswith('.jpeg'):
@@ -583,6 +585,25 @@ def create_rss_feed(
             if thumbnail is None:
                 thumbnail = "https://via.placeholder.com/200x200"
             
+            # Generate category elements for tags
+            tags = bookmark.get('tags', [])
+            # Handle case where tags might be a string (shouldn't happen but just in case)
+            if isinstance(tags, str):
+                try:
+                    tags = json.loads(tags) if tags else []
+                except (json.JSONDecodeError, TypeError):
+                    tags = []
+            # Ensure tags is a list and filter out empty tags
+            if not isinstance(tags, list):
+                tags = []
+            tags = [tag.strip() for tag in tags if tag and str(tag).strip()]
+            
+            categories_xml = ""
+            for tag in tags:
+                # Escape XML special characters in tags
+                escaped_tag = safe_escape(tag)
+                categories_xml += f"<category>{escaped_tag}</category>\n                    "
+            
             item = f"""
                 <item>
                     <pubDate>{pub_date}</pubDate>
@@ -591,27 +612,14 @@ def create_rss_feed(
                     <description><![CDATA[{description}]]></description>
                     <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
                     <guid isPermaLink="false">{link}</guid>
+                    {categories_xml}
                 </item>
             """
             items.append(item)
 
-        channel_title = (
-            f"{RSS_METADATA['title']} - Tag: {tag}"
-            if tag
-            else RSS_METADATA["title"]
-        )
-        if RSS_METADATA.get("link"):
-            channel_link = (
-                f"{RSS_METADATA['link']}/tags/{tag}" if tag else RSS_METADATA["link"]
-            )
-        else:
-            channel_link = ""
-
-        channel_description = (
-            f"Bookmarks tagged with '{tag}'"
-            if tag
-            else RSS_METADATA.get("description", "")
-        )
+        channel_title = RSS_METADATA["title"]
+        channel_link = RSS_METADATA.get("link", "")
+        channel_description = RSS_METADATA.get("description", "")
 
         rss_items = []
         for item in items:
@@ -620,7 +628,7 @@ def create_rss_feed(
         rss_items_str = "\n".join(rss_items)
 
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
-<?xml-stylesheet type="text/xsl" href="https://bookerics.s3.amazonaws.com/feeds/rss.xsl" ?>
+<?xml-stylesheet type="text/xsl" href="https://bookerics.s3.amazonaws.com/feeds/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{channel_title}</title>
@@ -629,7 +637,14 @@ def create_rss_feed(
     <language>en-us</language>
     <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
     <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
-    <atom:link href="{RSS_METADATA.get('link', '')}/feeds/{tag if tag else 'rss'}.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="{RSS_METADATA.get('link', '')}/feeds/rss.xml" rel="self" type="text/xml" />
+    <image>
+        <url>https://bookerics.s3.amazonaws.com/bookerics.png</url>
+        <title>bookerics</title>
+        <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
+        <width>128</width>
+        <height>128</height>
+    </image>
     {rss_items_str}
 </channel>
 </rss>
