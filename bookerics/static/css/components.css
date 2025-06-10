@@ -197,6 +197,12 @@
     transform: translateY(-1px);
 }
 
+/* Dark mode override for tag hover - black text on yellow background */
+html[data-theme="dark"] .tag-cloud .btn.tag:hover,
+html[data-theme="dark"] .bookmark-box .btn.tag:hover {
+    color: #000000 !important;
+}
+
 /* Styles for PreviewImage */
 .image-placeholder {
     height: auto;

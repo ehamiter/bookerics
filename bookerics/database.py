@@ -168,17 +168,21 @@ def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
 
 
 def search_bookmarks(query: str) -> List[Bookmark]:
+    print(f"🔍 SEARCH_BOOKMARKS: Searching for query: '{query}'")
     search_query = f"%{query}%"
-    query = f"""
+    sql_query = """
     SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
     FROM bookmarks
-    WHERE title LIKE '{search_query}'
-    OR url LIKE '{search_query}'
-    OR description LIKE '{search_query}'
-    OR tags LIKE '{search_query}'
+    WHERE title LIKE ?
+    OR url LIKE ?
+    OR description LIKE ?
+    OR tags LIKE ?
     ORDER BY created_at DESC, updated_at DESC;
     """
-    return fetch_data(query)
+    print(f"🔍 SEARCH_BOOKMARKS: Executing SQL with search_query: '{search_query}'")
+    results = fetch_data(sql_query, (search_query, search_query, search_query, search_query))
+    print(f"🔍 SEARCH_BOOKMARKS: Found {len(results)} bookmarks")
+    return results
 
 
 def fetch_unique_tags(kind: str = "frequency") -> List[Dict[str, Any]]:

@@ -232,16 +232,27 @@ async def bookmark_by_id_compact_partial(id: str):
     return HTMLResponse(to_xml(component))
 
 @main_fasthtml_router("/search") # Changed from @app.get
-async def search_route(request: Request) -> HTMLResponse:
+async def search_route(request: Request):
     query: str = request.query_params.get("query", "")
-    searched_bookmarks: List[Bookmark] = search_bookmarks(query)
-    # Return components wrapped in a Div for HTMX innerHTML swap into #results-container
-    components = Div(
-        NavMenu(bookmark_count=len(searched_bookmarks)),
-        SearchBar(query=query),
-        BookmarkList(bookmarks=searched_bookmarks)
-    )
-    return HTMLResponse(to_xml(components))
+    print(f"🔍 SEARCH_ROUTE: Received search request with query: '{query}'")
+    
+    try:
+        searched_bookmarks: List[Bookmark] = search_bookmarks(query)
+        print(f"🔍 SEARCH_ROUTE: Search completed successfully, found {len(searched_bookmarks)} bookmarks")
+        
+        # Return all components since #results-container contains NavMenu, SearchBar, and BookmarkList
+        print(f"🔍 SEARCH_ROUTE: Creating components with {len(searched_bookmarks)} search results")
+        return Div(
+            NavMenu(bookmark_count=len(searched_bookmarks)),
+            SearchBar(query=query),
+            BookmarkList(bookmarks=searched_bookmarks)
+        )
+    except Exception as e:
+        print(f"💥 SEARCH_ROUTE: Error during search: {e}")
+        logger.error(f"💥 SEARCH_ROUTE: Error during search: {e}")
+        import traceback
+        print(f"💥 SEARCH_ROUTE: Traceback: {traceback.format_exc()}")
+        return HTMLResponse(f"Search error: {str(e)}", status_code=500)
 
 
 # utils
