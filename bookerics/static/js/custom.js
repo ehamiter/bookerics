@@ -7,6 +7,9 @@ function closeModal() {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded and parsed. Bookerics custom JS initializing.");
+    
+    // Initialize theme system
+    initializeTheme();
 
     // General HTMX event logging
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
@@ -85,6 +88,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Theme toggle button functionality with duplicate prevention
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    console.log('🎨 Theme toggle button found:', themeToggleBtn);
+    if (themeToggleBtn && !themeToggleBtn.hasAttribute('data-theme-listener')) {
+        themeToggleBtn.addEventListener('click', function(event) {
+            console.log('🎨 Theme toggle button clicked at:', new Date().toISOString());
+            event.preventDefault();
+            event.stopPropagation(); // Prevent event bubbling
+            toggleTheme();
+        });
+        themeToggleBtn.setAttribute('data-theme-listener', 'true');
+        console.log('🎨 Theme toggle event listener attached');
+    } else if (themeToggleBtn && themeToggleBtn.hasAttribute('data-theme-listener')) {
+        console.log('🎨 Theme toggle button already has listener, skipping');
+    } else {
+        console.warn('🎨 Theme toggle button not found in DOM');
+    }
 
     // Tags link toggle functionality
     const tagsLink = document.getElementById('tags-link');
@@ -184,3 +205,119 @@ document.addEventListener('DOMContentLoaded', function() {
         formatDates(); // Re-format dates in newly loaded content
     });
 });
+
+// Theme Management Functions
+function initializeTheme() {
+    console.log('🎨 Initializing theme system...');
+    
+    // Check if user has a saved theme preference
+    const savedTheme = localStorage.getItem('bookerics-theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    console.log('🎨 Saved theme:', savedTheme);
+    console.log('🎨 System prefers dark:', systemPrefersDark);
+    
+    // Apply theme based on saved preference or system preference
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else {
+        // Honor system preference by default
+        applyTheme(systemPrefersDark ? 'dark' : 'light');
+    }
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        console.log('🎨 System theme changed to:', e.matches ? 'dark' : 'light');
+        // Only auto-switch if user hasn't manually set a preference
+        if (!localStorage.getItem('bookerics-theme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+    
+    // Add keyboard shortcut for theme toggle (Cmd/Ctrl + Shift + D)
+    document.addEventListener('keydown', function(event) {
+        console.log('🎨 Keydown event:', {
+            key: event.key,
+            metaKey: event.metaKey,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            code: event.code
+        });
+        
+        if ((event.metaKey || event.ctrlKey) && event.shiftKey && (event.key === 'D' || event.key === 'd')) {
+            console.log('🎨 Theme toggle keyboard shortcut triggered!');
+            event.preventDefault();
+            toggleTheme();
+        }
+    });
+}
+
+function applyTheme(theme) {
+    console.log('🎨 Applying theme:', theme);
+    
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        console.log('🎨 Set data-theme="dark" on HTML element');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        console.log('🎨 Set data-theme="light" on HTML element');
+    }
+    
+    // Verify the attribute was set
+    const actualAttribute = document.documentElement.getAttribute('data-theme');
+    console.log('🎨 HTML data-theme attribute is now:', actualAttribute);
+    
+    // Check computed styles for a test element
+    const testStyles = getComputedStyle(document.documentElement);
+    console.log('🎨 Current CSS --bg-primary value:', testStyles.getPropertyValue('--bg-primary'));
+    
+    // Store the applied theme
+    localStorage.setItem('bookerics-theme', theme);
+    
+    // Update theme toggle button icon
+    updateThemeToggleIcon(theme);
+    
+    // Dispatch custom event for other components that might need to know
+    document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
+}
+
+function updateThemeToggleIcon(theme) {
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (themeToggleBtn) {
+        // Show sun icon in dark mode (to indicate switching to light)
+        // Show moon icon in light mode (to indicate switching to dark)
+        themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+        themeToggleBtn.title = theme === 'dark' 
+            ? 'Switch to light theme (Cmd+Shift+D)' 
+            : 'Switch to dark theme (Cmd+Shift+D)';
+    }
+}
+
+// Throttle to prevent rapid theme switching
+let themeToggleTimeout = null;
+
+function toggleTheme() {
+    console.log('🎨 toggleTheme() called at:', new Date().toISOString());
+    
+    // Prevent rapid successive calls
+    if (themeToggleTimeout) {
+        console.log('🎨 Theme toggle throttled, ignoring call');
+        return;
+    }
+    
+    themeToggleTimeout = setTimeout(() => {
+        themeToggleTimeout = null;
+    }, 300); // 300ms throttle
+    
+    const currentTheme = localStorage.getItem('bookerics-theme') || 
+                        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    console.log('🎨 Toggling theme from', currentTheme, 'to', newTheme);
+    applyTheme(newTheme);
+}
+
+function getCurrentTheme() {
+    return localStorage.getItem('bookerics-theme') || 
+           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}

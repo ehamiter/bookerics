@@ -35,6 +35,8 @@ def NavMenu(bookmark_count: Union[int, bool] = False, active: str = "") -> AnyCo
             A("untagged", href="/untagged", cls=nav_link_class("untagged")),
             Span(" | ", cls="nav-separator"),
             A("tags", href="#", id="tags-link", cls=nav_link_class("tags")),
+            Span(" | ", cls="nav-separator"),
+            A("🌙", href="#", id="theme-toggle", cls="theme-toggle-btn", title="Toggle dark/light theme (Cmd+Shift+D)"),
         ),
         cls="nav-menu justify-space-between",
     )

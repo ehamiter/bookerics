@@ -1,28 +1,140 @@
+/* CSS Custom Properties for Light/Dark Theme Support */
+:root {
+    /* Light theme colors (default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #fafafa;
+    --bg-tertiary: #f5f5f5;
+    --text-primary: #414549;
+    --text-secondary: #333;
+    --text-muted: #888;
+    --text-inverse: #ffffff;
+    --link-primary: #0096ff;
+    --link-hover: #005bb5;
+    --link-active: #004080;
+    --border-light: #e0e0e0;
+    --border-medium: #d0d0d0;
+    --border-dark: #ddd;
+    --shadow-light: rgba(0, 0, 0, 0.1);
+    --shadow-medium: rgba(0, 0, 0, 0.15);
+    --accent-blue-light: #f0f8ff;
+    --accent-blue-medium: #e6f3ff;
+    --accent-blue-dark: #ddeeff;
+    --tag-bg: #e0efff;
+    --tag-border: #b0c4de;
+    --tag-text: #2c3e50;
+    --modal-backdrop: rgba(0, 0, 0, 0.5);
+    --loading-pulse: #f0f0f0;
+}
+
+/* Dark theme colors - system preference */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #1a1a1a;
+        --bg-secondary: #2d2d2d;
+        --bg-tertiary: #3a3a3a;
+        --text-primary: #e0e0e0;
+        --text-secondary: #ffffff;
+        --text-muted: #b0b0b0;
+        --text-inverse: #1a1a1a;
+        --link-primary: #4db8ff;
+        --link-hover: #66c2ff;
+        --link-active: #80ccff;
+        --border-light: #404040;
+        --border-medium: #505050;
+        --border-dark: #606060;
+        --shadow-light: rgba(0, 0, 0, 0.3);
+        --shadow-medium: rgba(0, 0, 0, 0.4);
+        --accent-blue-light: #1a2634;
+        --accent-blue-medium: #2a3644;
+        --accent-blue-dark: #3a4654;
+        --tag-bg: #2a3644;
+        --tag-border: #4a5664;
+        --tag-text: #b8d4ff;
+        --modal-backdrop: rgba(0, 0, 0, 0.8);
+        --loading-pulse: #404040;
+    }
+}
+
+/* Dark theme colors - manual override (higher specificity) */
+html[data-theme="dark"] {
+    --bg-primary: #1a1a1a !important;
+    --bg-secondary: #2d2d2d !important;
+    --bg-tertiary: #3a3a3a !important;
+    --text-primary: #e0e0e0 !important;
+    --text-secondary: #ffffff !important;
+    --text-muted: #b0b0b0 !important;
+    --text-inverse: #1a1a1a !important;
+    --link-primary: #4db8ff !important;
+    --link-hover: #66c2ff !important;
+    --link-active: #80ccff !important;
+    --border-light: #404040 !important;
+    --border-medium: #505050 !important;
+    --border-dark: #606060 !important;
+    --shadow-light: rgba(0, 0, 0, 0.3) !important;
+    --shadow-medium: rgba(0, 0, 0, 0.4) !important;
+    --accent-blue-light: #1a2634 !important;
+    --accent-blue-medium: #2a3644 !important;
+    --accent-blue-dark: #3a4654 !important;
+    --tag-bg: #2a3644 !important;
+    --tag-border: #4a5664 !important;
+    --tag-text: #b8d4ff !important;
+    --modal-backdrop: rgba(0, 0, 0, 0.8) !important;
+    --loading-pulse: #404040 !important;
+}
+
+/* Light theme colors - manual override (overrides dark system preference) */
+html[data-theme="light"] {
+    --bg-primary: #ffffff !important;
+    --bg-secondary: #fafafa !important;
+    --bg-tertiary: #f5f5f5 !important;
+    --text-primary: #414549 !important;
+    --text-secondary: #333 !important;
+    --text-muted: #888 !important;
+    --text-inverse: #ffffff !important;
+    --link-primary: #0096ff !important;
+    --link-hover: #005bb5 !important;
+    --link-active: #004080 !important;
+    --border-light: #e0e0e0 !important;
+    --border-medium: #d0d0d0 !important;
+    --border-dark: #ddd !important;
+    --shadow-light: rgba(0, 0, 0, 0.1) !important;
+    --shadow-medium: rgba(0, 0, 0, 0.15) !important;
+    --accent-blue-light: #f0f8ff !important;
+    --accent-blue-medium: #e6f3ff !important;
+    --accent-blue-dark: #ddeeff !important;
+    --tag-bg: #e0efff !important;
+    --tag-border: #b0c4de !important;
+    --tag-text: #2c3e50 !important;
+    --modal-backdrop: rgba(0, 0, 0, 0.5) !important;
+    --loading-pulse: #f0f0f0 !important;
+}
+
 html {
-    background: url("/static/images/bg.png") no-repeat center center fixed;
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
-    background-size: cover;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; /* From BookericsTheme.fonts.plain */
-    color: #414549; /* From BookericsTheme.colors.dark, as a base text color */
+    background: var(--bg-primary);
+    /* Remove the fixed background image for better dark mode experience */
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--text-primary);
     line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
-    margin: 0; /* Remove default browser margin */
-    padding: 0; /* Remove default browser padding */
-    /* The background is on html, body can be transparent or have its own if needed for specific layouts */
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-primary);
+    transition: background-color 0.3s ease;
 }
 
 /* General link styling, can be overridden by more specific component styles */
 a {
-    color: #0096ff; /* From BookericsTheme.colors.primary */
+    color: var(--link-primary);
     text-decoration: none;
+    transition: color 0.2s ease;
 }
 
 a:hover {
     text-decoration: underline;
+    color: var(--link-hover);
 }
 
 /* Container class from core.py Body's Div */
@@ -55,7 +167,8 @@ h1 {
     margin: 1rem 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #333;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
 }
 
 /* Mobile-first responsive design */
