@@ -141,10 +141,10 @@ async def random_bookmark():
 @main_fasthtml_router("/tags")
 async def tags_route():
     all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
-    internal_bookmarks_count: int = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
+    bookmark_count: int = len(all_bookmarks)
     tag_list: List[Dict[str, Any]] = fetch_unique_tags(kind="frequency")
     return Page(
-        NavMenu(bookmark_count=internal_bookmarks_count, active="tags"),
+        NavMenu(bookmark_count=bookmark_count, active="tags"),
         SearchBar(),
         TagCloud(tags=tag_list)
     )
@@ -153,10 +153,10 @@ async def tags_route():
 @main_fasthtml_router("/tags/newest")
 async def tags_newest_route():
     all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
-    internal_bookmarks_count: int = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
+    bookmark_count: int = len(all_bookmarks)
     tag_list: List[Dict[str, Any]] = fetch_unique_tags(kind="newest")
     return Page(
-        NavMenu(bookmark_count=internal_bookmarks_count),
+        NavMenu(bookmark_count=bookmark_count),
         SearchBar(),
         TagCloud(tags=tag_list),
         title_str="Bookerics - Tags (Newest)"
@@ -166,12 +166,11 @@ async def tags_newest_route():
 @main_fasthtml_router("/tags/{tag}")
 async def bookmarks_by_tag_route(tag: str):
     bookmarks_for_tag: List[Bookmark] = fetch_bookmarks_by_tag(tag)
-    internal_bookmarks: List[Bookmark] = [bm for bm in bookmarks_for_tag if bm.get('source') == 'internal']
 
     return Page(
-        NavMenu(bookmark_count=len(internal_bookmarks)),
+        NavMenu(bookmark_count=len(bookmarks_for_tag)),
         SearchBar(),
-        BookmarkList(bookmarks=internal_bookmarks),
+        BookmarkList(bookmarks=bookmarks_for_tag),
         title_str=f"Bookerics - Tag: {tag}"
     )
 
@@ -195,21 +194,19 @@ async def untagged_bookmarks_route():
     print("🏷️ UNTAGGED ROUTE: Loading first page of untagged bookmarks")
     untagged: List[Bookmark] = fetch_bookmarks(kind="untagged", page=1, per_page=50)
     all_untagged: List[Bookmark] = fetch_bookmarks_all(kind="untagged")
-    internal_untagged: List[Bookmark] = [bm for bm in untagged if bm.get('source') == 'internal']
-    all_internal_untagged: List[Bookmark] = [bm for bm in all_untagged if bm.get('source') == 'internal']
-    print(f"🏷️ UNTAGGED ROUTE: Loaded {len(internal_untagged)} bookmarks from page 1, total: {len(all_internal_untagged)}")
+    print(f"🏷️ UNTAGGED ROUTE: Loaded {len(untagged)} bookmarks from page 1, total: {len(all_untagged)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
-    if internal_untagged:
-        last_bookmark = internal_untagged[-1]
+    if untagged:
+        last_bookmark = untagged[-1]
         last_bookmark['is_last'] = True
         last_bookmark['next_page'] = 2
         last_bookmark['kind'] = "untagged"
     
     return Page(
-        NavMenu(bookmark_count=len(all_internal_untagged), active="untagged"),
+        NavMenu(bookmark_count=len(all_untagged), active="untagged"),
         SearchBar(),
-        BookmarkList(bookmarks=internal_untagged)
+        BookmarkList(bookmarks=untagged)
     )
 
 
@@ -316,7 +313,7 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
     tags_str: str = str(form_data.get("tags", ""))
     tags: List[str] = tags_str.split(" ") if tags_str else []
     force_update = form_data.get("forceUpdate")
-    source: str = form_data.get("source", "internal")
+
 
     if not url or not title:
         return HTMLResponse("URL and Title are required.", status_code=400)
@@ -342,7 +339,6 @@ async def add_bookmark_route(request: Request) -> HTMLResponse:
         title=title,
         description=description,
         tags=tags,
-        source=source,
     )
     if not bookmark_id:
         return HTMLResponse("Failed to create bookmark.", status_code=500)
@@ -522,9 +518,9 @@ async def update_bookmark_route(bookmark_id: str, request: Request) -> FastHTMLR
         bookmark_id_int = int(bookmark_id)
         logging.info(f"UPDATE_BOOKMARK_ROUTE: Starting database updates for bookmark {bookmark_id_int}")
         
-        await update_bookmark_title(bookmark_id_int, title)
-        await update_bookmark_description(bookmark_id_int, description)
-        await update_bookmark_tags(bookmark_id_int, tags)
+        await update_bookmark_title(bookmark_id, title)
+        await update_bookmark_description(bookmark_id, description)
+        await update_bookmark_tags(bookmark_id, tags)
         
         logging.info(f"UPDATE_BOOKMARK_ROUTE: Database updates completed for bookmark {bookmark_id_int}")
         

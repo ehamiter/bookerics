@@ -40,10 +40,6 @@ BOOKERICS_OPENAI_KEY = os.getenv("BOOKERICS_OPENAI_KEY")
 GPT_MODEL = "gpt-4o"
 TAG_GPT_MODEL = "gpt-3.5-turbo"
 
-## Additional DBs
-ADDITIONAL_DB_PATHS = os.getenv("ADDITIONAL_DB_PATHS", "").split(",")
-ADDITIONAL_DB_PATHS = [path.strip() for path in ADDITIONAL_DB_PATHS if path.strip()]
-
 # Define the feeds directory relative to the project root
 FEEDS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'feeds')
 

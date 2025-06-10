@@ -18,7 +18,6 @@ import threading
 from PIL import Image
 
 from .constants import (
-    ADDITIONAL_DB_PATHS,
     BOOKMARK_NAME,
     LOCAL_BACKUP_PATH,
     RSS_FEED_CREATION_TAGS,
@@ -85,56 +84,13 @@ def load_db_on_startup():
     logger.info("☑️ Database loaded!")
 
 
-def get_max_id(cursor, table_name: str = "bookmarks"):
-    cursor.execute(f'SELECT MAX(id) FROM {table_name}')
-    return cursor.fetchone()[0] or 0
 
-def extract_order_by_clause(query):
-    if 'ORDER BY' in query:
-        return query.split('ORDER BY')[-1]
-    return ''
 
-def enter_the_multiverse(query, cursor, table_name):
-    # Attach additional databases if they exist
-    for idx, _db_path in enumerate(ADDITIONAL_DB_PATHS):
-        try:
-            cursor.execute(f'ATTACH DATABASE "{_db_path}" AS db_{idx};')
-            logger.info(f"💽 {_db_path} > db_{idx}")
-        except sqlite3.OperationalError as e:
-            logger.error(f"❌ Failed to attach {_db_path}: {e}")
-            raise
 
-    # Get the maximum ID from the main database
-    max_id_main = get_max_id(cursor, table_name)
 
-    # Extract the ORDER BY clause from the original query
-    order_by_clause = extract_order_by_clause(query) or "created_at DESC, updated_at DESC"
-
-    # Remove the ORDER BY clause from the original query
-    base_query = query.strip().split("ORDER BY")[0].strip().rstrip(";")
-
-    # Modify query to include data from attached databases
-    union_queries = [f"SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM ({base_query})"]
-    for idx in range(len(ADDITIONAL_DB_PATHS)):
-        attach_query = base_query.replace(table_name, f"db_{idx}.{table_name}")
-        offset = (max_id_main + 1 + idx * 1000000)
-        union_queries.append(
-            f"SELECT id + {offset} AS id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'external' AS source FROM ({attach_query})"
-        )
-
-    combined_query = " UNION ALL ".join(union_queries)
-
-    # Append the ORDER BY clause to the combined query
-    final_query = f"SELECT * FROM ({combined_query}) ORDER BY {order_by_clause}"
-    return final_query
-
-def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks", allow_external_db: bool = True) -> Any:
+def execute_query(query: str, params: Tuple = ()) -> Any:
     with get_db_connection() as connection:
         cursor = connection.cursor()
-
-        if allow_external_db:
-            if not params and ADDITIONAL_DB_PATHS:
-                query = enter_the_multiverse(query, cursor, table_name)
 
         try:
             cursor.execute(query, params)
@@ -150,11 +106,10 @@ def execute_query(query: str, params: Tuple = (), table_name: str = "bookmarks",
 
 
 def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
-    # source (internal / external) gets added as an attribute here
     rows, _ = execute_query(query, params)
     bookmarks = []
     for row in rows:
-        if len(row) == 9:
+        if len(row) == 8:
             (
                 id,
                 title,
@@ -164,7 +119,6 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
                 tags_json,
                 created_at,
                 updated_at,
-                source
             ) = row
             try:
                 tags = json.loads(tags_json) if tags_json else []
@@ -182,7 +136,6 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
                     "tags": tags,
                     "created_at": created_at,
                     "updated_at": updated_at,
-                    "source": source
                 }
             )
         else:
@@ -191,7 +144,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
 
 
 def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 50) -> List[Bookmark]:
-    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks "
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
     offset = (page - 1) * per_page
     
     queries = {
@@ -204,7 +157,7 @@ def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 50) -> List[Bookma
 
 def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
     """Fetch all bookmarks without pagination - for compatibility with existing code that needs all bookmarks"""
-    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks "
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
         "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC;",
@@ -217,7 +170,7 @@ def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
 def search_bookmarks(query: str) -> List[Bookmark]:
     search_query = f"%{query}%"
     query = f"""
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
     FROM bookmarks
     WHERE title LIKE '{search_query}'
     OR url LIKE '{search_query}'
@@ -249,7 +202,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[Dict[str, Any]]:
           AND json_each.value != '[""]'
         ORDER BY bookmarks.updated_at DESC, bookmarks.created_at DESC;
         """
-    rows, _ = execute_query(query, allow_external_db=False)
+    rows, _ = execute_query(query)
     if kind == "frequency":
         return [{"tag": row[0], "frequency": row[1]} for row in rows]
     else:
@@ -258,7 +211,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[Dict[str, Any]]:
 
 def fetch_bookmarks_by_tag(tag: str) -> List[Bookmark]:
     query = """
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source
+    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
     FROM bookmarks
     WHERE ? IN (SELECT value FROM json_each(bookmarks.tags))
     ORDER BY updated_at DESC, created_at DESC;
@@ -270,15 +223,12 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
     await execute_query_async("DELETE FROM bookmarks WHERE id = ?", (bookmark_id,))
     try:
         # After deleting, we need to update feeds and S3
-        # Fetch all internal bookmarks to regenerate the main feed
+        # Fetch all bookmarks to regenerate the main feed
         all_bookmarks = fetch_bookmarks_all(kind="newest")
-        internal_bookmarks = [
-            bm for bm in all_bookmarks if bm.get("source") == "internal"
-        ]
 
-        if internal_bookmarks:
+        if all_bookmarks:
             # Update the main RSS feed
-            await create_feed(tag=None, bookmarks=internal_bookmarks, publish=True)
+            await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
 
         # Also update S3
         await schedule_upload_to_s3()
@@ -397,13 +347,13 @@ async def execute_query_async(query: str, params: tuple = ()):
 
 
 async def fetch_bookmark_by_id(id: str) -> Optional[Bookmark]:
-    query = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks WHERE id = ?"
+    query = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id = ?"
     results = fetch_data(query, (id,))
     return results[0] if results else None
 
 
 async def fetch_bookmark_by_url(url: str) -> Optional[Bookmark]:
-    query = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at, 'internal' AS source FROM bookmarks WHERE url = ?"
+    query = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE url = ?"
     results = fetch_data(query, (url,))
     return results[0] if results else None
 
@@ -434,19 +384,17 @@ async def create_bookmark(
     url: str,
     description: str,
     tags: List[str],
-    source: str = "internal",
 ) -> Optional[int]:
     tags_json = json.dumps(tags)
     created_at = datetime.now(timezone.utc).isoformat()
     query = """
-    INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at, source)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO bookmarks (title, url, description, tags, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
     """
     try:
         _, last_row_id = execute_query(
             query,
-            (title, url, description, tags_json, created_at, created_at, source),
-            allow_external_db=False,
+            (title, url, description, tags_json, created_at, created_at),
         )
 
         if last_row_id is not None:
