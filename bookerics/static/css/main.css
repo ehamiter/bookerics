@@ -29,13 +29,13 @@
 /* Dark theme colors - system preference */
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg-primary: #1a1a1a;
+        --bg-primary: ##1a1a1a9c;
         --bg-secondary: #2d2d2d;
         --bg-tertiary: #3a3a3a;
-        --text-primary: #e0e0e0;
-        --text-secondary: #ffffff;
+        --text-primary: #c8c8c8;
+        --text-secondary: #e8e8e8;
         --text-muted: #b0b0b0;
-        --text-inverse: #1a1a1a;
+        --text-inverse: #1a1a1a9c;
         --link-primary: #4db8ff;
         --link-hover: #66c2ff;
         --link-active: #80ccff;
@@ -53,17 +53,21 @@
         --modal-backdrop: rgba(0, 0, 0, 0.8);
         --loading-pulse: #404040;
     }
+    
+    html {
+        background-image: url('../images/bg-dark.png') !important;
+    }
 }
 
 /* Dark theme colors - manual override (higher specificity) */
 html[data-theme="dark"] {
-    --bg-primary: #1a1a1a !important;
+    --bg-primary: #1a1a1a9c !important;
     --bg-secondary: #2d2d2d !important;
     --bg-tertiary: #3a3a3a !important;
-    --text-primary: #e0e0e0 !important;
-    --text-secondary: #ffffff !important;
-    --text-muted: #b0b0b0 !important;
-    --text-inverse: #1a1a1a !important;
+    --text-primary: #c8c8c8;
+    --text-secondary: #e8e8e8;
+    --text-muted: #b0b0b0;
+    --text-inverse: #1a1a1a9c !important;
     --link-primary: #4db8ff !important;
     --link-hover: #66c2ff !important;
     --link-active: #80ccff !important;
@@ -80,6 +84,7 @@ html[data-theme="dark"] {
     --tag-text: #b8d4ff !important;
     --modal-backdrop: rgba(0, 0, 0, 0.8) !important;
     --loading-pulse: #404040 !important;
+    background-image: url('../images/bg-dark.png') !important;
 }
 
 /* Light theme colors - manual override (overrides dark system preference) */
@@ -111,7 +116,11 @@ html[data-theme="light"] {
 
 html {
     background: var(--bg-primary);
-    /* Remove the fixed background image for better dark mode experience */
+    background-image: url('../images/bg.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: var(--text-primary);
     line-height: 1.6;
@@ -121,7 +130,7 @@ html {
 body {
     margin: 0;
     padding: 0;
-    background-color: var(--bg-primary);
+    background-color: transparent;
     transition: background-color 0.3s ease;
 }
 
