@@ -1,10 +1,11 @@
 import secrets
 import logging
 import json
+from typing import Any, Dict, List, Optional, Union
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
-
+from fasthtml.common import to_xml, Html
 from .ai import get_tags_and_description_from_bookmark
 from .core import Page
 from .components import (
@@ -18,6 +19,7 @@ from .components import (
     EditBookmarkForm,
     _render_tags_html,
     PreviewImage,
+    AnyComponent,
 )
 from .database import (
     backup_bookerics_db,
@@ -35,17 +37,21 @@ from .database import (
     update_bookmark_tags,
     update_bookmark_title,
     verify_table_structure,
+    Bookmark,
 )
 from .main import rt as main_fasthtml_router
 from .utils import logger
+
+# Alias for consistency with existing code
+FastHTMLResponse = HTMLResponse
 
 # main routes
 
 @main_fasthtml_router("/")
 async def index():
     print("🏠 INDEX ROUTE: Loading first page of bookmarks")
-    bookmarks = fetch_bookmarks(kind="newest", page=1, per_page=50)
-    all_bookmarks = fetch_bookmarks_all(kind="newest")  # For count
+    bookmarks: List[Bookmark] = fetch_bookmarks(kind="newest", page=1, per_page=50)
+    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")  # For count
     print(f"🏠 INDEX ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
@@ -64,13 +70,13 @@ async def index():
     )
 
 @main_fasthtml_router("/bookmarks")
-async def bookmarks_page(request: Request):
+async def bookmarks_page(request: Request) -> HTMLResponse:
     """HTMX endpoint for infinite scroll pagination"""
-    page = int(request.query_params.get("page", 2))
-    kind = request.query_params.get("kind", "newest")
+    page: int = int(request.query_params.get("page", 2))
+    kind: str = request.query_params.get("kind", "newest") or "newest"
     
     print(f"📄 BOOKMARKS_PAGE: Loading page {page} for kind {kind}")
-    bookmarks = fetch_bookmarks(kind=kind, page=page, per_page=50)
+    bookmarks: List[Bookmark] = fetch_bookmarks(kind=kind, page=page, per_page=50)
     print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} bookmarks for page {page}")
     
     # If no bookmarks, return empty response
@@ -89,9 +95,8 @@ async def bookmarks_page(request: Request):
     bookmark_elements = [_render_bookmark_html(bm, is_image_list=False) for bm in bookmarks]
     
     # Convert to HTML strings and join them
-    from fasthtml.common import to_xml
-    html_parts = [to_xml(element) for element in bookmark_elements]
-    combined_html = "\n".join(html_parts)
+    html_parts: List[str] = [to_xml(element) for element in bookmark_elements]
+    combined_html: str = "\n".join(html_parts)
     
     print(f"📄 BOOKMARKS_PAGE: Returning {len(bookmark_elements)} bookmark elements as HTML")
     return HTMLResponse(combined_html, status_code=200)
@@ -100,8 +105,8 @@ async def bookmarks_page(request: Request):
 @main_fasthtml_router("/oldest")
 async def oldest():
     print("📅 OLDEST ROUTE: Loading first page of oldest bookmarks")
-    bookmarks = fetch_bookmarks(kind="oldest", page=1, per_page=50)
-    all_bookmarks = fetch_bookmarks_all(kind="oldest")  # For count
+    bookmarks: List[Bookmark] = fetch_bookmarks(kind="oldest", page=1, per_page=50)
+    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="oldest")  # For count
     print(f"📅 OLDEST ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
@@ -120,12 +125,12 @@ async def oldest():
 
 @main_fasthtml_router("/random")
 async def random_bookmark():
-    bookmarks = fetch_bookmarks_all(kind="newest")
-    bookmark_count = len(bookmarks)
+    bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
+    bookmark_count: int = len(bookmarks)
     if not bookmarks:
         return Page(NavMenu(bookmark_count=0, active="random"), SearchBar(), "No bookmarks available to choose from.")
 
-    selected_bookmarks = [secrets.choice(bookmarks)]
+    selected_bookmarks: List[Bookmark] = [secrets.choice(bookmarks)]
     return Page(
         NavMenu(bookmark_count=bookmark_count, active="random"),
         SearchBar(),
@@ -135,9 +140,9 @@ async def random_bookmark():
 
 @main_fasthtml_router("/tags")
 async def tags_route():
-    all_bookmarks = fetch_bookmarks_all(kind="newest")
-    internal_bookmarks_count = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
-    tag_list = fetch_unique_tags(kind="frequency")
+    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
+    internal_bookmarks_count: int = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
+    tag_list: List[Dict[str, Any]] = fetch_unique_tags(kind="frequency")
     return Page(
         NavMenu(bookmark_count=internal_bookmarks_count, active="tags"),
         SearchBar(),
@@ -147,9 +152,9 @@ async def tags_route():
 
 @main_fasthtml_router("/tags/newest")
 async def tags_newest_route():
-    all_bookmarks = fetch_bookmarks_all(kind="newest")
-    internal_bookmarks_count = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
-    tag_list = fetch_unique_tags(kind="newest")
+    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
+    internal_bookmarks_count: int = len([bm for bm in all_bookmarks if bm.get('source') == 'internal'])
+    tag_list: List[Dict[str, Any]] = fetch_unique_tags(kind="newest")
     return Page(
         NavMenu(bookmark_count=internal_bookmarks_count),
         SearchBar(),
@@ -160,8 +165,8 @@ async def tags_newest_route():
 
 @main_fasthtml_router("/tags/{tag}")
 async def bookmarks_by_tag_route(tag: str):
-    bookmarks_for_tag = fetch_bookmarks_by_tag(tag)
-    internal_bookmarks = [bm for bm in bookmarks_for_tag if bm.get('source') == 'internal']
+    bookmarks_for_tag: List[Bookmark] = fetch_bookmarks_by_tag(tag)
+    internal_bookmarks: List[Bookmark] = [bm for bm in bookmarks_for_tag if bm.get('source') == 'internal']
 
     return Page(
         NavMenu(bookmark_count=len(internal_bookmarks)),
@@ -172,7 +177,7 @@ async def bookmarks_by_tag_route(tag: str):
 
 @main_fasthtml_router("/tags/{tag}/feed")
 async def create_feed_for_tag_route(tag: str):
-    bookmarks_for_feed = fetch_bookmarks_by_tag(tag)
+    bookmarks_for_feed: List[Bookmark] = fetch_bookmarks_by_tag(tag)
     await create_feed(tag, bookmarks_for_feed)
 
     # Usually a feed route might return XML or a success message, not a full page.
@@ -188,10 +193,10 @@ async def create_feed_for_tag_route(tag: str):
 @main_fasthtml_router("/untagged")
 async def untagged_bookmarks_route():
     print("🏷️ UNTAGGED ROUTE: Loading first page of untagged bookmarks")
-    untagged = fetch_bookmarks(kind="untagged", page=1, per_page=50)
-    all_untagged = fetch_bookmarks_all(kind="untagged")
-    internal_untagged = [bm for bm in untagged if bm.get('source') == 'internal']
-    all_internal_untagged = [bm for bm in all_untagged if bm.get('source') == 'internal']
+    untagged: List[Bookmark] = fetch_bookmarks(kind="untagged", page=1, per_page=50)
+    all_untagged: List[Bookmark] = fetch_bookmarks_all(kind="untagged")
+    internal_untagged: List[Bookmark] = [bm for bm in untagged if bm.get('source') == 'internal']
+    all_internal_untagged: List[Bookmark] = [bm for bm in all_untagged if bm.get('source') == 'internal']
     print(f"🏷️ UNTAGGED ROUTE: Loaded {len(internal_untagged)} bookmarks from page 1, total: {len(all_internal_untagged)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
@@ -211,105 +216,110 @@ async def untagged_bookmarks_route():
 # partials
 
 @main_fasthtml_router("/id/{id}")
-async def bookmark_by_id_partial(id: str):
-    bookmark = await fetch_bookmark_by_id(id=id)
+async def bookmark_by_id_partial(id: str) -> Union[AnyComponent, HTMLResponse]:
+    bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
         return HTMLResponse("Bookmark not found", status_code=404)
-    bookmarks = [bookmark]
+    bookmarks: List[Bookmark] = [bookmark]
     # BookmarkImageList returns a Div component, which FastHTML can render directly
     return BookmarkImageList(bookmarks=bookmarks)
 
 
 @main_fasthtml_router("/id/c/{id}") # Changed from @app.get
-async def bookmark_by_id_compact_partial(id: str):
-    bookmark = await fetch_bookmark_by_id(id=id)
+async def bookmark_by_id_compact_partial(id: str) -> Union[AnyComponent, HTMLResponse]:
+    bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
         return HTMLResponse("Bookmark not found", status_code=404) # Return 404
-    bookmarks = [bookmark]
+    bookmarks: List[Bookmark] = [bookmark]
     # BookmarkList returns a Div component
     return BookmarkList(bookmarks=bookmarks)
 
 @main_fasthtml_router("/search") # Changed from @app.get
-async def search_route(request: Request):
-    query = request.query_params.get("query", "")
-    searched_bookmarks = search_bookmarks(query)
-    # Return a tuple of components for HTMX innerHTML swap into #results-container
-    # No Page() wrapper here.
-    return (
+async def search_route(request: Request) -> HTMLResponse:
+    query: str = request.query_params.get("query", "")
+    searched_bookmarks: List[Bookmark] = search_bookmarks(query)
+    # Return components wrapped in a Div for HTMX innerHTML swap into #results-container
+    components = Div(
         NavMenu(bookmark_count=len(searched_bookmarks)),
         SearchBar(query=query),
         BookmarkList(bookmarks=searched_bookmarks)
     )
+    return HTMLResponse(to_xml(components))
 
 
 # utils
 
 @main_fasthtml_router("/ai/{id}")
-async def get_ai_info_for_bookmark_by_id_route(id: str):
-    bookmark = await fetch_bookmark_by_id(id=id)
+async def get_ai_info_for_bookmark_by_id_route(id: str) -> FastHTMLResponse:
+    bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
-        return HTMLResponse("Bookmark not found for AI processing.", status_code=404)
+        return FastHTMLResponse("Bookmark not found for AI processing.", status_code=404)
 
-    tags, description = await get_tags_and_description_from_bookmark(
-        bookmark
-    )
+    try:
+        ai_tags, ai_description = await get_tags_and_description_from_bookmark(bookmark)
+        if ai_tags:
+            await update_bookmark_tags(id=id, tags=ai_tags)
+        if ai_description:
+            await update_bookmark_description(id=id, description=ai_description)
 
-    if bookmark.get("id"): # Ensure bookmark has an id
-        await update_bookmark_tags(bookmark["id"], tags)
-        await update_bookmark_description(bookmark["id"], description)
-    else: # Should not happen if fetch_bookmark_by_id guarantees an id
-        return HTMLResponse("Bookmark ID missing, cannot update.", status_code=500)
+        updated_bookmark = await fetch_bookmark_by_id(id=id)
+        if not updated_bookmark:
+            return HTMLResponse("Bookmark not found after update", status_code=404)
 
-    # _render_tags_html returns a Div, which is fine for HTMX swaps
-    return _render_tags_html(tags)
+        return HTMLResponse(
+            to_xml(_render_tags_html(updated_bookmark.get("tags", []))),
+            headers={"HX-Trigger": json.dumps({"showToast": "AI update complete."})},
+        )
+    except Exception as e:
+        logger.error(f"Error getting AI info for bookmark {id}: {e}")
+        return FastHTMLResponse(f"Error: {e}", status_code=500)
 
 
 @main_fasthtml_router("/get_thumbnail/{id}")
-async def get_thumbnail_route(request: Request):
-    bookmark_id = request.path_params["id"]
+async def get_thumbnail_route(request: Request) -> HTMLResponse:
+    bookmark_id: str = request.path_params["id"]
     headers = {"HX-Trigger": "loadThumbnail"}
-    bookmark = await fetch_bookmark_by_id(bookmark_id)
+    bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(bookmark_id)
     if bookmark and bookmark.get("thumbnail_url"):
         # Using PreviewImage component to render the image tag for consistency
         # PreviewImage itself handles placeholder logic if thumbnail_url is empty, though here we check it.
-        img_html = PreviewImage(src=bookmark["thumbnail_url"], id=f"thumbnail-{bookmark_id}").to_html()
+        img_component = PreviewImage(src=bookmark["thumbnail_url"], id=f"thumbnail-{bookmark_id}")
+        img_html = to_xml(img_component)
         return HTMLResponse(img_html, headers=headers)
 
     logging.error(f"💥 Bookmark or thumbnail not found for id: {bookmark_id}")
     # Return a placeholder or an empty response with appropriate status
-    img_html = PreviewImage(src=None, id=f"thumbnail-{bookmark_id}").to_html() # Shows placeholder
+    img_component = PreviewImage(src=None, id=f"thumbnail-{bookmark_id}") # Shows placeholder
+    img_html = to_xml(img_component)
     return HTMLResponse(img_html, headers=headers, status_code=404)
 
 
 @main_fasthtml_router("/check")
-async def check_if_bookmark_already_saved_route(request: Request):
-    status = "not-exists"
-    retrieved_bookmark = {}
-    url = request.query_params.get('url')
-    if url:
-        retrieved_bookmark = await fetch_bookmark_by_url(url)
-        if retrieved_bookmark:
-            status = "exists"
+async def check_if_bookmark_already_saved_route(request: Request) -> HTMLResponse:
+    url: Union[str, None] = request.query_params.get("url", "")
+    if not url:
+        return HTMLResponse("URL is required.", status_code=400)
 
-    return JSONResponse(
-        {"status": status, "message": retrieved_bookmark}
-    )
+    bookmark: Optional[Bookmark] = await fetch_bookmark_by_url(url)
+    if bookmark:
+        return HTMLResponse("Bookmark exists.", status_code=200)
+    else:
+        return HTMLResponse("Bookmark does not exist.", status_code=404)
 
 
 @main_fasthtml_router("/add", methods=["POST"])
-async def add_bookmark_route(request: Request):
+async def add_bookmark_route(request: Request) -> HTMLResponse:
     form_data = await request.form()
-    title = str(form_data.get("title", ""))
-    url = str(form_data.get("url", ""))
-    description = str(form_data.get("description", ""))
-    tags_str = str(form_data.get("tags", ""))
-    tags = tags_str.split(" ") if tags_str else []
+    title: str = str(form_data.get("title", ""))
+    url: str = str(form_data.get("url", ""))
+    description: str = str(form_data.get("description", ""))
+    tags_str: str = str(form_data.get("tags", ""))
+    tags: List[str] = tags_str.split(" ") if tags_str else []
     force_update = form_data.get("forceUpdate")
+    source: str = form_data.get("source", "internal")
 
-    if not title or not url:
-        return JSONResponse(
-            {"status": "error", "message": "Title and URL are required!"}, status_code=400
-        )
+    if not url or not title:
+        return HTMLResponse("URL and Title are required.", status_code=400)
 
     existing_bookmark = await fetch_bookmark_by_url(url)
     if existing_bookmark:
@@ -317,20 +327,48 @@ async def add_bookmark_route(request: Request):
             await update_bookmark_description(existing_bookmark["id"], description)
             await update_bookmark_tags(existing_bookmark["id"], tags)
             await update_bookmark_title(existing_bookmark["id"], title)
-            logger.info(f"Bookmark updated!")
-            return JSONResponse(
-                {"status": "success", "message": "Bookmark updated!"}
+            logger.info("Bookmark updated!")
+            return HTMLResponse(
+                "Bookmark updated successfully.", status_code=200
             )
         else:
             # If not forcing update, and bookmark exists, this might be considered a conflict or specific state.
-            return JSONResponse(
-                {"status": "exists", "message": "Bookmark already exists. Not updated unless forceUpdate is true.", "bookmark_id": existing_bookmark["id"]}, status_code=200
+            return HTMLResponse(
+                "Bookmark already exists. Not updated unless forceUpdate is true.", status_code=409
             )
 
-    new_bookmark = await create_bookmark(title, url, description, tags)
-    return JSONResponse(
-        {"status": "success", "message": "Bookmark saved!", "bookmark_id": new_bookmark.get("id") if new_bookmark else None}, status_code=201 # Added status_code
+    bookmark_id: Optional[int] = await create_bookmark(
+        url=url,
+        title=title,
+        description=description,
+        tags=tags,
+        source=source,
     )
+    if not bookmark_id:
+        return HTMLResponse("Failed to create bookmark.", status_code=500)
+
+    new_bookmark = await fetch_bookmark_by_id(str(bookmark_id))
+    if not new_bookmark:
+        return HTMLResponse("Failed to fetch new bookmark.", status_code=500)
+
+    if not tags:
+        try:
+            ai_tags, ai_description = await get_tags_and_description_from_bookmark(
+                new_bookmark
+            )
+            if ai_tags:
+                await update_bookmark_tags(id=str(bookmark_id), tags=ai_tags)
+            if ai_description:
+                await update_bookmark_description(
+                    id=str(bookmark_id), description=ai_description
+                )
+        except Exception as e:
+            logger.error(f"Error getting AI info for new bookmark {bookmark_id}: {e}")
+
+    headers = {
+        "HX-Trigger": json.dumps({"showToast": f"New bookmark added: {title}"})
+    }
+    return HTMLResponse("Bookmark added successfully.", headers=headers)
 
 
 @main_fasthtml_router("/update") # Changed from @app.get
@@ -350,8 +388,8 @@ async def update_route():
 
 
 @main_fasthtml_router("/update_thumbnail/{id}") # Changed from @app.get
-async def update_thumbnail_route(request: Request):
-    bookmark_id = request.path_params["id"]
+async def update_thumbnail_route(request: Request) -> FastHTMLResponse:
+    bookmark_id: str = request.path_params["id"]
     # The actual thumbnail URL is fetched by /get_thumbnail/{id} or embedded.
     headers = {"HX-Trigger": json.dumps({"loadThumbnail": f"#{bookmark_id}"})}
     logger.info(f"Sending HX-Trigger header for bookmark id: {bookmark_id}")
@@ -359,7 +397,7 @@ async def update_thumbnail_route(request: Request):
 
 
 @main_fasthtml_router("/delete/{bookmark_id}", methods=["DELETE"])
-async def delete_bookmark_route(bookmark_id: int, request: Request):
+async def delete_bookmark_route(bookmark_id: int, request: Request) -> FastHTMLResponse:
     try:
         print(f"🔥 DELETE_BOOKMARK_ROUTE CALLED: bookmark_id={bookmark_id}")
         
@@ -372,22 +410,23 @@ async def delete_bookmark_route(bookmark_id: int, request: Request):
         print(f"🔥 DELETE_BOOKMARK_ROUTE: Referer header: {referer}")
         
         if "/random" in referer:
-            print(f"🔥 DELETE_BOOKMARK_ROUTE: Request came from random page, returning new random bookmark")
+            print("🔥 DELETE_BOOKMARK_ROUTE: Request came from random page, returning new random bookmark")
             # If deleting from the random page, return a new random bookmark
             bookmarks = fetch_bookmarks_all(kind="newest")
             if bookmarks: # Make sure we have bookmarks left
                 selected_bookmarks = [secrets.choice(bookmarks)]
                 print(f"🔥 DELETE_BOOKMARK_ROUTE: Selected new random bookmark: {selected_bookmarks[0].get('title', 'N/A')}")
-                # Return the BookmarkImageList component directly for HTMX swap
-                return BookmarkImageList(bookmarks=selected_bookmarks)
+                # Convert the BookmarkImageList component to HTML for HTMX swap
+                component = BookmarkImageList(bookmarks=selected_bookmarks)
+                return HTMLResponse(to_xml(component))
             else:
-                print(f"🔥 DELETE_BOOKMARK_ROUTE: No bookmarks left to show")
+                print("🔥 DELETE_BOOKMARK_ROUTE: No bookmarks left to show")
                 # No bookmarks left
                 return HTMLResponse("No more bookmarks available to choose from.", status_code=200)
         
         # For HTMX, an empty response with 200 status usually means "success, do nothing to the target"
         # Or, if the target is the item itself, it will be removed by hx-swap="outerHTML" on success (empty response).
-        print(f"🔥 DELETE_BOOKMARK_ROUTE: Normal delete, returning empty response")
+        print("🔥 DELETE_BOOKMARK_ROUTE: Normal delete, returning empty response")
         return HTMLResponse(status_code=200)
     except Exception as e:
         logger.error(f"Error deleting bookmark: {e}")
@@ -410,7 +449,7 @@ async def table_structure_route():
 
 
 @main_fasthtml_router("/edit/{bookmark_id}")
-async def edit_bookmark_form_route(bookmark_id: str):
+async def edit_bookmark_form_route(bookmark_id: str) -> Union[Html, HTMLResponse]:
     bookmark_data = await fetch_bookmark_by_id(id=bookmark_id)
     if not bookmark_data:
         return HTMLResponse("Bookmark not found", status_code=404)
@@ -421,7 +460,7 @@ async def edit_bookmark_form_route(bookmark_id: str):
     )
 
 @main_fasthtml_router("/edit/{bookmark_id}/modal") # Modal version for HTMX
-async def edit_bookmark_modal_route(bookmark_id: str):
+async def edit_bookmark_modal_route(bookmark_id: str) -> Union[AnyComponent, Div, HTMLResponse]:
     bookmark_data = await fetch_bookmark_by_id(id=bookmark_id)
     if not bookmark_data:
         return HTMLResponse("Bookmark not found", status_code=404)
@@ -455,7 +494,7 @@ async def edit_bookmark_modal_route(bookmark_id: str):
     )
 
 @main_fasthtml_router("/edit-test/{bookmark_id}", methods=["POST"])
-async def update_bookmark_route(bookmark_id: str, request: Request):
+async def update_bookmark_route(bookmark_id: str, request: Request) -> FastHTMLResponse:
     print(f"🔥 UPDATE_BOOKMARK_ROUTE CALLED: bookmark_id={bookmark_id}")
     logging.getLogger().setLevel(logging.DEBUG)
     logging.info(f"UPDATE_BOOKMARK_ROUTE: Starting update for bookmark {bookmark_id}")
@@ -464,11 +503,11 @@ async def update_bookmark_route(bookmark_id: str, request: Request):
     print(f"🔥 FORM DATA: {dict(form_data)}")
     logging.info(f"UPDATE_BOOKMARK_ROUTE: Form data received: {dict(form_data)}")
     
-    title = str(form_data.get("title", ""))
-    url = str(form_data.get("url", ""))
-    description = str(form_data.get("description", ""))
-    tags_str = str(form_data.get("tags", ""))
-    tags = tags_str.split(" ") if tags_str else []
+    title: str = str(form_data.get("title", ""))
+    url: str = str(form_data.get("url", ""))
+    description: str = str(form_data.get("description", ""))
+    tags_str: str = str(form_data.get("tags", ""))
+    tags: List[str] = tags_str.split(" ") if tags_str else []
     
     logging.info(f"UPDATE_BOOKMARK_ROUTE: Parsed data - title: {title}, url: {url}, description: {description}, tags: {tags}")
 
@@ -498,7 +537,7 @@ async def update_bookmark_route(bookmark_id: str, request: Request):
                 status_code=200, headers={"HX-Reswap": "none", "HX-Trigger": "closeModal"}
             )
 
-        logging.info(f"UPDATE_BOOKMARK_ROUTE: Rendering bookmark HTML")
+        logging.info("UPDATE_BOOKMARK_ROUTE: Rendering bookmark HTML")
         # Use the full bookmark rendering function to maintain all interactive elements
         from bookerics.components import _render_bookmark_html
         component = _render_bookmark_html(updated_bookmark, is_image_list=False)
@@ -516,33 +555,13 @@ async def update_bookmark_route(bookmark_id: str, request: Request):
         logging.info(f"UPDATE_BOOKMARK_ROUTE: Setting HX-Trigger header for bookmark id: {bookmark_id}")
         logging.info(f"UPDATE_BOOKMARK_ROUTE: Headers being set: {headers}")
         
-        # Try using fasthtml's to_xml function
-        print(f"🔥 TRYING: to_xml function")
-        try:
-            from fasthtml.common import to_xml
-            html_content = to_xml(component)
-            print(f"🔥 to_xml SUCCESS: {html_content[:100]}...")
-            response = HTMLResponse(html_content, headers=headers)
-            logging.info(f"UPDATE_BOOKMARK_ROUTE: Response created using to_xml(), returning to client")
-            return response
-        except Exception as e:
-            print(f"🔥 to_xml FAILED: {e}")
-        
-        # Try calling __html__ method if it exists
-        if hasattr(component, '__html__'):
-            print(f"🔥 TRYING: __html__ method")
-            try:
-                html_content = component.__html__()
-                print(f"🔥 __html__ SUCCESS: {html_content[:100]}...")
-                response = HTMLResponse(html_content, headers=headers)
-                logging.info(f"UPDATE_BOOKMARK_ROUTE: Response created using __html__(), returning to client")
-                return response
-            except Exception as e:
-                print(f"🔥 __html__ FAILED: {e}")
-        
-        # If all else fails, try returning the component directly (FastHTML should handle this)
-        print(f"🔥 TRYING: Return component directly")
-        return component  # FastHTML should auto-convert this
+        # Convert the component to HTML using fasthtml's to_xml function
+        print("🔥 CONVERTING: Component to HTML using to_xml")
+        html_content = to_xml(component)
+        print(f"🔥 CONVERSION SUCCESS: {html_content[:100]}...")
+        response = HTMLResponse(html_content, headers=headers)
+        logging.info("UPDATE_BOOKMARK_ROUTE: Response created using to_xml(), returning to client")
+        return response
         
     except Exception as e:
         logging.error(f"UPDATE_BOOKMARK_ROUTE: Exception occurred: {str(e)}")
@@ -553,10 +572,10 @@ async def update_bookmark_route(bookmark_id: str, request: Request):
 
 # Handle Chrome DevTools requests to prevent 404 logs
 @main_fasthtml_router("/.well-known/appspecific/com.chrome.devtools.json")
-async def chrome_devtools_handler():
+async def chrome_devtools_handler() -> JSONResponse:
     return JSONResponse({}, status_code=404)
 
 # Close modal route - returns empty content to clear the modal
 @main_fasthtml_router("/close-modal")
-async def close_modal():
-    return ""
+async def close_modal() -> FastHTMLResponse:
+    return FastHTMLResponse("", status_code=200)

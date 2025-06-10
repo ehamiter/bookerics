@@ -1,14 +1,18 @@
-import json # Uncommented
-import requests # Uncommented
+import json
+import requests
+from typing import Any, Union
 
 from fasthtml.common import Div, A, Input, P, Img, Pre, Code, Button, Form, Label, Textarea, Span
 # For attributes, use dicts e.g. {'hx_get': '/search'}
 
-from .constants import GIPHY_API_KEY # Keep
-from .database import BOOKMARK_NAME # Keep
+from .constants import GIPHY_API_KEY
+from .database import BOOKMARK_NAME, Bookmark
 
 
-def NavMenu(bookmark_count: int | bool = False, active: str = ""):
+AnyComponent = Any
+
+
+def NavMenu(bookmark_count: Union[int, bool] = False, active: str = "") -> Div:
     if bookmark_count is not False and isinstance(bookmark_count, int):
         bookericz = BOOKMARK_NAME if bookmark_count == 1 else f"{BOOKMARK_NAME}s"
         bookmark_result = f"{bookmark_count:,} {bookericz}"
@@ -36,7 +40,7 @@ def NavMenu(bookmark_count: int | bool = False, active: str = ""):
     )
 
 
-def SearchBar(query: str = "", **attrs):
+def SearchBar(query: str = "", **attrs: Any) -> Input:
     return Input(
         type="search",
         placeholder=f"Search {BOOKMARK_NAME}s",
@@ -52,7 +56,7 @@ def SearchBar(query: str = "", **attrs):
     )
 
 
-def HiddenLink(*children, to: str, title: str, **attrs):
+def HiddenLink(*children: AnyComponent, to: str, title: str, **attrs: Any) -> A:
     return A(
         *children,
         href=to,
@@ -62,7 +66,7 @@ def HiddenLink(*children, to: str, title: str, **attrs):
     )
 
 
-def BookericLink(*children, to: str, **attrs):
+def BookericLink(*children: AnyComponent, to: str, **attrs: Any) -> A:
     return A(
         *children,
         href=to,
@@ -71,7 +75,7 @@ def BookericLink(*children, to: str, **attrs):
         **attrs
     )
 
-def TableStructure(structure: list | None = None, **attrs):
+def TableStructure(structure: Union[list, None] = None, **attrs: Any) -> Div:
     if structure is None:
         structure = []
 
@@ -85,7 +89,7 @@ def TableStructure(structure: list | None = None, **attrs):
     )
 
 
-def TagCloud(tags: list | None = None, **attrs):
+def TagCloud(tags: Union[list, None] = None, **attrs: Any) -> Div:
     if tags is None:
         tags = []
     # CSS class "tag-cloud" handles flex layout.
@@ -99,7 +103,7 @@ def TagCloud(tags: list | None = None, **attrs):
         **attrs
     )
 
-def _get_random_giphy_url():
+def _get_random_giphy_url() -> str:
     _url = f"https://api.giphy.com/v1/gifs/random?api_key={GIPHY_API_KEY}&tag=waiting&rating=r"
     try:
         r = requests.get(_url, timeout=5)
@@ -113,7 +117,7 @@ def _get_random_giphy_url():
         print(f"Error parsing Giphy response: {e}")
         return "/static/images/placeholder.gif"
 
-def PreviewImage(src: str | None = None, **attrs):
+def PreviewImage(src: Union[str, None] = None, **attrs: Any) -> Img:
     placeholder_src = ""
     if not src:
         placeholder_src = _get_random_giphy_url()
@@ -125,11 +129,11 @@ def PreviewImage(src: str | None = None, **attrs):
     return Img(src=src, cls="image-placeholder", **attrs)
 
 
-def ImageSwitcher(*children, **attrs):
+def ImageSwitcher(*children: AnyComponent, **attrs: Any) -> Div:
     return Div(*children, cls="image-switcher", **attrs)
 
 
-def BookmarkBox(*children, **attrs):
+def BookmarkBox(*children: AnyComponent, **attrs: Any) -> Div:
     # All styling and structure is handled by CSS via the 'bookmark-box' class and its modifiers.
     # Child elements like P, A, Div will be passed in *children.
     # Modifier classes like 'small', 'large', 'transparent', 'invert' should be part of attrs['cls']
@@ -142,7 +146,7 @@ def BookmarkBox(*children, **attrs):
     return Div(*children, cls=final_classes, **attrs)
 
 
-def HTMXDeleteButton(*children, to: str = "#", hx_target: str, hx_swap: str, hx_delete: str, cls: str = "", **attrs):
+def HTMXDeleteButton(*children: AnyComponent, to: str = "#", hx_target: str, hx_swap: str, hx_delete: str, cls: str = "", **attrs: Any):
     # data-confirmed is a state managed by JS, but can be set initially
     final_cls = f"btn delete-btn {cls}".strip()
     # Store the delete URL in data attribute and remove hx_delete initially
@@ -152,17 +156,17 @@ def HTMXDeleteButton(*children, to: str = "#", hx_target: str, hx_swap: str, hx_
              cls=final_cls, **attrs)
 
 
-def ToggleImagePreviewButton(*children, hx_get: str, hx_target: str, hx_swap: str, cls: str = "", **attrs):
+def ToggleImagePreviewButton(*children: AnyComponent, hx_get: str, hx_target: str, hx_swap: str, cls: str = "", **attrs: Any):
     final_cls = f"btn toggle-image-preview-btn {cls}".strip()
     return A(*children, hx_get=hx_get, hx_target=hx_target, hx_swap=hx_swap, cls=final_cls, **attrs) # type: ignore
 
 
-def GetTagsForBookmarkButton(*children, to: str = "#", hx_swap: str, hx_target: str, hx_get: str, cls: str = "", **attrs):
+def GetTagsForBookmarkButton(*children: AnyComponent, to: str = "#", hx_swap: str, hx_target: str, hx_get: str, cls: str = "", **attrs: Any):
     final_cls = f"btn {cls}".strip() # General btn class, specific styling via parent or further classes
     return A(*children, href=to, hx_swap=hx_swap, hx_target=hx_target, hx_get=hx_get, cls=final_cls, **attrs) # type: ignore
 
 
-def UpdateBookmarkButton(text: str, hx_get: str, cls: str = "", hx_target: str = "", **attrs):
+def UpdateBookmarkButton(text: str, hx_get: str, cls: str = "", hx_target: str = "", **attrs: Any):
     final_cls = f"btn update-btn {cls}".strip()
     attrs_dict = {"hx_get": hx_get, "cls": final_cls}
     if hx_target:
@@ -171,7 +175,7 @@ def UpdateBookmarkButton(text: str, hx_get: str, cls: str = "", hx_target: str =
     return A(text, **attrs_dict) # type: ignore
 
 
-def _render_tags_html(tags: list[str] | str):
+def _render_tags_html(tags: Union[list[str], str]) -> Div:
     """Renders a list of tags as A elements within a Div."""
     if isinstance(tags, str):
         # Handle case where tags might be passed as a string
@@ -185,7 +189,7 @@ def _render_tags_html(tags: list[str] | str):
 
     return Div(*[A(tag, href=f"/tags/{tag}", cls="btn tag info") for tag in tags], cls="tags-container")
 
-def _render_created_at_html(created_at: str | None) -> Div:
+def _render_created_at_html(created_at: Union[str, None]) -> Div:
     if created_at:
         # Use HTML5 time element with datetime attribute for JavaScript formatting
         from fasthtml.common import Time
@@ -196,7 +200,7 @@ def _render_created_at_html(created_at: str | None) -> Div:
     return Div("", cls="created-at-display")
 
 
-def _render_bookmark_html(bookmark: dict, is_image_list: bool = False):
+def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> Div:
     bookmark_id = bookmark.get("id")
     title = bookmark.get("title", "")
     url = bookmark.get("url", "")
@@ -291,7 +295,7 @@ def _render_bookmark_html(bookmark: dict, is_image_list: bool = False):
     return BookmarkBox(*content, **box_attrs)
 
 
-def BookmarkList(bookmarks: list, **attrs):
+def BookmarkList(bookmarks: list[Bookmark], **attrs: Any) -> Div:
     # Assuming 'bookmarks' is a list of bookmark dictionaries
     # The 'attrs' can be used for top-level Div attributes if needed (e.g. id, class)
     return Div(
@@ -301,7 +305,7 @@ def BookmarkList(bookmarks: list, **attrs):
     )
 
 
-def BookmarkImageList(bookmarks: list, **attrs):
+def BookmarkImageList(bookmarks: list[Bookmark], **attrs: Any) -> Div:
     # Relies on PreviewImage's HTMX attributes for lazy loading thumbnails.
     # The update_bookmarks_with_thumbnails can be called in the route handler if needed pre-render.
     return Div(
@@ -311,7 +315,7 @@ def BookmarkImageList(bookmarks: list, **attrs):
     )
 
 
-def EditBookmarkForm(bookmark: dict, **attrs):
+def EditBookmarkForm(bookmark: Bookmark, **attrs: Any) -> Form:
     # 'bookmark' is a dictionary containing bookmark data
     # 'attrs' can include form attributes like 'action', 'method' (though method is POST by default here)
 

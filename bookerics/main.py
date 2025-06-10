@@ -1,17 +1,14 @@
-import tracemalloc
-tracemalloc.start()
-
 import os
 from collections.abc import AsyncIterator
-
 from starlette.routing import Mount
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from fasthtml.common import fast_app
 from contextlib import asynccontextmanager
-
+import tracemalloc
 from .database import load_db_on_startup
 
+tracemalloc.start()
 
 # Calculate the directory path
 base_dir = os.path.dirname(os.path.abspath(__file__))

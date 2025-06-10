@@ -1,6 +1,7 @@
+from typing import Any
 from fasthtml.common import Head, Meta, Link, Script, Body, Div, Html, Title
 
-def Page(*children, title_str: str = "bookerics"):
+def Page(*children: Any, title_str: str = "bookerics") -> Html:
     """
     Constructs a basic HTML page structure using FastHTML components.
     """
