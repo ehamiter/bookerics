@@ -116,14 +116,15 @@ async def bookmarks_page(request: Request):
     from bookerics.components import _render_bookmark_html
     bookmark_elements = [_render_bookmark_html(bm, is_image_list=True) for bm in bookmarks]
     
-    # Return as a container div - let FastHTML handle the HTML conversion automatically
-    from fasthtml.common import Div, to_xml
-    div_result = Div(*bookmark_elements)
+    # Return just the bookmark elements without extra container to preserve spacing
+    # The elements will be inserted into the existing bookmark-image-list-switcher container
+    from fasthtml.common import to_xml
     
-    # Convert to HTML fragment for HTMX (not a full page)
-    html_fragment = to_xml(div_result)
+    # Convert each bookmark to HTML and join them
+    html_fragments = [to_xml(bookmark) for bookmark in bookmark_elements]
+    html_result = ''.join(html_fragments)
     
-    return HTMLResponse(html_fragment)
+    return HTMLResponse(html_result)
 
 
 @main_fasthtml_router("/oldest")
