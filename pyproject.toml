@@ -8,10 +8,7 @@ authors = [{ name = "Eric Hamiter", email = "ehamiter@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
     "aioboto3>=14.3.0",
-    "httpx>=0.28.1",
     "openai>=1.86.0",
-    "peewee>=3.18.1",
-    "pillow>=11.2.1",
     "python-dotenv>=1.1.0",
     "python-fasthtml>=0.12.19",
     "requests>=2.32.4",
