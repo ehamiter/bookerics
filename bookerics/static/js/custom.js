@@ -141,28 +141,229 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error:', error));
     });
 
-    // Keyboard shortcuts
+
+
+    // Enhanced keyboard shortcuts system
+    let currentBookmarkIndex = -1;
+    let bookmarkElements = [];
+    let helpModalOpen = false;
+
+    function updateBookmarkElements() {
+        bookmarkElements = Array.from(document.querySelectorAll('.bookmark-box'));
+        console.log('📋 Updated bookmark elements:', bookmarkElements.length);
+    }
+
+    function highlightBookmark(index) {
+        // Remove highlight from all bookmarks
+        bookmarkElements.forEach(el => el.classList.remove('keyboard-focused'));
+        
+        if (index >= 0 && index < bookmarkElements.length) {
+            const bookmark = bookmarkElements[index];
+            bookmark.classList.add('keyboard-focused');
+            bookmark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            console.log('📋 Highlighted bookmark:', index, bookmark.id);
+        }
+    }
+
+    function getCurrentBookmark() {
+        if (currentBookmarkIndex >= 0 && currentBookmarkIndex < bookmarkElements.length) {
+            return bookmarkElements[currentBookmarkIndex];
+        }
+        return null;
+    }
+
+    function getBookmarkUrl(bookmarkElement) {
+        const link = bookmarkElement.querySelector('.bookeric-link.external');
+        return link ? link.href : null;
+    }
+
+    function getBookmarkId(bookmarkElement) {
+        const id = bookmarkElement.id;
+        // Extract bookmark ID from element ID (format: bmb-{id})
+        return id ? id.replace('bmb-', '') : null;
+    }
+
+    function triggerBookmarkEdit(bookmarkElement) {
+        const bookmarkId = getBookmarkId(bookmarkElement);
+        if (bookmarkId) {
+            console.log('✒️ Triggering edit for bookmark:', bookmarkId);
+            // Use HTMX to load the edit modal
+            htmx.ajax('GET', `/edit/${bookmarkId}/modal`, {
+                target: '#modal-container',
+                swap: 'innerHTML'
+            });
+        }
+    }
+
+    function triggerBookmarkDelete(bookmarkElement) {
+        const deleteBtn = bookmarkElement.querySelector('.delete-btn');
+        if (deleteBtn) {
+            console.log('🗑️ Triggering delete for bookmark:', getBookmarkId(bookmarkElement));
+            // Simulate click on delete button to use existing delete logic
+            deleteBtn.click();
+        }
+    }
+
+    function showKeyboardShortcutsHelp() {
+        if (helpModalOpen) {
+            closeModal();
+            return;
+        }
+        
+        console.log('❓ Showing keyboard shortcuts help');
+        htmx.ajax('GET', '/help/keyboard-shortcuts', {
+            target: '#modal-container',
+            swap: 'innerHTML'
+        });
+        helpModalOpen = true;
+    }
+
+    // Enhanced keyboard event handler
     document.addEventListener('keydown', function(event) {
-        // Focus the search input on Command + K
+        const modalContainer = document.getElementById('modal-container');
+        const isModalOpen = modalContainer && modalContainer.innerHTML.trim() !== '';
+        const isInputFocused = document.activeElement && 
+                              (document.activeElement.tagName === 'INPUT' || 
+                               document.activeElement.tagName === 'TEXTAREA');
+
+        // Handle modal-specific shortcuts
+        if (isModalOpen) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeModal();
+                helpModalOpen = false;
+                return;
+            }
+            // Don't process other shortcuts when modal is open
+            return;
+        }
+
+        // Don't process navigation shortcuts when input is focused (except for escape)
+        if (isInputFocused) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                document.activeElement.blur();
+                // Clear current bookmark highlight when escaping from input
+                bookmarkElements.forEach(el => el.classList.remove('keyboard-focused'));
+                currentBookmarkIndex = -1;
+            }
+            return;
+        }
+
+        // Search shortcuts (Command/Ctrl + K)
         if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
             event.preventDefault();
             const queryInput = document.getElementById('query');
-            queryInput.focus();
+            if (queryInput) {
+                queryInput.focus();
+                if (queryInput.value) {
+                    queryInput.select();
+                }
+            }
+            return;
+        }
 
-            if (queryInput.value) {
-                queryInput.select();
+        // Help modal (?)
+        if (event.key === '?') {
+            event.preventDefault();
+            showKeyboardShortcutsHelp();
+            return;
+        }
+
+        // Update bookmark elements list (in case new content was loaded)
+        updateBookmarkElements();
+
+        if (bookmarkElements.length === 0) {
+            console.log('📋 No bookmark elements found');
+            return;
+        }
+
+        // Navigation shortcuts
+        if (event.key === 'j' || event.key === 'J') {
+            event.preventDefault();
+            if (currentBookmarkIndex < bookmarkElements.length - 1) {
+                currentBookmarkIndex++;
+                highlightBookmark(currentBookmarkIndex);
+                console.log('📋 Navigate down to bookmark:', currentBookmarkIndex);
+            } else {
+                console.log('📋 Already at last bookmark, not wrapping');
             }
         }
 
-        // Unfocus the search input on Escape (only if no modal is open)
-        if (event.key === 'Escape') {
-            const modalContainer = document.getElementById('modal-container');
-            if (!modalContainer || modalContainer.innerHTML.trim() === '') {
-                event.preventDefault();
-                document.getElementById('query').blur();
+        if (event.key === 'k' || event.key === 'K') {
+            event.preventDefault();
+            if (currentBookmarkIndex > 0) {
+                currentBookmarkIndex--;
+                highlightBookmark(currentBookmarkIndex);
+                console.log('📋 Navigate up to bookmark:', currentBookmarkIndex);
+            } else {
+                console.log('📋 Already at first bookmark, not wrapping');
             }
+        }
+
+        // Action shortcuts (only if a bookmark is selected)
+        const currentBookmark = getCurrentBookmark();
+        if (!currentBookmark) {
+            return;
+        }
+
+        // Open URL in new tab (V)
+        if (event.key === 'v' || event.key === 'V') {
+            event.preventDefault();
+            console.log('🔗 V key pressed, current bookmark:', currentBookmark);
+            console.log('🔗 Current bookmark index:', currentBookmarkIndex);
+            const url = getBookmarkUrl(currentBookmark);
+            console.log('🔗 Extracted URL:', url);
+            if (url) {
+                console.log('🔗 Opening URL in new tab:', url);
+                window.open(url, '_blank');
+            } else {
+                console.log('🔗 No URL found for current bookmark');
+            }
+        }
+
+        // Edit bookmark (E)
+        if (event.key === 'e' || event.key === 'E') {
+            event.preventDefault();
+            triggerBookmarkEdit(currentBookmark);
+        }
+
+        // Delete bookmark (X)
+        if (event.key === 'x' || event.key === 'X') {
+            event.preventDefault();
+            triggerBookmarkDelete(currentBookmark);
         }
     });
+
+    // Update bookmark elements after HTMX content swaps
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        console.log('HTMX: Content swapped for target:', evt.detail.target.id);
+        formatDates(); // Re-format dates in newly loaded content
+        
+        // Reset keyboard navigation state
+        currentBookmarkIndex = -1;
+        updateBookmarkElements();
+        
+        // Clear any existing highlights
+        bookmarkElements.forEach(el => el.classList.remove('keyboard-focused'));
+    });
+
+    // Override the existing closeModal function to handle help modal state
+    const originalCloseModal = window.closeModal;
+    window.closeModal = function() {
+        helpModalOpen = false;
+        if (originalCloseModal) {
+            originalCloseModal();
+        } else {
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                modalContainer.innerHTML = '';
+            }
+        }
+    };
+
+    // Initialize bookmark elements on page load
+    updateBookmarkElements();
 
     // Format dates in user's local timezone
     function formatDates() {

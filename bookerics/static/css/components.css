@@ -772,3 +772,143 @@ html {
 .bookmark-list-switcher > .bookmark-box:last-child {
     margin-bottom: 2rem;
 }
+
+/* Keyboard Shortcuts Help Modal Styles */
+.keyboard-shortcuts-modal {
+    max-width: 480px;
+    width: 85%;
+    padding: 1.5rem;
+}
+
+.keyboard-shortcuts-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.keyboard-shortcuts-modal .modal-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: var(--text-primary);
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0.4rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.shortcuts-content {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.shortcut-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.shortcut-section > *:first-child {
+    font-weight: normal;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 0.25rem;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.shortcut-row:hover {
+    background-color: var(--bg-secondary);
+}
+
+.shortcut-key {
+    font-family: 'Edlo', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 120px;
+    width: 120px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+html[data-theme="dark"] .shortcut-key {
+    background-color: var(--bg-primary);
+    border-color: var(--border-medium);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.shortcut-desc {
+    flex: 1;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Bookmark Navigation Highlight */
+.bookmark-box.keyboard-focused {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+    background-color: var(--bg-secondary);
+    transition: outline 0.2s ease, background-color 0.2s ease;
+}
+
+html[data-theme="dark"] .bookmark-box.keyboard-focused {
+    outline-color: var(--accent-color-bright);
+    background-color: var(--bg-tertiary);
+}
+
+/* Mobile responsive adjustments for keyboard shortcuts modal */
+@media (max-width: 768px) {
+    .keyboard-shortcuts-modal {
+        width: 95%;
+        max-width: none;
+    }
+    
+    .shortcuts-content {
+        gap: 1.5rem;
+    }
+    
+    .shortcut-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .shortcut-key {
+        min-width: auto;
+        align-self: flex-start;
+    }
+    
+    .shortcut-desc {
+        font-size: 0.9rem;
+    }
+}

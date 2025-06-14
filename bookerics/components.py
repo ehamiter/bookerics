@@ -380,3 +380,88 @@ def EditBookmarkForm(bookmark: Bookmark, **attrs: Any) -> AnyComponent:
         Button("Save Changes", type="submit", cls="btn primary small"),
         **form_attrs
     )
+
+
+def KeyboardShortcutsHelpModal(**attrs: Any) -> AnyComponent:
+    """Modal showing all keyboard shortcuts"""
+    return Div(
+        Div(
+            Div(
+                Div(
+                    "Keyboard Shortcuts",
+                    Button("×", cls="modal-close-btn", onclick="closeModal()"),
+                    cls="modal-header"
+                ),
+                Div(
+                    Div(
+                        "Navigation",
+                        Div(
+                            Div("J", cls="shortcut-key"),
+                            Div("Navigate down to next bookmark", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        Div(
+                            Div("K", cls="shortcut-key"),
+                            Div("Navigate up to previous bookmark", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        cls="shortcut-section"
+                    ),
+                    Div(
+                        "Actions",
+                        Div(
+                            Div("V", cls="shortcut-key"),
+                            Div("Open bookmark URL in new tab", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        Div(
+                            Div("E", cls="shortcut-key"),
+                            Div("Edit selected bookmark", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        Div(
+                            Div("X", cls="shortcut-key"),
+                            Div("Delete selected bookmark (press twice)", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        cls="shortcut-section"
+                    ),
+                    Div(
+                        "Search",
+                        Div(
+                            Div("Cmd+K", cls="shortcut-key"),
+                            Div("Focus search bar", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        Div(
+                            Div("Escape", cls="shortcut-key"),
+                            Div("Unfocus search bar or close modal", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        cls="shortcut-section"
+                    ),
+                    Div(
+                        "Other",
+                        Div(
+                            Div("Cmd+Shift+D", cls="shortcut-key"),
+                            Div("Toggle dark/light theme", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        Div(
+                            Div("?", cls="shortcut-key"),
+                            Div("Show this help modal", cls="shortcut-desc"),
+                            cls="shortcut-row"
+                        ),
+                        cls="shortcut-section"
+                    ),
+                    cls="shortcuts-content"
+                ),
+                cls="modal-content keyboard-shortcuts-modal"
+            ),
+            cls="modal-backdrop",
+            onclick="closeModal()"
+        ),
+        cls="modal-container",
+        id="modal-container",
+        **attrs
+    )

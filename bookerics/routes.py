@@ -19,6 +19,7 @@ from .components import (
     EditBookmarkForm,
     _render_tags_html,
     PreviewImage,
+    KeyboardShortcutsHelpModal,
 )
 from .database import (
     backup_bookerics_db,
@@ -629,6 +630,12 @@ async def update_bookmark_route(bookmark_id: str, request: Request):
 @main_fasthtml_router("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_handler() -> JSONResponse:
     return JSONResponse({}, status_code=404)
+
+# Keyboard shortcuts help modal route
+@main_fasthtml_router("/help/keyboard-shortcuts")
+async def keyboard_shortcuts_help_modal():
+    modal_div = KeyboardShortcutsHelpModal()
+    return HTMLResponse(to_xml(modal_div))
 
 # Close modal route - returns empty content to clear the modal
 @main_fasthtml_router("/close-modal")

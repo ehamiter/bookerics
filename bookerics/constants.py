@@ -4,8 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = "http://localhost:8080"
-
+# RSS feed metadata
 RSS_METADATA = {
     "id": "https://bookerics.com/",
     "title": "bookerics",
@@ -16,8 +15,6 @@ RSS_METADATA = {
     "language": "en",
 }
 RSS_FEED_CREATION_TAGS = ['adam',]
-
-UPDATE_BASE_URL = "http://localhost:8888/bookmarks/update"
 
 ## Personalization
 BOOKMARK_NAME = os.getenv("BOOKMARK_NAME", "bookeric")

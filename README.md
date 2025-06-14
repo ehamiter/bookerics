@@ -21,9 +21,33 @@ Can I use this if my name isn't Eric?
 > Sure. If you're not lucky enough to be named Eric, you can update the configuration to be booktoms, bookzendayas, bookvolodymyrs, etc. I suppose "bookmarks" works as well.
 
 
+### Keyboard Shortcuts
+
+Bookerics supports several keyboard shortcuts to help you navigate and manage your bookmarks efficiently:
+
+#### Navigation
+- **J** - Navigate down to the next bookmark
+- **K** - Navigate up to the previous bookmark
+
+#### Actions
+- **V** - Open the selected bookmark's URL in a new browser tab
+- **E** - Edit the selected bookmark (opens modal)
+- **X** - Delete the selected bookmark (requires two presses, just like clicking)
+
+#### Search & Interface
+- **Cmd+K** (Mac) or **Ctrl+K** (Windows/Linux) - Focus the search bar
+- **Escape** - Unfocus the search bar or close any open modal
+- **Cmd+Shift+D** - Toggle between dark and light themes
+
+#### Help
+- **?** - Show this keyboard shortcuts help modal
+
+> **Tip:** Navigate through bookmarks using J/K keys, then use V to quickly open links or E to edit them. All shortcuts work seamlessly with the existing click-based interface.
+
+
 ### This is a continual work in progress.
 
-Things will definitely break in here, but if you want to tinker around with it, be my guest. It was recently refactored to use the FastHTML framework.
+Things will definitely break in here, but if you want to tinker around with it, be my guest.
 
 
 ### Import bookmarks
