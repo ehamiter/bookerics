@@ -286,7 +286,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 highlightBookmark(currentBookmarkIndex);
                 console.log('📋 Navigate down to bookmark:', currentBookmarkIndex);
             } else {
-                console.log('📋 Already at last bookmark, not wrapping');
+                // Check if we're at the last bookmark and if it has infinite scroll
+                const lastBookmark = bookmarkElements[bookmarkElements.length - 1];
+                if (lastBookmark && lastBookmark.hasAttribute('hx-trigger') && lastBookmark.getAttribute('hx-trigger').includes('revealed')) {
+                    console.log('📋 At last bookmark with infinite scroll, staying focused for new content');
+                    // Keep the current selection on the last bookmark
+                    // The afterSwap handler will preserve the selection when new content loads
+                } else {
+                    console.log('📋 Already at last bookmark, no infinite scroll available');
+                }
             }
         }
 
@@ -340,12 +348,38 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('HTMX: Content swapped for target:', evt.detail.target.id);
         formatDates(); // Re-format dates in newly loaded content
         
-        // Reset keyboard navigation state
-        currentBookmarkIndex = -1;
+        // Preserve current bookmark selection during infinite scroll
+        let currentlySelectedId = null;
+        if (currentBookmarkIndex >= 0 && currentBookmarkIndex < bookmarkElements.length) {
+            const currentBookmark = bookmarkElements[currentBookmarkIndex];
+            if (currentBookmark && currentBookmark.id) {
+                currentlySelectedId = currentBookmark.id;
+                console.log('📋 Preserving selection for:', currentlySelectedId);
+            }
+        }
+        
+        // Update bookmark elements list with new content
         updateBookmarkElements();
         
-        // Clear any existing highlights
-        bookmarkElements.forEach(el => el.classList.remove('keyboard-focused'));
+        // Try to restore bookmark selection if we had one
+        if (currentlySelectedId) {
+            const newIndex = bookmarkElements.findIndex(el => el.id === currentlySelectedId);
+            if (newIndex >= 0) {
+                console.log('📋 Restored selection to index:', newIndex);
+                currentBookmarkIndex = newIndex;
+                highlightBookmark(currentBookmarkIndex);
+            } else {
+                console.log('📋 Could not restore selection, bookmark not found');
+                // Clear any existing highlights only if we can't restore
+                bookmarkElements.forEach(el => el.classList.remove('keyboard-focused'));
+                currentBookmarkIndex = -1;
+            }
+        } else {
+            console.log('📋 No selection to preserve, clearing highlights');
+            // Clear any existing highlights only if there was no previous selection
+            bookmarkElements.forEach(el => el.classList.remove('keyboard-focused'));
+            currentBookmarkIndex = -1;
+        }
     });
 
     // Override the existing closeModal function to handle help modal state
@@ -393,12 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Format dates on initial load
     formatDates();
-
-    // Also format dates after HTMX content swaps
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        console.log('HTMX: Content swapped for target:', evt.detail.target.id);
-        formatDates(); // Re-format dates in newly loaded content
-    });
 });
 
 // Theme Management Functions
