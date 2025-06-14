@@ -241,13 +241,13 @@ Bookerics is actively developed and continuously improving. While stable for dai
 
 ## 🤔 FAQ
 
-**Q. What?**
+**Q. What?**  
 A: It's bookmarks, but for Erics. So, bookerics. Get it?
 
-**That seems like it's marketed to a very niche group.**
+**That seems like it's marketed to a very niche group.**  
 A: That's not a question.
 
-**Can I use this if my name isn't Eric?**
+**Can I use this if my name isn't Eric?**  
 A: Sure. If you're not lucky enough to be named Eric, you can update the configuration to be booktoms, bookzendayas, bookvolodymyrs, 
 etc. I suppose "bookmarks" works as well.
 
