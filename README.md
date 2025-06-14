@@ -45,13 +45,17 @@ bookerics_importer /path/to/bookmarks.html bookerics.db
 ### Running the App
 
 ```
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Then clone and run
 git clone git@github.com:ehamiter/bookerics.git bookyournamehere
+
+cd bookyournamehere
 
 mv .env.example .env  # and update it with relevant bits
 
-poetry install
-
-poetry run bookerics
+uv run bookerics
 ```
 
 ### Running the App as a service
@@ -67,7 +71,7 @@ poetry run bookerics
     <string>com.bookerics</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/poetry</string>
+        <string>/Users/YOUR_USERNAME/.local/bin/uv</string>
         <string>run</string>
         <string>bookerics</string>
     </array>
