@@ -21,6 +21,7 @@ from .constants import (
     RSS_FEED_CREATION_TAGS,
     RSS_METADATA,
     FEEDS_DIR,
+    AWS_S3_BUCKET,
 )
 
 from .utils import logger
@@ -40,7 +41,7 @@ def safe_escape(text):
 
 
 # S3/DB setup
-S3_BUCKET_NAME = f"{BOOKMARK_NAME}s"
+S3_BUCKET_NAME = AWS_S3_BUCKET or f"{BOOKMARK_NAME}s"
 S3_KEY = f"{BOOKMARK_NAME}s.db"
 DB_PATH = f"./{BOOKMARK_NAME}s.db"
 
@@ -678,7 +679,7 @@ def create_rss_feed(
         rss_items_str = "\n".join(rss_items)
 
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
-<?xml-stylesheet type="text/xsl" href="https://bookerics.s3.amazonaws.com/feeds/rss.xsl"?>
+<?xml-stylesheet type="text/xsl" href="https://{S3_BUCKET_NAME}.s3.amazonaws.com/feeds/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{channel_title}</title>
@@ -689,9 +690,9 @@ def create_rss_feed(
     <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
     <atom:link href="{RSS_METADATA.get('link', '')}/feeds/rss.xml" rel="self" type="text/xml" />
     <image>
-        <url>https://bookerics.s3.amazonaws.com/bookerics.png</url>
+        <url>https://{S3_BUCKET_NAME}.s3.amazonaws.com/{RSS_METADATA.get('logo', 'bookerics.png')}</url>
         <title>bookerics</title>
-        <link>https://bookerics.s3.amazonaws.com/feeds/rss.xml</link>
+        <link>https://{S3_BUCKET_NAME}.s3.amazonaws.com/feeds/rss.xml</link>
         <width>128</width>
         <height>128</height>
     </image>
