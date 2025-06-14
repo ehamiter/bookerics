@@ -138,3 +138,6 @@ cython_debug/
 # Feeds directory (local copies before S3 upload)
 feeds/
 feeds/*
+
+# fasthtml
+.sesskey
