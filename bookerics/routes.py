@@ -47,10 +47,10 @@ from .utils import logger
 
 @main_fasthtml_router("/")
 async def index():
-    print("🏠 INDEX ROUTE: Loading first page of bookmarks")
+    logger.info("🏠 Loading first page of bookmarks")
     bookmarks: List[Bookmark] = fetch_bookmarks(kind="newest", page=1, per_page=25)
     all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")  # For count
-    print(f"🏠 INDEX ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
+    logger.info(f"🏠 Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
     if bookmarks:
@@ -74,16 +74,16 @@ async def bookmarks_page(request: Request):
     kind: str = request.query_params.get("kind", "newest") or "newest"
     query: str = request.query_params.get("query", "")  # Add support for search query
     
-    print(f"📄 BOOKMARKS_PAGE: Loading page {page} for kind {kind}, query: '{query}'")
+    logger.info(f"📄 Loading page {page} for kind {kind}, query: '{query}'")
     
     # Handle search pagination
     if kind == "search" and query:
         bookmarks: List[Bookmark] = search_bookmarks(query, page=page, per_page=25)
-        print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} search results for page {page}")
+        logger.info(f"📄 Loaded {len(bookmarks)} search results for page {page}")
         
         # If no bookmarks, return empty response
         if not bookmarks:
-            print(f"📄 BOOKMARKS_PAGE: No more search results found for page {page}")
+            logger.info(f"📄 No more search results found for page {page}")
             return HTMLResponse("", status_code=200)
         
         # Add infinite scroll trigger to the last bookmark if there might be more results
@@ -98,11 +98,11 @@ async def bookmarks_page(request: Request):
     else:
         # Handle regular pagination (newest, oldest, untagged)
         bookmarks: List[Bookmark] = fetch_bookmarks(kind=kind, page=page, per_page=25)
-        print(f"📄 BOOKMARKS_PAGE: Loaded {len(bookmarks)} bookmarks for page {page}")
+        logger.info(f"📄 Loaded {len(bookmarks)} bookmarks for page {page}")
         
         # If no bookmarks, return empty response
         if not bookmarks:
-            print(f"📄 BOOKMARKS_PAGE: No more bookmarks found for page {page}")
+            logger.info(f"📄 No more bookmarks found for page {page}")
             return HTMLResponse("", status_code=200)
         
         # Add infinite scroll trigger to the last bookmark
@@ -127,10 +127,10 @@ async def bookmarks_page(request: Request):
 
 @main_fasthtml_router("/oldest")
 async def oldest():
-    print("📅 OLDEST ROUTE: Loading first page of oldest bookmarks")
+    logger.info("📅 Loading first page of oldest bookmarks")
     bookmarks: List[Bookmark] = fetch_bookmarks(kind="oldest", page=1, per_page=25)
     all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="oldest")  # For count
-    print(f"📅 OLDEST ROUTE: Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
+    logger.info(f"📅 Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
     if bookmarks:
@@ -214,10 +214,10 @@ async def create_feed_for_tag_route(tag: str):
 
 @main_fasthtml_router("/untagged")
 async def untagged_bookmarks_route():
-    print("🏷️ UNTAGGED ROUTE: Loading first page of untagged bookmarks")
+    logger.info("🏷️ Loading first page of untagged bookmarks")
     untagged: List[Bookmark] = fetch_bookmarks(kind="untagged", page=1, per_page=25)
     all_untagged: List[Bookmark] = fetch_bookmarks_all(kind="untagged")
-    print(f"🏷️ UNTAGGED ROUTE: Loaded {len(untagged)} bookmarks from page 1, total: {len(all_untagged)}")
+    logger.info(f"🏷️ Loaded {len(untagged)} bookmarks from page 1, total: {len(all_untagged)}")
     
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
     if untagged:
@@ -260,7 +260,7 @@ async def bookmark_by_id_compact_partial(id: str):
 async def search_route(request: Request):
     query: str = request.query_params.get("query", "")
     page: int = int(request.query_params.get("page", 1))
-    print(f"🔍 SEARCH_ROUTE: Received search request with query: '{query}', page: {page}")
+    logger.info(f"🔍 Received search request with query: '{query}', page: {page}")
     
     if not query.strip():
         # Empty query, return empty result
@@ -274,7 +274,7 @@ async def search_route(request: Request):
         # Get paginated search results and total count
         searched_bookmarks: List[Bookmark] = search_bookmarks(query, page=page, per_page=25)
         all_search_results: List[Bookmark] = search_bookmarks_all(query)  # For total count
-        print(f"🔍 SEARCH_ROUTE: Search completed successfully, found {len(searched_bookmarks)} bookmarks on page {page}, total: {len(all_search_results)}")
+        logger.info(f"🔍 Search completed successfully, found {len(searched_bookmarks)} bookmarks on page {page}, total: {len(all_search_results)}")
         
         # Add infinite scroll trigger to the last bookmark if we have bookmarks and there might be more
         if searched_bookmarks and len(all_search_results) > page * 25:
@@ -285,17 +285,16 @@ async def search_route(request: Request):
             last_bookmark['query'] = query
         
         # Return all components since #results-container contains NavMenu, SearchBar, and BookmarkImageList
-        print(f"🔍 SEARCH_ROUTE: Creating components with {len(searched_bookmarks)} search results")
+        logger.info(f"🔍 Creating components with {len(searched_bookmarks)} search results")
         return Div(
             NavMenu(bookmark_count=len(all_search_results)),
             SearchBar(query=query),
             BookmarkImageList(bookmarks=searched_bookmarks)  # Changed to BookmarkImageList for screenshots by default
         )
     except Exception as e:
-        print(f"💥 SEARCH_ROUTE: Error during search: {e}")
-        logger.error(f"💥 SEARCH_ROUTE: Error during search: {e}")
+        logger.error(f"💥 Error during search: {e}")
         import traceback
-        print(f"💥 SEARCH_ROUTE: Traceback: {traceback.format_exc()}")
+        logger.error(f"💥 Traceback: {traceback.format_exc()}")
         return HTMLResponse(f"Search error: {str(e)}", status_code=500)
 
 

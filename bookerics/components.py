@@ -1,5 +1,5 @@
 import json
-import requests
+import httpx
 from typing import Any, Union
 
 from fasthtml.common import Div, A, Input, P, Img, Pre, Code, Button, Form, Label, Textarea, Span
@@ -112,11 +112,11 @@ def TagCloud(tags: Union[list, None] = None, **attrs: Any) -> AnyComponent:
 def _get_random_giphy_url() -> str:
     _url = f"https://api.giphy.com/v1/gifs/random?api_key={GIPHY_API_KEY}&tag=waiting&rating=r"
     try:
-        r = requests.get(_url, timeout=5)
+        r = httpx.get(_url, timeout=5)
         r.raise_for_status()
         giphy_url = r.json()["data"]["images"]["original"]["url"]
         return giphy_url
-    except requests.RequestException as e:
+    except httpx.RequestError as e:
         print(f"Error fetching Giphy URL: {e}")
         return "/static/images/placeholder.gif"
     except (KeyError, json.JSONDecodeError) as e:
