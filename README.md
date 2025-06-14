@@ -1,8 +1,8 @@
-# Bookerics
+# `bookerics`
 
-> Bookmarks, but for Erics
+> bookmarks, but for Erics
 
-**Bookerics** is a modern, self-hosted bookmark manager that combines simplicity with powerful features. Think of it as a personal alternative to [Pinboard](https://pinboard.in/) with intelligent tagging, automatic screenshots, RSS feeds, and seamless cloud synchronization.
+**`bookerics`** is a modern, self-hosted bookmark manager that combines simplicity with powerful features. Think of it as a personal alternative to [Pinboard](https://pinboard.in/) with intelligent tagging, automatic screenshots, RSS feeds, and seamless cloud synchronization.
 
 ![Screenshot](bookerics/static/images/screenshot.webp)
 
@@ -100,7 +100,7 @@ LOCAL_BACKUP_PATH=/path/to/backup/directory
 
 ## 📱 Browser Extension
 
-Bookerics includes browser extensions for Chrome and Firefox that enable one-click bookmark saving:
+`bookerics` includes browser extensions for Chrome and Firefox that enable one-click bookmark saving:
 
 ### Chrome Extension
 ```bash
@@ -135,7 +135,7 @@ cd tools/bookerics_firefox_extension
 
 ## 📡 RSS Feeds
 
-Bookerics automatically generates RSS feeds for your bookmarks:
+`bookerics` automatically generates RSS feeds for your bookmarks:
 
 - **Main Feed**: `/feeds/rss.xml` - All bookmarks
 - **Tag-Specific Feeds**: `/feeds/{tag}.xml` - Bookmarks with specific tags
@@ -151,7 +151,7 @@ RSS feeds include:
 
 ### Import Existing Bookmarks
 
-Use the companion [bookerics-importer](https://github.com/ehamiter/bookerics-importer) tool to convert browser bookmarks:
+Use the blazing fast 🔥 companion [bookerics-importer](https://github.com/ehamiter/bookerics-importer) tool to convert browser bookmarks:
 
 ```bash
 git clone https://github.com/ehamiter/bookerics-importer.git
@@ -237,12 +237,12 @@ tail -f ~/Library/Logs/bookerics.error.log
 
 ## 📝 Development Status
 
-Bookerics is actively developed and continuously improving. While stable for daily use, new features are regularly added.
+`bookerics` is actively developed and continuously improving. While stable for daily use, new features are regularly added.
 
 ## 🤔 FAQ
 
 **Q. What?**  
-A: It's bookmarks, but for Erics. So, bookerics. Get it?
+A: It's bookmarks, but for Erics. So, `bookerics`. Get it?
 
 **Q: That seems like it's marketed to a very niche group.**  
 A: That's not a question.
@@ -251,11 +251,11 @@ A: That's not a question.
 A: Sure. If you're not lucky enough to be named Eric, you can update the configuration to be booktoms, bookzendayas, bookvolodymyrs, 
 etc. I suppose "bookmarks" works as well.
 
-**Q: Do I need AWS and OpenAI to use Bookerics?**  
+**Q: Do I need AWS and OpenAI to use `bookerics`?**  
 A: No, these are optional features. The core bookmark functionality works without external services, but you'll miss out on screenshots, AI tagging, and cloud sync.
 
 **Q: How does the AI tagging work?**  
-A: When you save a bookmark without tags, Bookerics can automatically analyze the content and suggest relevant tags using OpenAI's GPT models.
+A: When you save a bookmark without tags, `bookerics` can automatically analyze the content and suggest relevant tags using OpenAI's GPT models.
 
 ---
 
