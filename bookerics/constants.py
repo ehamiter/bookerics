@@ -31,8 +31,7 @@ AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-## Thumbnail API service
-THUMBNAIL_API_KEY = os.getenv("THUMBNAIL_API_KEY")
+## Giphy API service
 GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
 
 ## OpenAI
