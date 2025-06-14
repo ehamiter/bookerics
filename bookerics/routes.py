@@ -198,19 +198,7 @@ async def bookmarks_by_tag_route(tag: str):
         title_str=f"Bookerics - Tag: {tag}"
     )
 
-@main_fasthtml_router("/tags/{tag}/feed")
-async def create_feed_for_tag_route(tag: str):
-    bookmarks_for_feed: List[Bookmark] = fetch_bookmarks_by_tag(tag)
-    await create_feed(tag, bookmarks_for_feed)
 
-    # Usually a feed route might return XML or a success message, not a full page.
-    # For now, returning a page as per original, but this might need review.
-    return Page(
-        NavMenu(bookmark_count=len(bookmarks_for_feed)),
-        SearchBar(),
-        BookmarkList(bookmarks=bookmarks_for_feed),
-        title_str=f"Bookerics - Feed for {tag}"
-    )
 
 
 @main_fasthtml_router("/untagged")

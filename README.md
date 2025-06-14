@@ -138,8 +138,7 @@ cd tools/bookerics_firefox_extension
 `bookerics` automatically generates RSS feeds for your bookmarks:
 
 - **Main Feed**: `/feeds/rss.xml` - All bookmarks
-- **Tag-Specific Feeds**: `/feeds/{tag}.xml` - Bookmarks with specific tags
-- **Cloud Hosted**: All feeds are automatically uploaded to S3 for external access
+- **Cloud Hosted**: Feeds are automatically uploaded to S3 for external access
 
 RSS feeds include:
 - Bookmark metadata (title, description, URL)

@@ -18,7 +18,6 @@ import threading
 from .constants import (
     BOOKMARK_NAME,
     LOCAL_BACKUP_PATH,
-    RSS_FEED_CREATION_TAGS,
     RSS_METADATA,
     FEEDS_DIR,
     AWS_S3_BUCKET,
@@ -302,11 +301,6 @@ async def schedule_upload_to_s3():
         logger.error(f"💥 S3 upload failed: {e}")
 
 
-async def schedule_feed_creation(
-    tag: Optional[str], bookmarks: List[Bookmark], publish: bool
-):
-    await create_feed(tag, bookmarks, publish)
-
 
 async def schedule_thumbnail_fetch_and_save(
     bookmark: Bookmark, schedule_s3_upload: bool = True
@@ -337,26 +331,25 @@ async def get_file_size(url: str) -> int:
         return -1
 
 
-async def push_changes_up(tag: str) -> None:
-    if tag in RSS_FEED_CREATION_TAGS:
-        bookmarks = fetch_bookmarks_by_tag(tag)
-        await create_feed(tag, bookmarks, publish=True)
-        await schedule_upload_to_s3()
+async def update_main_rss_feed() -> None:
+    """Update the main RSS feed with all bookmarks"""
+    all_bookmarks = fetch_bookmarks_all(kind="newest")
+    await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
 
 
 async def create_feed(
     tag: Optional[str], bookmarks: List[Bookmark], publish: bool = False
 ) -> None:
-    logger.info(f"🗂️ Creating feed for tag: {tag}")
+    logger.info("🗂️ Creating main RSS feed")
     if FEEDS_DIR and not os.path.exists(FEEDS_DIR):
         os.makedirs(FEEDS_DIR)
     feed_content = create_rss_feed(bookmarks, tag)
-    feed_filename = f"{tag}.xml" if tag else "rss.xml"
+    feed_filename = "rss.xml"
     if FEEDS_DIR:
         feed_path = os.path.join(FEEDS_DIR, feed_filename)
         async with aiofiles.open(feed_path, "w") as f:
             await f.write(feed_content)
-        logger.info(f"✅ Feed created at {feed_path}")
+        logger.info(f"✅ Main RSS feed created at {feed_path}")
 
         if publish:
             s3_feed_key = f"feeds/{feed_filename}"
@@ -441,10 +434,9 @@ async def create_bookmark(
             if new_bookmark:
                 await schedule_thumbnail_fetch_and_save(new_bookmark)
 
-            # Check if any of the tags require a feed to be created/updated
-            for tag in tags:
-                if tag in RSS_FEED_CREATION_TAGS:
-                    await push_changes_up(tag)
+            # Update the main RSS feed with all bookmarks
+            await update_main_rss_feed()
+            
             return bookmark_id
         else:
             logger.error("💥 Failed to retrieve last inserted ID.")
@@ -474,6 +466,9 @@ async def update_bookmark_description(id: str, description: str):
     updated_at = datetime.now(timezone.utc).isoformat()
     await execute_query_async(query, (description, updated_at, id))
     logger.info(f"📝 Description updated for bookmark {id}")
+    
+    # Update the main RSS feed
+    await update_main_rss_feed()
 
 
 async def update_bookmark_title(id: str, title: str):
@@ -485,6 +480,9 @@ async def update_bookmark_title(id: str, title: str):
     updated_at = datetime.now(timezone.utc).isoformat()
     await execute_query_async(query, (title, updated_at, id))
     logger.info(f"✏️ Title updated for bookmark {id}")
+    
+    # Update the main RSS feed
+    await update_main_rss_feed()
 
 
 async def update_bookmark_tags(id: str, tags: List[str]):
@@ -496,6 +494,9 @@ async def update_bookmark_tags(id: str, tags: List[str]):
     updated_at = datetime.now(timezone.utc).isoformat()
     await execute_query_async(query, (tags_json, updated_at, id))
     logger.info(f"🏷️ Tags updated for bookmark {id}")
+    
+    # Update the main RSS feed
+    await update_main_rss_feed()
 
 
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
@@ -521,7 +522,8 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                 "shot-scraper",
                 bookmark["url"],
                 "-o", local_path,
-                "--height", "800",
+                "--width", "1280",
+                "--height", "720",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -539,7 +541,8 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                         "shot-scraper",
                         bookmark["url"],
                         "-o", local_path,
-                        "--width", "480"
+                        "--width", "1280",
+                        "--height", "720",
                     )
                     await process.communicate()
                 else:
@@ -621,7 +624,15 @@ def create_rss_feed(
                 
             created_at = bookmark['created_at']
             dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-            pub_date = dt.strftime('%a, %d %b %Y %H:%M:%S %z')
+            # Convert to local time and format as human-readable
+            local_dt = dt.astimezone()
+            hour = local_dt.hour
+            minute = local_dt.minute
+            am_pm = "am" if hour < 12 else "pm"
+            display_hour = hour if hour <= 12 else hour - 12
+            if display_hour == 0:
+                display_hour = 12
+            pub_date = f"{local_dt.strftime('%A, %B %-d, %Y')} @ {display_hour}:{minute:02d}{am_pm}"
 
             title = bookmark.get('title', '').strip()
             title = clean_html(title) or "Untitled"
@@ -686,8 +697,8 @@ def create_rss_feed(
     <link>{channel_link}</link>
     <description>{channel_description}</description>
     <language>en-us</language>
-    <pubDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</pubDate>
-    <lastBuildDate>{datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %z')}</lastBuildDate>
+    <pubDate>{datetime.now().strftime('%A, %B %-d, %Y @ %-I:%M%p').lower()}</pubDate>
+    <lastBuildDate>{datetime.now().strftime('%A, %B %-d, %Y @ %-I:%M%p').lower()}</lastBuildDate>
     <atom:link href="{RSS_METADATA.get('link', '')}/feeds/rss.xml" rel="self" type="text/xml" />
     <image>
         <url>https://{S3_BUCKET_NAME}.s3.amazonaws.com/{RSS_METADATA.get('logo', 'bookerics.png')}</url>

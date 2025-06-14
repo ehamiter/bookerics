@@ -4,20 +4,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# RSS feed metadata
-RSS_METADATA = {
-    "id": "https://bookerics.com/",
-    "title": "bookerics",
-    "description": "bookmarks, but for Erics",
-    "author": {"name": "Eric", "email": "eric@bookerics.com"},
-    "link": "https://bookerics.com",
-    "logo": "bookerics.png",
-    "language": "en",
-}
-RSS_FEED_CREATION_TAGS = ['adam',]
-
 ## Personalization
 BOOKMARK_NAME = os.getenv("BOOKMARK_NAME", "bookeric")
+
+# RSS feed metadata
+RSS_METADATA = {
+    "id": os.getenv("RSS_ID", "https://localhost:50113/"),
+    "title": os.getenv("RSS_TITLE", f"{BOOKMARK_NAME}s"),
+    "description": os.getenv("RSS_DESCRIPTION", f"{BOOKMARK_NAME}s collection"),
+    "author": {
+        "name": os.getenv("RSS_AUTHOR_NAME", "Your Name"), 
+        "email": os.getenv("RSS_AUTHOR_EMAIL", "your@email.com")
+    },
+    "link": os.getenv("RSS_LINK", "https://localhost:50113"),
+    "logo": os.getenv("RSS_LOGO", f"{BOOKMARK_NAME}s.png"),
+    "language": os.getenv("RSS_LANGUAGE", "en"),
+}
 
 ### Local backups
 LOCAL_BACKUP_PATH = os.getenv("LOCAL_BACKUP_PATH")
