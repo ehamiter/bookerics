@@ -20,13 +20,6 @@ python_version = "3.12"
 strict = true
 disallow_subclassing_any = false
 
-[tool.pytest.ini_options]
-testpaths = "tests"
-norecursedirs = ".git docs .pytest_cache .mypy_cache .ruff_cache"
-filterwarnings = [
-    "ignore:The \\'app\\' shortcut is now deprecated. Use the explicit style \\'transport=WSGITransport\\(app=\\.\\.\\.\\)\\' instead\\.",
-]
-
 [tool.isort]
 profile = "black"
 multi_line_output = 3
