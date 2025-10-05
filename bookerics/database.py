@@ -632,7 +632,9 @@ def create_rss_feed(
             display_hour = hour if hour <= 12 else hour - 12
             if display_hour == 0:
                 display_hour = 12
-            pub_date = f"{local_dt.strftime('%A, %B %-d, %Y')} @ {display_hour}:{minute:02d}{am_pm}"
+            human_date = f"{local_dt.strftime('%A, %B %-d, %Y')} @ {display_hour}:{minute:02d}{am_pm}"
+            # RFC 2822 format for standard RSS compatibility
+            pub_date = local_dt.strftime('%a, %d %b %Y %H:%M:%S %z')
 
             title = bookmark.get('title', '').strip()
             title = clean_html(title) or "Untitled"
@@ -666,12 +668,15 @@ def create_rss_feed(
                 escaped_tag = safe_escape(tag)
                 categories_xml += f"<category>{escaped_tag}</category>\n                    "
             
+            # Prepend human-readable date to description if description exists
+            full_description = f"<p><em>{human_date}</em></p>{description}" if description else f"<p><em>{human_date}</em></p>"
+            
             item = f"""
                 <item>
                     <pubDate>{pub_date}</pubDate>
                     <title><![CDATA[{title}]]></title>
                     <link>{link}</link>
-                    <description><![CDATA[{description}]]></description>
+                    <description><![CDATA[{full_description}]]></description>
                     <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
                     <guid isPermaLink="false">{link}</guid>
                     {categories_xml}
@@ -689,6 +694,10 @@ def create_rss_feed(
 
         rss_items_str = "\n".join(rss_items)
 
+        # Use RFC 2822 format for channel dates
+        now = datetime.now().astimezone()
+        rfc_date = now.strftime('%a, %d %b %Y %H:%M:%S %z')
+        
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
 <?xml-stylesheet type="text/xsl" href="https://{S3_BUCKET_NAME}.s3.amazonaws.com/feeds/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -697,8 +706,8 @@ def create_rss_feed(
     <link>{channel_link}</link>
     <description>{channel_description}</description>
     <language>en-us</language>
-    <pubDate>{datetime.now().strftime('%A, %B %-d, %Y @ %-I:%M%p').lower()}</pubDate>
-    <lastBuildDate>{datetime.now().strftime('%A, %B %-d, %Y @ %-I:%M%p').lower()}</lastBuildDate>
+    <pubDate>{rfc_date}</pubDate>
+    <lastBuildDate>{rfc_date}</lastBuildDate>
     <atom:link href="{RSS_METADATA.get('link', '')}/feeds/rss.xml" rel="self" type="text/xml" />
     <image>
         <url>https://{S3_BUCKET_NAME}.s3.amazonaws.com/{RSS_METADATA.get('logo', 'bookerics.png')}</url>
