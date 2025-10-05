@@ -668,8 +668,8 @@ def create_rss_feed(
                 escaped_tag = safe_escape(tag)
                 categories_xml += f"<category>{escaped_tag}</category>\n                    "
             
-            # Prepend human-readable date to description if description exists
-            full_description = f"<p><em>{human_date}</em></p>{description}" if description else f"<p><em>{human_date}</em></p>"
+            # Prepend human-readable date to description as plain text
+            full_description = f"{human_date}\n\n{description}" if description else human_date
             
             item = f"""
                 <item>
