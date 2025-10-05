@@ -616,7 +616,7 @@ def create_rss_feed(
             [b for b in bookmarks if b],
             key=lambda x: x['created_at'],
             reverse=True
-        )[:25]
+        )
         items = []
         for bookmark in sorted_bookmarks:
             if not bookmark:
