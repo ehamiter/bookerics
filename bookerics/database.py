@@ -292,7 +292,7 @@ async def schedule_upload_to_s3():
         await upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
         if FEEDS_DIR and os.path.exists(FEEDS_DIR):
             for feed_file in os.listdir(FEEDS_DIR):
-                if feed_file.endswith(".xml"):
+                if feed_file.endswith(".xml") or feed_file.endswith(".xsl"):
                     feed_path = os.path.join(FEEDS_DIR, feed_file)
                     s3_feed_key = f"feeds/{feed_file}"
                     await upload_file_to_s3(S3_BUCKET_NAME, s3_feed_key, feed_path)
@@ -668,15 +668,13 @@ def create_rss_feed(
                 escaped_tag = safe_escape(tag)
                 categories_xml += f"<category>{escaped_tag}</category>\n                    "
             
-            # Prepend human-readable date to description as plain text
-            full_description = f"{human_date}\n\n{description}" if description else human_date
-            
             item = f"""
                 <item>
                     <pubDate>{pub_date}</pubDate>
+                    <humanDate>{human_date}</humanDate>
                     <title><![CDATA[{title}]]></title>
                     <link>{link}</link>
-                    <description><![CDATA[{full_description}]]></description>
+                    <description><![CDATA[{description}]]></description>
                     <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
                     <guid isPermaLink="false">{link}</guid>
                     {categories_xml}
