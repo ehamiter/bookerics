@@ -28,6 +28,7 @@ from .constants import (
 )
 
 from .utils import logger
+from .cache import cache
 
 
 Bookmark = Dict[str, Any]
@@ -222,6 +223,35 @@ def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
     return fetch_data(query)
 
 
+def get_bookmark_count(kind: str = "newest") -> int:
+    """Get count of bookmarks efficiently using cache."""
+    if kind == "newest":
+        cached = cache.get_total_count()
+        if cached is not None:
+            return cached
+        with get_db_connection() as conn:
+            result = conn.execute("SELECT COUNT(*) FROM bookmarks").fetchone()
+            count = result[0] if result else 0
+            cache.set_total_count(count)
+            return count
+    elif kind == "untagged":
+        cached = cache.get_untagged_count()
+        if cached is not None:
+            return cached
+        with get_db_connection() as conn:
+            result = conn.execute(
+                "SELECT COUNT(*) FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]'"
+            ).fetchone()
+            count = result[0] if result else 0
+            cache.set_untagged_count(count)
+            return count
+    else:
+        # For other kinds, fall back to counting all bookmarks
+        with get_db_connection() as conn:
+            result = conn.execute("SELECT COUNT(*) FROM bookmarks").fetchone()
+            return result[0] if result else 0
+
+
 def search_bookmarks(query: str, page: int = 1, per_page: int = 25) -> List[Bookmark]:
     print(
         f"🔍 SEARCH_BOOKMARKS: Searching for query: '{query}', page: {page}, per_page: {per_page}"
@@ -310,6 +340,7 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Bookmark]:
 
 async def delete_bookmark_by_id(bookmark_id: int) -> None:
     await execute_query_async("DELETE FROM bookmarks WHERE id = ?", (bookmark_id,))
+    cache.invalidate()
     try:
         # After deleting, we need to update feeds
         # Fetch all bookmarks to regenerate the main feed
@@ -509,6 +540,7 @@ async def create_bookmark(
 
         if last_row_id is not None:
             bookmark_id = last_row_id
+            cache.invalidate()
             logger.info(f"✅ Created bookmark with ID: {bookmark_id}")
 
             new_bookmark = await fetch_bookmark_by_id(str(bookmark_id))
@@ -576,6 +608,7 @@ async def update_bookmark_tags(id: str, tags: List[str]):
     query = "UPDATE bookmarks SET tags = ?, updated_at = ? WHERE id = ?"
     updated_at = datetime.now(timezone.utc).isoformat()
     await execute_query_async(query, (tags_json, updated_at, id))
+    cache.invalidate()
     logger.info(f"🏷️ Tags updated for bookmark {id}")
 
     # Update the main RSS feed

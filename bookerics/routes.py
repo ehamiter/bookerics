@@ -32,6 +32,7 @@ from .database import (
     fetch_bookmarks_all,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
+    get_bookmark_count,
     schedule_upload_to_hosting,
     search_bookmarks,
     search_bookmarks_all,
@@ -51,10 +52,8 @@ from .utils import logger
 async def index():
     logger.info("🏠 Loading first page of bookmarks")
     bookmarks: List[Bookmark] = fetch_bookmarks(kind="newest", page=1, per_page=25)
-    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")  # For count
-    logger.info(
-        f"🏠 Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}"
-    )
+    bookmark_count = get_bookmark_count(kind="newest")
+    logger.info(f"🏠 Loaded {len(bookmarks)} bookmarks from page 1, total: {bookmark_count}")
 
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
     if bookmarks:
@@ -66,7 +65,7 @@ async def index():
 
     # Pass components as children to Page
     return Page(
-        NavMenu(bookmark_count=len(all_bookmarks), active="newest"),
+        NavMenu(bookmark_count=bookmark_count, active="newest"),
         SearchBar(),
         BookmarkImageList(bookmarks=bookmarks),
     )
@@ -138,10 +137,8 @@ async def bookmarks_page(request: Request):
 async def oldest():
     logger.info("📅 Loading first page of oldest bookmarks")
     bookmarks: List[Bookmark] = fetch_bookmarks(kind="oldest", page=1, per_page=25)
-    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="oldest")  # For count
-    logger.info(
-        f"📅 Loaded {len(bookmarks)} bookmarks from page 1, total: {len(all_bookmarks)}"
-    )
+    bookmark_count = get_bookmark_count(kind="newest")
+    logger.info(f"📅 Loaded {len(bookmarks)} bookmarks from page 1, total: {bookmark_count}")
 
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
     if bookmarks:
@@ -151,7 +148,7 @@ async def oldest():
         last_bookmark["kind"] = "oldest"
 
     return Page(
-        NavMenu(bookmark_count=len(all_bookmarks), active="oldest"),
+        NavMenu(bookmark_count=bookmark_count, active="oldest"),
         SearchBar(),
         BookmarkImageList(bookmarks=bookmarks),
     )
@@ -159,15 +156,15 @@ async def oldest():
 
 @main_fasthtml_router("/random")
 async def random_bookmark():
-    bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
-    bookmark_count: int = len(bookmarks)
-    if not bookmarks:
+    bookmark_count = get_bookmark_count(kind="newest")
+    if bookmark_count == 0:
         return Page(
             NavMenu(bookmark_count=0, active="random"),
             SearchBar(),
             "No bookmarks available to choose from.",
         )
 
+    bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
     selected_bookmarks: List[Bookmark] = [secrets.choice(bookmarks)]
     return Page(
         NavMenu(bookmark_count=bookmark_count, active="random"),
@@ -178,8 +175,7 @@ async def random_bookmark():
 
 @main_fasthtml_router("/tags")
 async def tags_route():
-    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
-    bookmark_count: int = len(all_bookmarks)
+    bookmark_count = get_bookmark_count(kind="newest")
     tag_list: List[Dict[str, Any]] = fetch_unique_tags(kind="frequency")
     return Page(
         NavMenu(bookmark_count=bookmark_count, active="tags"),
@@ -190,8 +186,7 @@ async def tags_route():
 
 @main_fasthtml_router("/tags/newest")
 async def tags_newest_route():
-    all_bookmarks: List[Bookmark] = fetch_bookmarks_all(kind="newest")
-    bookmark_count: int = len(all_bookmarks)
+    bookmark_count = get_bookmark_count(kind="newest")
     tag_list: List[Dict[str, Any]] = fetch_unique_tags(kind="newest")
     return Page(
         NavMenu(bookmark_count=bookmark_count),
@@ -217,10 +212,8 @@ async def bookmarks_by_tag_route(tag: str):
 async def untagged_bookmarks_route():
     logger.info("🏷️ Loading first page of untagged bookmarks")
     untagged: List[Bookmark] = fetch_bookmarks(kind="untagged", page=1, per_page=25)
-    all_untagged: List[Bookmark] = fetch_bookmarks_all(kind="untagged")
-    logger.info(
-        f"🏷️ Loaded {len(untagged)} bookmarks from page 1, total: {len(all_untagged)}"
-    )
+    bookmark_count = get_bookmark_count(kind="untagged")
+    logger.info(f"🏷️ Loaded {len(untagged)} bookmarks from page 1, total: {bookmark_count}")
 
     # Add infinite scroll trigger to the last bookmark if we have bookmarks
     if untagged:
@@ -230,7 +223,7 @@ async def untagged_bookmarks_route():
         last_bookmark["kind"] = "untagged"
 
     return Page(
-        NavMenu(bookmark_count=len(all_untagged), active="untagged"),
+        NavMenu(bookmark_count=bookmark_count, active="untagged"),
         SearchBar(),
         BookmarkImageList(bookmarks=untagged),
     )
@@ -543,9 +536,9 @@ async def delete_bookmark_route(bookmark_id: int, request: Request):
 @main_fasthtml_router("/table")
 async def table_structure_route():
     structure = verify_table_structure()
-    all_bookmarks = fetch_bookmarks_all(kind="newest")
+    bookmark_count = get_bookmark_count(kind="newest")
     return Page(
-        NavMenu(bookmark_count=len(all_bookmarks)),
+        NavMenu(bookmark_count=bookmark_count),
         SearchBar(),
         TableStructure(structure=structure),
         title_str="Bookerics - DB Table Structure",
