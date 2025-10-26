@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, List, Optional, Union
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, Response
 from fasthtml.common import to_xml
 from .ai import get_tags_and_description_from_bookmark
 from .core import Page
@@ -617,8 +617,8 @@ async def update_bookmark_route(bookmark_id: str, request: Request):
 
 # Handle Chrome DevTools requests to prevent 404 logs
 @main_fasthtml_router("/.well-known/appspecific/com.chrome.devtools.json")
-async def chrome_devtools_handler() -> JSONResponse:
-    return JSONResponse({}, status_code=404)
+async def chrome_devtools_handler():
+    return Response(content="{}", status_code=200, media_type="application/json")
 
 # Keyboard shortcuts help modal route
 @main_fasthtml_router("/help/keyboard-shortcuts")
