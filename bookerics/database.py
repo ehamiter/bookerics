@@ -414,6 +414,27 @@ async def create_feed(
         if publish:
             remote_path = f"{FERAL_FEEDS_PATH}/{feed_filename}"
             await upload_file_via_sftp(feed_path, remote_path)
+            
+            # Create index.html that redirects to RSS feed
+            index_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=/feeds/rss.xml">
+    <title>bookerics - RSS Feed</title>
+</head>
+<body>
+    <p>Redirecting to <a href="/feeds/rss.xml">RSS feed</a>...</p>
+</body>
+</html>"""
+            
+            index_path = os.path.join(FEEDS_DIR, "index.html")
+            async with aiofiles.open(index_path, "w") as f:
+                await f.write(index_html)
+            
+            remote_index_path = "/media/sdc1/eddielomax/www/bookerics.com/public_html/index.html"
+            await upload_file_via_sftp(index_path, remote_index_path)
+            logger.info(f"✅ Index page uploaded to {remote_index_path}")
     return
 
 
