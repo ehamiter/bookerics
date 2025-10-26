@@ -415,16 +415,32 @@ async def create_feed(
             remote_path = f"{FERAL_FEEDS_PATH}/{feed_filename}"
             await upload_file_via_sftp(feed_path, remote_path)
             
-            # Create index.html that redirects to RSS feed
+            # Create index.html that displays RSS feed with XSL transformation
             index_html = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/feeds/rss.xml">
-    <title>bookerics - RSS Feed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bookerics</title>
 </head>
 <body>
-    <p>Redirecting to <a href="/feeds/rss.xml">RSS feed</a>...</p>
+    <div id="out"></div>
+    <script>
+    (async function () {
+      const [xmlRes, xslRes] = await Promise.all([
+        fetch('/feeds/rss.xml', {credentials:'include'}),
+        fetch('/feeds/rss.xsl', {credentials:'include'})
+      ]);
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(await xmlRes.text(), 'application/xml');
+      const xsl = parser.parseFromString(await xslRes.text(), 'application/xml');
+
+      const proc = new XSLTProcessor();
+      proc.importStylesheet(xsl);
+      const frag = proc.transformToFragment(xml, document);
+      document.getElementById('out').appendChild(frag);
+    })();
+    </script>
 </body>
 </html>"""
             
