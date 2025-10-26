@@ -69,6 +69,22 @@ def download_file_from_s3(bucket_name, s3_key, local_path):
         logger.error(f"💥 Error downloading file from S3: {e}")
 
 
+def _column_exists(table: str, column: str) -> bool:
+    """Check if a column exists in a table."""
+    with get_db_connection() as conn:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        return any(r[1] == column for r in rows)
+
+
+def migrate_db():
+    """Run database migrations."""
+    with get_db_connection() as conn:
+        if not _column_exists("bookmarks", "archive_url"):
+            conn.execute("ALTER TABLE bookmarks ADD COLUMN archive_url TEXT")
+            conn.commit()
+            logger.info("🧱 Added archive_url column to bookmarks")
+
+
 def load_db_on_startup():
     logger.info("🔖 Bookerics starting up…")
     if not os.path.exists(DB_PATH):
@@ -78,6 +94,7 @@ def load_db_on_startup():
     with get_db_connection() as conn:
         conn.execute("SELECT 1")
     
+    migrate_db()
     logger.info("☑️ Database loaded!")
 
 
@@ -106,7 +123,39 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
     rows, _ = execute_query(query, params)
     bookmarks = []
     for row in rows:
-        if len(row) == 8:
+        if len(row) == 9:
+            (
+                id,
+                title,
+                url,
+                thumbnail_url,
+                description,
+                tags_json,
+                archive_url,
+                created_at,
+                updated_at,
+            ) = row
+            try:
+                tags = json.loads(tags_json) if tags_json else []
+                if tags == [""]:
+                    tags = []
+            except json.JSONDecodeError:
+                tags = []
+            bookmarks.append(
+                {
+                    "id": id,
+                    "title": title,
+                    "url": url,
+                    "thumbnail_url": thumbnail_url,
+                    "description": description,
+                    "tags": tags,
+                    "archive_url": archive_url,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                }
+            )
+        elif len(row) == 8:
+            # Backward compatibility for old queries
             (
                 id,
                 title,
@@ -131,6 +180,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
                     "thumbnail_url": thumbnail_url,
                     "description": description,
                     "tags": tags,
+                    "archive_url": None,
                     "created_at": created_at,
                     "updated_at": updated_at,
                 }
@@ -141,7 +191,7 @@ def fetch_data(query: str, params: tuple = ()) -> List[Bookmark]:
 
 
 def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 25) -> List[Bookmark]:
-    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at FROM bookmarks "
     offset = (page - 1) * per_page
     
     queries = {
@@ -154,7 +204,7 @@ def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 25) -> List[Bookma
 
 def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
     """Fetch all bookmarks without pagination - for compatibility with existing code that needs all bookmarks"""
-    bq = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks "
+    bq = "SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at FROM bookmarks "
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
         "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC;",
@@ -169,7 +219,7 @@ def search_bookmarks(query: str, page: int = 1, per_page: int = 25) -> List[Book
     search_query = f"%{query}%"
     offset = (page - 1) * per_page
     sql_query = """
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at
     FROM bookmarks
     WHERE title LIKE ?
     OR url LIKE ?
@@ -189,7 +239,7 @@ def search_bookmarks_all(query: str) -> List[Bookmark]:
     print(f"🔍 SEARCH_BOOKMARKS_ALL: Searching for query: '{query}' (no pagination)")
     search_query = f"%{query}%"
     sql_query = """
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at
     FROM bookmarks
     WHERE title LIKE ?
     OR url LIKE ?
@@ -233,7 +283,7 @@ def fetch_unique_tags(kind: str = "frequency") -> List[Dict[str, Any]]:
 
 def fetch_bookmarks_by_tag(tag: str) -> List[Bookmark]:
     query = """
-    SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at
+    SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at
     FROM bookmarks
     WHERE ? IN (SELECT value FROM json_each(bookmarks.tags))
     ORDER BY updated_at DESC, created_at DESC;
@@ -363,13 +413,13 @@ async def execute_query_async(query: str, params: tuple = ()):
 
 
 async def fetch_bookmark_by_id(id: str) -> Optional[Bookmark]:
-    query = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE id = ?"
+    query = "SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at FROM bookmarks WHERE id = ?"
     results = fetch_data(query, (id,))
     return results[0] if results else None
 
 
 async def fetch_bookmark_by_url(url: str) -> Optional[Bookmark]:
-    query = "SELECT id, title, url, thumbnail_url, description, tags, created_at, updated_at FROM bookmarks WHERE url = ?"
+    query = "SELECT id, title, url, thumbnail_url, description, tags, archive_url, created_at, updated_at FROM bookmarks WHERE url = ?"
     results = fetch_data(query, (url,))
     return results[0] if results else None
 
@@ -433,6 +483,8 @@ async def create_bookmark(
             new_bookmark = await fetch_bookmark_by_id(str(bookmark_id))
             if new_bookmark:
                 await schedule_thumbnail_fetch_and_save(new_bookmark)
+                # Archive the URL in the background (non-blocking)
+                asyncio.create_task(archive_and_update(bookmark_id, url))
 
             # Update the main RSS feed with all bookmarks
             await update_main_rss_feed()
@@ -497,6 +549,79 @@ async def update_bookmark_tags(id: str, tags: List[str]):
     
     # Update the main RSS feed
     await update_main_rss_feed()
+
+
+async def archive_url_for(target_url: str) -> Optional[str]:
+    """Submit a URL to archive.ph and return the archive URL."""
+    if not target_url or not target_url.startswith(("http://", "https://")):
+        return None
+    
+    timeout = aiohttp.ClientTimeout(total=30)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    
+    try:
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            # First, check if the URL is already archived
+            logger.info(f"🗄️ Checking if {target_url} is already archived...")
+            async with session.get(
+                f"https://archive.ph/newest/{target_url}",
+                allow_redirects=True
+            ) as check_resp:
+                check_url = str(check_resp.url)
+                # If we're redirected away from /newest/, it means it's already archived
+                if "archive.ph/" in check_url and "/newest/" not in check_url:
+                    logger.info(f"🗄️ Already archived: {check_url}")
+                    return check_url
+            
+            # If not archived, submit it
+            logger.info(f"🗄️ Submitting {target_url} to archive.ph...")
+            async with session.post(
+                "https://archive.ph/submit/",
+                data={"url": target_url, "anyway": "1"},
+                allow_redirects=True
+            ) as resp:
+                final_url = str(resp.url)
+                
+                # Check for rate limiting
+                if resp.status == 429:
+                    logger.warning(f"🗄️ Rate limited by archive.ph for {target_url}")
+                    return None
+                
+                # Validate that we got a proper archive URL, not the submit page
+                if "archive.ph/submit" in final_url:
+                    logger.warning(f"🗄️ archive.ph returned submit page (status {resp.status}) for {target_url}")
+                    return None
+                
+                logger.info(f"🗄️ Archived {target_url} -> {final_url}")
+                return final_url
+    except Exception as e:
+        logger.warning(f"🗄️ archive.ph submission failed for {target_url}: {e}")
+        return None
+
+
+async def update_bookmark_archive_url(bookmark_id: int, archive_url: str) -> None:
+    """Update the archive URL for a bookmark."""
+    query = "UPDATE bookmarks SET archive_url = ?, updated_at = ? WHERE id = ?"
+    updated_at = datetime.now(timezone.utc).isoformat()
+    await execute_query_async(query, (archive_url, updated_at, bookmark_id))
+    logger.info(f"🗄️ Archive URL stored for bookmark {bookmark_id}")
+
+
+async def archive_and_update(bookmark_id: int, url: str) -> None:
+    """Archive a URL and update the bookmark with the archive URL."""
+    # Add a small delay to avoid rate limiting
+    await asyncio.sleep(2)
+    
+    archive_url = await archive_url_for(url)
+    if archive_url:
+        await update_bookmark_archive_url(bookmark_id, archive_url)
+        # Trigger S3 sync after updating
+        await schedule_upload_to_s3()
+    else:
+        logger.info(f"🗄️ Skipping archive for bookmark {bookmark_id} due to rate limit or error")
 
 
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:

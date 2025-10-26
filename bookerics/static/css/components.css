@@ -141,6 +141,33 @@
     text-decoration: none !important;
 }
 
+/* Styles for title with archive link */
+.title-with-archive {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.title-with-archive .bookeric-link.external {
+    display: inline;
+    margin-bottom: 0;
+}
+
+.archive-link {
+    font-size: 1rem;
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.archive-link:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    text-decoration: none !important;
+}
+
 /* Styles for TableStructure */
 .table-structure-wrapper {
     text-align: center; /* For centering the pre block */

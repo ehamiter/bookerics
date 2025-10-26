@@ -213,6 +213,7 @@ def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> An
     description = bookmark.get("description", "")
     tags = bookmark.get("tags", [])
     thumbnail_url = bookmark.get("thumbnail_url")
+    archive_url = bookmark.get("archive_url")
     created_at = bookmark.get("created_at")
     
     # Check if this is the last bookmark in the list for infinite scroll
@@ -226,10 +227,18 @@ def _render_bookmark_html(bookmark: Bookmark, is_image_list: bool = False) -> An
     toggle_btn_target_id = f"bmb-{bookmark_id}"
 
     # Prepare content list for BookmarkBox
-    content = [
-        BookericLink(title, to=url),
-        created_at_html,
-    ]
+    title_link = BookericLink(title, to=url)
+    
+    # Add archive link if available
+    if archive_url:
+        title_content = Div(
+            title_link,
+            A("🗄️", href=archive_url, target="_blank", cls="archive-link", title="View archived copy"),
+            cls="title-with-archive"
+        )
+        content = [title_content, created_at_html]
+    else:
+        content = [title_link, created_at_html]
 
     if is_image_list and thumbnail_url:
         content.append(PreviewImage(src=thumbnail_url, id=f"thumbnail-{bookmark_id}"))
