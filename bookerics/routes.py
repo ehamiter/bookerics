@@ -32,7 +32,7 @@ from .database import (
     fetch_bookmarks_all,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
-    schedule_upload_to_s3,
+    schedule_upload_to_feral,
     search_bookmarks,
     search_bookmarks_all,
     update_bookmark_description,
@@ -441,8 +441,8 @@ async def update_route():
         all_bookmarks = fetch_bookmarks_all(kind="newest")
         await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
         
-        # Upload all feeds to S3
-        await schedule_upload_to_s3()
+        # Upload all feeds to Feral
+        await schedule_upload_to_feral()
         
         return JSONResponse(
             {"status": "success", "message": "Database backed up and RSS feed updated successfully."}

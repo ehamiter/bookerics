@@ -1,8 +1,6 @@
 import os
 import re
 import shutil
-import boto3
-import aioboto3
 import aiohttp
 import aiofiles
 from datetime import datetime, timezone
@@ -14,13 +12,19 @@ import subprocess
 from xml.sax.saxutils import escape
 from contextlib import contextmanager
 import threading
+import asyncssh
 
 from .constants import (
     BOOKMARK_NAME,
     LOCAL_BACKUP_PATH,
     RSS_METADATA,
     FEEDS_DIR,
-    AWS_S3_BUCKET,
+    FERAL_SERVER,
+    FERAL_USERNAME,
+    FERAL_PASSWORD,
+    FERAL_BASE_URL,
+    FERAL_FEEDS_PATH,
+    FERAL_THUMBNAILS_PATH,
 )
 
 from .utils import logger
@@ -39,9 +43,7 @@ def safe_escape(text):
     })
 
 
-# S3/DB setup
-S3_BUCKET_NAME = AWS_S3_BUCKET or f"{BOOKMARK_NAME}s"
-S3_KEY = f"{BOOKMARK_NAME}s.db"
+# DB setup
 DB_PATH = f"./{BOOKMARK_NAME}s.db"
 
 # Global connection storage per thread
@@ -60,13 +62,24 @@ def get_db_connection():
         _connection.db.rollback()
         raise e
 
-def download_file_from_s3(bucket_name, s3_key, local_path):
-    s3 = boto3.client("s3")
+async def upload_file_via_sftp(local_path: str, remote_path: str) -> None:
+    """Upload a file to FeralHosting via SFTP."""
+    if not all([FERAL_SERVER, FERAL_USERNAME, FERAL_PASSWORD]):
+        logger.error("💥 Feral hosting credentials not configured")
+        return
+    
     try:
-        s3.download_file(bucket_name, s3_key, local_path)
-        logger.info(f"💾 Downloaded {s3_key} from bucket {bucket_name} to {local_path}")
+        async with asyncssh.connect(
+            FERAL_SERVER,
+            username=FERAL_USERNAME,
+            password=FERAL_PASSWORD,
+            known_hosts=None
+        ) as conn:
+            async with conn.start_sftp_client() as sftp:
+                await sftp.put(local_path, remote_path)
+                logger.info(f"⬆️ Uploaded {local_path} to {remote_path}")
     except Exception as e:
-        logger.error(f"💥 Error downloading file from S3: {e}")
+        logger.error(f"💥 Error uploading {local_path} via SFTP: {e}")
 
 
 def _column_exists(table: str, column: str) -> bool:
@@ -87,8 +100,6 @@ def migrate_db():
 
 def load_db_on_startup():
     logger.info("🔖 Bookerics starting up…")
-    if not os.path.exists(DB_PATH):
-        download_file_from_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
     
     # Test the connection
     with get_db_connection() as conn:
@@ -294,7 +305,7 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Bookmark]:
 async def delete_bookmark_by_id(bookmark_id: int) -> None:
     await execute_query_async("DELETE FROM bookmarks WHERE id = ?", (bookmark_id,))
     try:
-        # After deleting, we need to update feeds and S3
+        # After deleting, we need to update feeds
         # Fetch all bookmarks to regenerate the main feed
         all_bookmarks = fetch_bookmarks_all(kind="newest")
 
@@ -302,8 +313,8 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
             # Update the main RSS feed
             await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
 
-        # Also update S3
-        await schedule_upload_to_s3()
+        # Also upload feeds to server
+        await schedule_upload_to_feral()
 
     except Exception as e:
         logger.error(f"Error during post-deletion tasks: {e}")
@@ -336,28 +347,27 @@ def backup_bookerics_db():
                 logger.info(f"🗑️ Pruned old backup: {old_backup}")
 
 
-async def schedule_upload_to_s3():
-    logger.info("🚀 Scheduling S3 upload...")
+async def schedule_upload_to_feral():
+    logger.info("🚀 Scheduling Feral upload...")
     try:
-        await upload_file_to_s3(S3_BUCKET_NAME, S3_KEY, DB_PATH)
         if FEEDS_DIR and os.path.exists(FEEDS_DIR):
             for feed_file in os.listdir(FEEDS_DIR):
                 if feed_file.endswith(".xml") or feed_file.endswith(".xsl"):
-                    feed_path = os.path.join(FEEDS_DIR, feed_file)
-                    s3_feed_key = f"feeds/{feed_file}"
-                    await upload_file_to_s3(S3_BUCKET_NAME, s3_feed_key, feed_path)
-        logger.info("✅ S3 upload complete.")
+                    local_path = os.path.join(FEEDS_DIR, feed_file)
+                    remote_path = f"{FERAL_FEEDS_PATH}/{feed_file}"
+                    await upload_file_via_sftp(local_path, remote_path)
+        logger.info("✅ Feral upload complete.")
     except Exception as e:
-        logger.error(f"💥 S3 upload failed: {e}")
+        logger.error(f"💥 Feral upload failed: {e}")
 
 
 
 async def schedule_thumbnail_fetch_and_save(
-    bookmark: Bookmark, schedule_s3_upload: bool = True
+    bookmark: Bookmark, schedule_feral_upload: bool = True
 ):
     await get_bookmark_thumbnail_image(bookmark)
-    if schedule_s3_upload:
-        await schedule_upload_to_s3()
+    if schedule_feral_upload:
+        await schedule_upload_to_feral()
 
 
 def verify_table_structure(table_name: str = "bookmarks") -> List[Dict[str, Any]]:
@@ -402,8 +412,8 @@ async def create_feed(
         logger.info(f"✅ Main RSS feed created at {feed_path}")
 
         if publish:
-            s3_feed_key = f"feeds/{feed_filename}"
-            await upload_file_to_s3(S3_BUCKET_NAME, s3_feed_key, feed_path)
+            remote_path = f"{FERAL_FEEDS_PATH}/{feed_filename}"
+            await upload_file_via_sftp(feed_path, remote_path)
     return
 
 
@@ -424,27 +434,7 @@ async def fetch_bookmark_by_url(url: str) -> Optional[Bookmark]:
     return results[0] if results else None
 
 
-async def upload_file_to_s3(bucket_name: str, s3_key: str, local_path: str):
-    session = aioboto3.Session()
-    async with session.client("s3") as s3:  # type: ignore
-        try:
-            # Determine content type based on file extension
-            extra_args = {}
-            if s3_key.endswith('.xml'):
-                extra_args['ContentType'] = 'text/xml'
-            elif s3_key.endswith('.xsl'):
-                extra_args['ContentType'] = 'text/xsl'
-            elif s3_key.endswith('.png'):
-                extra_args['ContentType'] = 'image/png'
-            elif s3_key.endswith('.jpg') or s3_key.endswith('.jpeg'):
-                extra_args['ContentType'] = 'image/jpeg'
-            elif s3_key.endswith('.db'):
-                extra_args['ContentType'] = 'application/x-sqlite3'
-            
-            await s3.upload_file(local_path, bucket_name, s3_key, ExtraArgs=extra_args)
-            logger.info(f"⬆️ Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
-        except Exception as e:
-            logger.error(f"💥 Error uploading {local_path} to S3: {e}")
+
 
 
 async def wait_for_thumbnail(
@@ -618,8 +608,8 @@ async def archive_and_update(bookmark_id: int, url: str) -> None:
     archive_url = await archive_url_for(url)
     if archive_url:
         await update_bookmark_archive_url(bookmark_id, archive_url)
-        # Trigger S3 sync after updating
-        await schedule_upload_to_s3()
+        # Trigger Feral sync after updating
+        await schedule_upload_to_feral()
     else:
         logger.info(f"🗄️ Skipping archive for bookmark {bookmark_id} due to rate limit or error")
 
@@ -637,9 +627,9 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
     else:
         logger.info(f"🐕 Generating thumbnail for bookmark id {bookmark['id']}... ")
         
-        s3_bucket = S3_BUCKET_NAME
-        s3_key = f'thumbnails/{bookmark["id"]}.jpg'
-        local_path = f'/tmp/{bookmark["id"]}.jpg'
+        thumbnail_filename = f'{bookmark["id"]}.jpg'
+        local_path = f'/tmp/{thumbnail_filename}'
+        remote_path = f'{FERAL_THUMBNAILS_PATH}/{thumbnail_filename}'
 
         try:
             # Attempt to run shot-scraper
@@ -676,21 +666,13 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                     else:
                         raise Exception(f"shot-scraper failed: {error_output}")
 
-            # Upload to S3
-            session = aioboto3.Session()
-            async with session.client("s3") as s3:  # type: ignore
-                with open(local_path, 'rb') as file_obj:
-                    await s3.upload_fileobj(
-                        file_obj,
-                        s3_bucket,
-                        s3_key,
-                        ExtraArgs={"ContentType": "image/jpeg"},
-                    )
+            # Upload to Feral via SFTP
+            await upload_file_via_sftp(local_path, remote_path)
 
-            img_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+            img_url = f"{FERAL_BASE_URL}/thumbnails/{thumbnail_filename}"
 
             await update_bookmark_thumbnail_url(bookmark["id"], img_url)
-            logger.info(f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to S3!")
+            logger.info(f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to Feral!")
             
             # Clean up local file
             os.remove(local_path)
@@ -700,11 +682,11 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
             logger.error(f"💥 Error generating thumbnail: {e}")
             return ""
         except Exception as e:
-            logger.error(f"💥 Error uploading thumbnail to S3: {e}")
+            logger.error(f"💥 Error uploading thumbnail to Feral: {e}")
             return ""
 
 
-async def update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=True):
+async def update_bookmarks_with_thumbnails(bookmarks, schedule_feral_upload=True):
     tasks = []
     for bookmark in bookmarks:
         # Don't look up thumbnails for db entries we're just browsing
@@ -727,9 +709,9 @@ async def update_bookmarks_with_thumbnails(bookmarks, schedule_s3_upload=True):
         if thumbnail_url:
             bookmarks[i]["thumbnail_url"] = thumbnail_url
 
-    # Properly await the S3 upload
-    if schedule_s3_upload:
-        await schedule_upload_to_s3()
+    # Properly await the Feral upload
+    if schedule_feral_upload:
+        await schedule_upload_to_feral()
     return bookmarks
 
 def create_rss_feed(
@@ -822,7 +804,7 @@ def create_rss_feed(
         rfc_date = now.strftime('%a, %d %b %Y %H:%M:%S %z')
         
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
-<?xml-stylesheet type="text/xsl" href="https://{S3_BUCKET_NAME}.s3.amazonaws.com/feeds/rss.xsl"?>
+<?xml-stylesheet type="text/xsl" href="{FERAL_BASE_URL}/feeds/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{channel_title}</title>
@@ -833,9 +815,9 @@ def create_rss_feed(
     <lastBuildDate>{rfc_date}</lastBuildDate>
     <atom:link href="{RSS_METADATA.get('link', '')}/feeds/rss.xml" rel="self" type="text/xml" />
     <image>
-        <url>https://{S3_BUCKET_NAME}.s3.amazonaws.com/{RSS_METADATA.get('logo', 'bookerics.png')}</url>
+        <url>{FERAL_BASE_URL}/{RSS_METADATA.get('logo', 'bookerics.png')}</url>
         <title>bookerics</title>
-        <link>https://{S3_BUCKET_NAME}.s3.amazonaws.com/feeds/rss.xml</link>
+        <link>{FERAL_BASE_URL}/feeds/rss.xml</link>
         <width>128</width>
         <height>128</height>
     </image>

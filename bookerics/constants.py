@@ -24,11 +24,13 @@ RSS_METADATA = {
 ### Local backups
 LOCAL_BACKUP_PATH = os.getenv("LOCAL_BACKUP_PATH")
 
-### AWS
-AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
-AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+### Feral hosting info
+FERAL_SERVER = os.getenv("FERAL_SERVER")
+FERAL_USERNAME = os.getenv("FERAL_USERNAME")
+FERAL_PASSWORD = os.getenv("FERAL_PASSWORD")
+FERAL_BASE_URL = "https://geryon.feralhosting.com/eddielomax"
+FERAL_FEEDS_PATH = "/media/sdc1/eddielomax/www/eddielomax.geryon/public_html/feeds"
+FERAL_THUMBNAILS_PATH = "/media/sdc1/eddielomax/www/eddielomax.geryon/public_html/thumbnails"
 
 ## Giphy API service
 GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")

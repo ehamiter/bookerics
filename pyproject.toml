@@ -7,7 +7,7 @@ license = { text = "MIT" }
 authors = [{ name = "Eric Hamiter", email = "ehamiter@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
-    "aioboto3>=14.3.0",
+    "asyncssh>=2.18.0",
     "openai>=1.86.0",
     "python-dotenv>=1.1.0",
     "python-fasthtml>=0.12.19",

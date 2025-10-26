@@ -2,7 +2,7 @@
 
 > bookmarks, but for Erics
 
-**`bookerics`** is a modern, self-hosted bookmark manager that combines simplicity with powerful features. Think of it as a personal alternative to [Pinboard](https://pinboard.in/) with intelligent tagging, automatic screenshots, RSS feeds, and seamless cloud synchronization.
+**`bookerics`** is a modern, self-hosted bookmark manager that combines simplicity with powerful features. Think of it as a personal alternative to [Pinboard](https://pinboard.in/) with intelligent tagging, automatic screenshots, RSS feeds, and cloud synchronization.
 
 ![Screenshot](bookerics/static/images/screenshot.webp)
 
@@ -14,6 +14,7 @@
 - **AI-Powered Tagging** - Intelligent tag suggestions using OpenAI's GPT models
 - **Full-Text Search** - Search through titles, descriptions, and tags
 - **RSS Feed Generation** - Automated RSS feeds for all bookmarks or specific tags
+- **Archive.ph Integration** - Automatic archival of bookmarked URLs
 
 ### 🎨 User Experience
 - **Keyboard Shortcuts** - Navigate and manage bookmarks without touching your mouse
@@ -23,19 +24,18 @@
 - **Browser Extension** - One-click bookmark saving with pre-filled metadata
 
 ### 🔧 Technical Features
-- **AWS S3 Integration** - Automatic cloud backup and screenshot storage
-- **Local & Cloud Sync** - Database automatically synced to S3 for redundancy
-- **Multiple View Modes** - Newest, oldest, random, untagged, and tag-filtered views
+- **FeralHosting SFTP Integration** - Automatic screenshot storage and RSS feed distribution
+- **Multiple View Modes** - Newest, oldest, untagged, and tag-filtered views
 - **Customizable Branding** - Easily personalize for your name (booktoms, bookzendayas, etc.)
 
 ## 🏗️ Architecture & Tech Stack
 
 ### Backend
-- **[FastHTML](https://fastht.ml/)** - Modern Python web framework
-- **SQLite** - Lightweight, file-based database
+- **[FastHTML](https://fastht.ml/)** - Modern Python web framework (previously Ludic)
+- **SQLite** - Lightweight, file-based database with thread-local connections
 - **OpenAI API** - AI-powered tag generation and content analysis
-- **shot-scraper** - Website screenshot generation
-- **aioboto3** - Async AWS S3 integration
+- **shot-scraper** - Website screenshot generation using Playwright
+- **asyncssh** - Async SFTP integration for FeralHosting
 
 ### Frontend
 - **[HTMX](https://htmx.org/)** - Dynamic frontend interactions without JavaScript complexity
@@ -43,7 +43,7 @@
 - **Modern CSS** - Responsive design with dark/light theme support
 
 ### Infrastructure
-- **AWS S3** - Cloud storage for database backups, screenshots, and RSS feeds
+- **FeralHosting** - Cloud storage for screenshots and RSS feeds via SFTP
 - **Browser Extensions** - Chrome/Firefox extensions for quick bookmark saving
 
 ## 🚀 Quick Start
@@ -51,7 +51,7 @@
 ### Prerequisites
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) package manager
-- AWS account (optional, for cloud features)
+- FeralHosting account (optional, for cloud storage of screenshots and RSS feeds)
 - OpenAI API key (optional, for AI tagging)
 
 ### Installation
@@ -68,6 +68,9 @@ cd bookerics
 cp .env.example .env
 # Edit .env with your configuration
 
+# Install dependencies
+uv sync
+
 # Run the application
 uv run bookerics
 ```
@@ -82,11 +85,20 @@ Create a `.env` file with your settings:
 # Basic Configuration
 BOOKMARK_NAME=bookeric  # Customize your bookmark terminology
 
-# AWS S3 (for cloud sync and screenshots)
-AWS_S3_BUCKET=your-bucket-name
-AWS_DEFAULT_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
+# RSS Feed Configuration
+RSS_ID="https://bookyournames.com/"
+RSS_TITLE="bookerics"
+RSS_DESCRIPTION="bookmarks, but for Your Names"
+RSS_AUTHOR_NAME="Your Name"
+RSS_AUTHOR_EMAIL="yourname@bookyournames.com"
+RSS_LINK="https://bookyournames.com"
+RSS_LOGO="bookyournames.png"
+RSS_LANGUAGE="en"
+
+# FeralHosting (for screenshot and RSS feed storage)
+FERAL_SERVER=your-server.feralhosting.com
+FERAL_USERNAME=your-username
+FERAL_PASSWORD=your-password
 
 # OpenAI (for AI tagging)
 BOOKERICS_OPENAI_KEY=your-openai-api-key
@@ -138,7 +150,7 @@ cd tools/bookerics_firefox_extension
 `bookerics` automatically generates RSS feeds for your bookmarks:
 
 - **Main Feed**: `/feeds/rss.xml` - All bookmarks
-- **Cloud Hosted**: Feeds are automatically uploaded to S3 for external access
+- **Cloud Hosted**: Feeds are automatically uploaded to FeralHosting for external access
 
 RSS feeds include:
 - Bookmark metadata (title, description, URL)
@@ -163,9 +175,9 @@ cargo build --release
 
 ### Backup & Sync
 
-- **Automatic S3 Sync**: Database and screenshots automatically backed up to S3
-- **Manual Backup**: Click the bookmark count to trigger immediate backup
-- **Local Backups**: Optional local backup path configuration
+- **Automatic FeralHosting Sync**: Screenshots and RSS feeds automatically uploaded via SFTP
+- **Manual Backup**: Click the bookmark count to trigger immediate backup and feed update
+- **Local Backups**: Optional local backup path configuration (keeps 10 most recent backups)
 
 ## 🚀 Deployment
 
@@ -226,13 +238,32 @@ tail -f ~/Library/Logs/bookerics.log
 tail -f ~/Library/Logs/bookerics.error.log
 ```
 
+## 🛠️ Development
+
+### Type Checking
+```bash
+pyright  # Standard mode with unused/duplicate import warnings
+```
+
+### Code Formatting
+```bash
+isort bookerics/  # Black profile, line length 88
+```
+
+### Code Style Guidelines
+- **Python 3.12+** with strict type checking (mypy strict mode)
+- **Imports**: isort with black profile, combine_as_imports=true, trailing commas
+- **Components**: FastHTML components (Div, A, Input, etc.) with dict attrs like `{'hx_get': '/search'}`
+- **Async**: Use asyncssh, aiohttp, aiofiles for I/O operations
+- **Logging**: Use `utils.logger` for debugging
+
 ## 🎯 Use Cases
 
 - **Personal Knowledge Management** - Organize research and reference materials
 - **Content Curation** - Collect and categorize interesting articles and resources
 - **Team Sharing** - Share curated bookmark collections via RSS feeds
-- **Digital Archiving** - Preserve important web content with screenshots
-- **Cross-Device Access** - Access bookmarks anywhere with cloud sync
+- **Digital Archiving** - Preserve important web content with screenshots and archive.ph
+- **Cross-Device Access** - Access bookmarks anywhere with cloud-hosted feeds
 
 ## 📝 Development Status
 
@@ -250,8 +281,8 @@ A: That's not a question.
 A: Sure. If you're not lucky enough to be named Eric, you can update the configuration to be booktoms, bookzendayas, bookvolodymyrs, 
 etc. I suppose "bookmarks" works as well.
 
-**Q: Do I need AWS and OpenAI to use `bookerics`?**  
-A: No, these are optional features. The core bookmark functionality works without external services, but you'll miss out on screenshots, AI tagging, and cloud sync.
+**Q: Do I need FeralHosting and OpenAI to use `bookerics`?**  
+A: No, these are optional features. The core bookmark functionality works without external services, but you'll miss out on cloud-hosted screenshots, AI tagging, and public RSS feeds.
 
 **Q: How does the AI tagging work?**  
 A: When you save a bookmark without tags, `bookerics` can automatically analyze the content and suggest relevant tags using OpenAI's GPT models.
