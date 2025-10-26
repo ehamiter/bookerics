@@ -19,12 +19,12 @@ from .constants import (
     LOCAL_BACKUP_PATH,
     RSS_METADATA,
     FEEDS_DIR,
-    FERAL_SERVER,
-    FERAL_USERNAME,
-    FERAL_PASSWORD,
-    FERAL_BASE_URL,
-    FERAL_FEEDS_PATH,
-    FERAL_THUMBNAILS_PATH,
+    BOOKERICS_SERVER,
+    BOOKERICS_USERNAME,
+    BOOKERICS_PASSWORD,
+    BOOKERICS_BASE_URL,
+    BOOKERICS_FEEDS_PATH,
+    BOOKERICS_THUMBNAILS_PATH,
 )
 
 from .utils import logger
@@ -63,16 +63,16 @@ def get_db_connection():
 
 
 async def upload_file_via_sftp(local_path: str, remote_path: str) -> None:
-    """Upload a file to FeralHosting via SFTP."""
-    if not all([FERAL_SERVER, FERAL_USERNAME, FERAL_PASSWORD]):
-        logger.error("💥 Feral hosting credentials not configured")
+    """Upload a file to web hosting via SFTP."""
+    if not all([BOOKERICS_SERVER, BOOKERICS_USERNAME, BOOKERICS_PASSWORD]):
+        logger.error("💥 Web hosting credentials not configured")
         return
 
     try:
         async with asyncssh.connect(
-            FERAL_SERVER,
-            username=FERAL_USERNAME,
-            password=FERAL_PASSWORD,
+            BOOKERICS_SERVER,
+            username=BOOKERICS_USERNAME,
+            password=BOOKERICS_PASSWORD,
             known_hosts=None,
         ) as conn:
             async with conn.start_sftp_client() as sftp:
@@ -320,7 +320,7 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
             await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
 
         # Also upload feeds to server
-        await schedule_upload_to_feral()
+        await schedule_upload_to_hosting()
 
     except Exception as e:
         logger.error(f"Error during post-deletion tasks: {e}")
@@ -353,26 +353,26 @@ def backup_bookerics_db():
                 logger.info(f"🗑️ Pruned old backup: {old_backup}")
 
 
-async def schedule_upload_to_feral():
-    logger.info("🚀 Scheduling Feral upload...")
+async def schedule_upload_to_hosting():
+    logger.info("🚀 Scheduling hosting upload...")
     try:
         if FEEDS_DIR and os.path.exists(FEEDS_DIR):
             for feed_file in os.listdir(FEEDS_DIR):
                 if feed_file.endswith(".xml") or feed_file.endswith(".xsl"):
                     local_path = os.path.join(FEEDS_DIR, feed_file)
-                    remote_path = f"{FERAL_FEEDS_PATH}/{feed_file}"
+                    remote_path = f"{BOOKERICS_FEEDS_PATH}/{feed_file}"
                     await upload_file_via_sftp(local_path, remote_path)
-        logger.info("✅ Feral upload complete.")
+        logger.info("✅ Hosting upload complete.")
     except Exception as e:
-        logger.error(f"💥 Feral upload failed: {e}")
+        logger.error(f"💥 Hosting upload failed: {e}")
 
 
 async def schedule_thumbnail_fetch_and_save(
-    bookmark: Bookmark, schedule_feral_upload: bool = True
+    bookmark: Bookmark, schedule_hosting_upload: bool = True
 ):
     await get_bookmark_thumbnail_image(bookmark)
-    if schedule_feral_upload:
-        await schedule_upload_to_feral()
+    if schedule_hosting_upload:
+        await schedule_upload_to_hosting()
 
 
 def verify_table_structure(table_name: str = "bookmarks") -> List[Dict[str, Any]]:
@@ -417,7 +417,7 @@ async def create_feed(
         logger.info(f"✅ Main RSS feed created at {feed_path}")
 
         if publish:
-            remote_path = f"{FERAL_FEEDS_PATH}/{feed_filename}"
+            remote_path = f"{BOOKERICS_FEEDS_PATH}/{feed_filename}"
             await upload_file_via_sftp(feed_path, remote_path)
 
             # Create index.html that displays RSS feed with XSL transformation
@@ -650,8 +650,8 @@ async def archive_and_update(bookmark_id: int, url: str) -> None:
     archive_url = await archive_url_for(url)
     if archive_url:
         await update_bookmark_archive_url(bookmark_id, archive_url)
-        # Trigger Feral sync after updating
-        await schedule_upload_to_feral()
+        # Trigger hosting sync after updating
+        await schedule_upload_to_hosting()
     else:
         logger.info(
             f"🗄️ Skipping archive for bookmark {bookmark_id} due to rate limit or error"
@@ -675,7 +675,7 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
 
         thumbnail_filename = f"{bookmark['id']}.jpg"
         local_path = f"/tmp/{thumbnail_filename}"
-        remote_path = f"{FERAL_THUMBNAILS_PATH}/{thumbnail_filename}"
+        remote_path = f"{BOOKERICS_THUMBNAILS_PATH}/{thumbnail_filename}"
 
         try:
             # Attempt to run shot-scraper
@@ -726,14 +726,14 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
                     else:
                         raise Exception(f"shot-scraper failed: {error_output}")
 
-            # Upload to Feral via SFTP
+            # Upload to hosting via SFTP
             await upload_file_via_sftp(local_path, remote_path)
 
-            img_url = f"{FERAL_BASE_URL}/thumbnails/{thumbnail_filename}"
+            img_url = f"{BOOKERICS_BASE_URL}/thumbnails/{thumbnail_filename}"
 
             await update_bookmark_thumbnail_url(bookmark["id"], img_url)
             logger.info(
-                f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to Feral!"
+                f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to hosting!"
             )
 
             # Clean up local file
@@ -744,11 +744,11 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
             logger.error(f"💥 Error generating thumbnail: {e}")
             return ""
         except Exception as e:
-            logger.error(f"💥 Error uploading thumbnail to Feral: {e}")
+            logger.error(f"💥 Error uploading thumbnail to hosting: {e}")
             return ""
 
 
-async def update_bookmarks_with_thumbnails(bookmarks, schedule_feral_upload=True):
+async def update_bookmarks_with_thumbnails(bookmarks, schedule_hosting_upload=True):
     tasks = []
     for bookmark in bookmarks:
         # Don't look up thumbnails for db entries we're just browsing
@@ -771,9 +771,9 @@ async def update_bookmarks_with_thumbnails(bookmarks, schedule_feral_upload=True
         if thumbnail_url:
             bookmarks[i]["thumbnail_url"] = thumbnail_url
 
-    # Properly await the Feral upload
-    if schedule_feral_upload:
-        await schedule_upload_to_feral()
+    # Properly await the hosting upload
+    if schedule_hosting_upload:
+        await schedule_upload_to_hosting()
     return bookmarks
 
 
@@ -865,7 +865,7 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
         rfc_date = now.strftime("%a, %d %b %Y %H:%M:%S %z")
 
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
-<?xml-stylesheet type="text/xsl" href="{FERAL_BASE_URL}/feeds/rss.xsl"?>
+<?xml-stylesheet type="text/xsl" href="{BOOKERICS_BASE_URL}/feeds/rss.xsl"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
     <title>{channel_title}</title>
@@ -876,9 +876,9 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
     <lastBuildDate>{rfc_date}</lastBuildDate>
     <atom:link href="{RSS_METADATA.get("link", "")}/feeds/rss.xml" rel="self" type="text/xml" />
     <image>
-        <url>{FERAL_BASE_URL}/{RSS_METADATA.get("logo", "bookerics.png")}</url>
+        <url>{BOOKERICS_BASE_URL}/{RSS_METADATA.get("logo", "bookerics.png")}</url>
         <title>bookerics</title>
-        <link>{FERAL_BASE_URL}/feeds/rss.xml</link>
+        <link>{BOOKERICS_BASE_URL}/feeds/rss.xml</link>
         <width>128</width>
         <height>128</height>
     </image>

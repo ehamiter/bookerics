@@ -24,13 +24,13 @@ RSS_METADATA = {
 ### Local backups
 LOCAL_BACKUP_PATH = os.getenv("LOCAL_BACKUP_PATH")
 
-### Feral hosting info
-FERAL_SERVER = os.getenv("FERAL_SERVER")
-FERAL_USERNAME = os.getenv("FERAL_USERNAME")
-FERAL_PASSWORD = os.getenv("FERAL_PASSWORD")
-FERAL_BASE_URL = "https://bookerics.com"
-FERAL_FEEDS_PATH = "/media/sdc1/eddielomax/www/bookerics.com/public_html/feeds"
-FERAL_THUMBNAILS_PATH = (
+### Web hosting (SFTP) configuration
+BOOKERICS_SERVER = os.getenv("BOOKERICS_SERVER")
+BOOKERICS_USERNAME = os.getenv("BOOKERICS_USERNAME")
+BOOKERICS_PASSWORD = os.getenv("BOOKERICS_PASSWORD")
+BOOKERICS_BASE_URL = "https://bookerics.com"
+BOOKERICS_FEEDS_PATH = "/media/sdc1/eddielomax/www/bookerics.com/public_html/feeds"
+BOOKERICS_THUMBNAILS_PATH = (
     "/media/sdc1/eddielomax/www/bookerics.com/public_html/thumbnails"
 )
 

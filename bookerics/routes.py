@@ -32,7 +32,7 @@ from .database import (
     fetch_bookmarks_all,
     fetch_bookmarks_by_tag,
     fetch_unique_tags,
-    schedule_upload_to_feral,
+    schedule_upload_to_hosting,
     search_bookmarks,
     search_bookmarks_all,
     update_bookmark_description,
@@ -483,8 +483,8 @@ async def update_route():
         all_bookmarks = fetch_bookmarks_all(kind="newest")
         await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
 
-        # Upload all feeds to Feral
-        await schedule_upload_to_feral()
+        # Upload all feeds to hosting
+        await schedule_upload_to_hosting()
 
         return JSONResponse(
             {
