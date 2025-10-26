@@ -11,7 +11,7 @@ client = AsyncOpenAI(api_key=BOOKERICS_OPENAI_KEY)
 async def get_tags_and_description_from_bookmark(bookmark):
     if not isinstance(bookmark, dict):
         raise ValueError("bookmark must be a dictionary")
-    
+
     required_keys = ["title", "url", "description"]
     if not all(key in bookmark for key in required_keys):
         raise ValueError(f"bookmark must contain all required keys: {required_keys}")
@@ -33,10 +33,7 @@ Only return the dictionary. Do not add any extra commentary."""
     completion = await client.chat.completions.create(
         model=TAG_GPT_MODEL,
         messages=[
-            {
-                "role": "system",
-                "content": prompt
-            },
+            {"role": "system", "content": prompt},
             {"role": "user", "content": json.dumps(bookmark)},
         ],
     )
