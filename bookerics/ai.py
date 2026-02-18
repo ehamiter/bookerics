@@ -2,10 +2,10 @@ import json
 
 from openai import AsyncOpenAI
 
-from .constants import BOOKERICS_OPENAI_KEY, TAG_GPT_MODEL
+from .constants import BOOKERICS_OPENROUTER_KEY, OPENROUTER_BASE_URL, TAG_GPT_MODEL
 from .utils import logger
 
-client = AsyncOpenAI(api_key=BOOKERICS_OPENAI_KEY)
+client = AsyncOpenAI(api_key=BOOKERICS_OPENROUTER_KEY, base_url=OPENROUTER_BASE_URL)
 
 
 async def get_tags_and_description_from_bookmark(bookmark):
@@ -40,7 +40,7 @@ Only return the dictionary. Do not add any extra commentary."""
 
     tags_and_description = completion.choices[0].message.content
     if tags_and_description is None:
-        raise ValueError("No content received from OpenAI API")
+        raise ValueError("No content received from OpenRouter API")
     tags_and_description_dict = json.loads(tags_and_description)
 
     tags_list = tags_and_description_dict["tags"]
