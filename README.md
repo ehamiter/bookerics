@@ -11,7 +11,7 @@
 ### 📚 Core Functionality
 - **Smart Bookmark Management** - Save, organize, and search your bookmarks with ease
 - **Automatic Screenshots** - Visual previews of your bookmarks using website thumbnails
-- **AI-Powered Tagging** - Intelligent tag suggestions using OpenAI's GPT models
+- **AI-Powered Tagging** - Intelligent tag suggestions
 - **Full-Text Search** - Search through titles, descriptions, and tags
 - **RSS Feed Generation** - Automated RSS feeds for all bookmarks or specific tags
 - **Archive.ph Integration** - Automatic archival of bookmarked URLs
@@ -100,8 +100,8 @@ BOOKERICS_SERVER=your-server.somehosting.com
 BOOKERICS_USERNAME=your-username
 BOOKERICS_PASSWORD=your-password
 
-# OpenAI (for AI tagging)
-BOOKERICS_OPENAI_KEY=your-openai-api-key
+# AI tagging
+BOOKERICS_OPENROUTER_KEY=your-openrouter-api-key
 
 # Optional: Giphy (for placeholder images)
 GIPHY_API_KEY=your-giphy-api-key

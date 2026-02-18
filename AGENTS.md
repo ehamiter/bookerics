@@ -11,7 +11,7 @@
 - **Database**: SQLite (`bookerics.db`) with thread-local connections
 - **Structure**: `bookerics/` module with main.py (app entry), routes.py, database.py, components.py, ai.py, utils.py
 - **web hosting with SFTP SFTP**: Auto-uploads screenshots and RSS feeds (`bookerics/feeds/`) via SFTP to web hosting with SFTP server
-- **OpenAI**: AI-powered tag generation when user submits without tags
+- **AI**: AI-powered tag generation when user submits without tags
 - **Screenshots**: Uses `shot-scraper` to capture website thumbnails
 
 ## Code Style
