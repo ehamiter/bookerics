@@ -440,7 +440,7 @@ async def create_feed(
     if FEEDS_DIR and not os.path.exists(FEEDS_DIR):
         os.makedirs(FEEDS_DIR)
     feed_content = create_rss_feed(bookmarks, tag)
-    feed_filename = "rss.xml"
+    feed_filename = f"rss-{tag}.xml" if tag else "rss.xml"
     if FEEDS_DIR:
         feed_path = os.path.join(FEEDS_DIR, feed_filename)
         async with aiofiles.open(feed_path, "w") as f:
@@ -810,20 +810,37 @@ async def update_bookmarks_with_thumbnails(bookmarks, schedule_hosting_upload=Tr
     return bookmarks
 
 
+def _thumbnail_mime_type(url: str) -> str:
+    path = url.lower().split("?")[0]
+    if path.endswith(".png"):
+        return "image/png"
+    if path.endswith(".gif"):
+        return "image/gif"
+    if path.endswith(".webp"):
+        return "image/webp"
+    if path.endswith(".svg"):
+        return "image/svg+xml"
+    return "image/jpeg"
+
+
 def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str:
     """Creates an RSS feed from a list of bookmarks."""
     try:
-        sorted_bookmarks = sorted(
-            [b for b in bookmarks if b], key=lambda x: x["created_at"], reverse=True
-        )
+        filtered = [b for b in bookmarks if b]
+        if tag:
+            filtered = [
+                b for b in filtered
+                if tag in (b.get("tags") or [])
+            ]
+        sorted_bookmarks = sorted(filtered, key=lambda x: x["created_at"], reverse=True)
+
+        feed_filename = f"rss-{tag}.xml" if tag else "rss.xml"
+        feed_url = f"{RSS_METADATA.get('link', '')}/feeds/{feed_filename}"
+
         items = []
         for bookmark in sorted_bookmarks:
-            if not bookmark:
-                continue
-
             created_at = bookmark["created_at"]
             dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            # Convert to local time and format as human-readable
             local_dt = dt.astimezone()
             hour = local_dt.hour
             minute = local_dt.minute
@@ -844,9 +861,8 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
             link = bookmark.get("url", "")
             link = safe_escape(link)
 
-            thumbnail = bookmark.get("thumbnail_url", None)
-            if thumbnail is None:
-                thumbnail = "https://via.placeholder.com/200x200"
+            thumbnail = bookmark.get("thumbnail_url") or ""
+            mime_type = _thumbnail_mime_type(thumbnail) if thumbnail else "image/jpeg"
 
             # Generate category elements for tags
             tags = bookmark.get("tags", [])
@@ -856,27 +872,28 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
                     tags = json.loads(tags) if tags else []
                 except (json.JSONDecodeError, TypeError):
                     tags = []
-            # Ensure tags is a list and filter out empty tags
             if not isinstance(tags, list):
                 tags = []
-            tags = [tag.strip() for tag in tags if tag and str(tag).strip()]
+            tags = [t.strip() for t in tags if t and str(t).strip()]
 
-            categories_xml = ""
-            for tag in tags:
-                # Escape XML special characters in tags
-                escaped_tag = safe_escape(tag)
-                categories_xml += (
-                    f"<category>{escaped_tag}</category>\n                    "
-                )
+            categories_xml = "".join(
+                f"<category>{safe_escape(t)}</category>\n                    "
+                for t in tags
+            )
+
+            enclosure = (
+                f'<enclosure url="{thumbnail}" type="{mime_type}" length="0" />'
+                if thumbnail else ""
+            )
 
             item = f"""
                 <item>
                     <pubDate>{pub_date}</pubDate>
-                    <humanDate>{human_date}</humanDate>
+                    <bookerics:humanDate>{human_date}</bookerics:humanDate>
                     <title><![CDATA[{title}]]></title>
                     <link>{link}</link>
                     <description><![CDATA[{description}]]></description>
-                    <enclosure url="{thumbnail}" type="image/jpeg" length="1000000" />
+                    {enclosure}
                     <guid isPermaLink="false">{link}</guid>
                     {categories_xml}
                 </item>
@@ -887,11 +904,7 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
         channel_link = RSS_METADATA.get("link", "")
         channel_description = RSS_METADATA.get("description", "")
 
-        rss_items = []
-        for item in items:
-            rss_items.append(item)
-
-        rss_items_str = "\n".join(rss_items)
+        rss_items_str = "\n".join(items)
 
         # Use RFC 2822 format for channel dates
         now = datetime.now().astimezone()
@@ -899,7 +912,7 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
 
         return f"""<?xml version="1.0" encoding="UTF-8" ?>
 <?xml-stylesheet type="text/xsl" href="{BOOKERICS_BASE_URL}/feeds/rss.xsl"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:bookerics="https://bookerics.com/rss">
 <channel>
     <title>{channel_title}</title>
     <link>{channel_link}</link>
@@ -907,11 +920,11 @@ def create_rss_feed(bookmarks: List[Bookmark], tag: Optional[str] = None) -> str
     <language>en-us</language>
     <pubDate>{rfc_date}</pubDate>
     <lastBuildDate>{rfc_date}</lastBuildDate>
-    <atom:link href="{RSS_METADATA.get("link", "")}/feeds/rss.xml" rel="self" type="text/xml" />
+    <atom:link href="{feed_url}" rel="self" type="application/rss+xml" />
     <image>
         <url>{BOOKERICS_BASE_URL}/{RSS_METADATA.get("logo", "bookerics.png")}</url>
         <title>bookerics</title>
-        <link>{BOOKERICS_BASE_URL}/feeds/rss.xml</link>
+        <link>{BOOKERICS_BASE_URL}/feeds/{feed_filename}</link>
         <width>128</width>
         <height>128</height>
     </image>
