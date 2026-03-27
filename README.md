@@ -15,6 +15,7 @@
 - **Full-Text Search** - Search through titles, descriptions, and tags
 - **RSS Feed Generation** - Automated RSS feeds for all bookmarks or specific tags
 - **Archive.ph Integration** - Automatic archival of bookmarked URLs
+- **Cull** - Concurrent URL health checker that surfaces dead or broken bookmarks
 
 ### 🎨 User Experience
 - **Keyboard Shortcuts** - Navigate and manage bookmarks without touching your mouse
@@ -138,12 +139,33 @@ cd tools/bookerics_firefox_extension
 - **V** - Open the selected bookmark's URL in a new browser tab
 - **E** - Edit the selected bookmark (opens modal)
 - **X** - Delete the selected bookmark (requires confirmation)
+- **C** - Open the Cull page (URL health check)
 
 ### Interface
 - **Cmd+K** (Mac) / **Ctrl+K** (Windows/Linux) - Focus the search bar
 - **Escape** - Unfocus search bar or close modals
 - **Cmd+Shift+D** - Toggle between dark and light themes
 - **?** - Show keyboard shortcuts help
+
+## 🔍 Cull
+
+The Cull feature (`/cull`, or press **C**) checks every bookmarked URL concurrently to see which ones are still alive.
+
+- URLs are checked in parallel using a thread pool (up to 20 concurrent requests)
+- Progress updates live in your browser as checks complete
+- Results are **grouped by severity** — from "probably busted" to "possible server hiccup":
+
+| Group | Meaning |
+|-------|---------|
+| 💀 **Unreachable** | Connection refused or timed out — likely dead |
+| 🪦 **404 / 410** | Server confirmed page no longer exists |
+| ⛔ **Other 4xx** | Various client errors |
+| 🔒 **401 / 403** | Access denied — may be blocking bots or behind login |
+| ↪️ **3xx Redirect** | URL redirects — might be fine, might be gone |
+| 🚦 **429 Rate Limited** | Site exists, just throttling requests |
+| 🔥 **5xx Server Error** | Temporary server hiccup — likely still alive |
+
+Only non-200 responses are shown. A clean run with all 200s is celebrated accordingly.
 
 ## 📡 RSS Feeds
 

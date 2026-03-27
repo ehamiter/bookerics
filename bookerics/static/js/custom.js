@@ -270,6 +270,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Cull bookerics (C)
+        if (event.key === 'c' || event.key === 'C') {
+            event.preventDefault();
+            window.location.href = '/cull';
+            return;
+        }
+
         // Update bookmark elements list (in case new content was loaded)
         updateBookmarkElements();
 

@@ -485,6 +485,213 @@ def EditBookmarkForm(bookmark: Bookmark, **attrs: Any) -> AnyComponent:
     )
 
 
+# ---------------------------------------------------------------------------
+# Cull feature components
+# ---------------------------------------------------------------------------
+
+_CULL_GROUPS = [
+    {
+        "icon": "💀",
+        "title": "Unreachable — Probably Busted",
+        "severity": "critical",
+        "description": "Could not connect at all. The site may be permanently down or the URL is dead.",
+        "filter_fn": lambda r: bool(r.get("error")),
+    },
+    {
+        "icon": "🪦",
+        "title": "404 / 410 — Page is Gone",
+        "severity": "high",
+        "description": "The server confirmed this page no longer exists.",
+        "filter_fn": lambda r: r.get("status_code") in (404, 410),
+    },
+    {
+        "icon": "⛔",
+        "title": "Other 4xx — Client Errors",
+        "severity": "high",
+        "description": "Various client-side errors suggesting the resource is inaccessible.",
+        "filter_fn": lambda r: r.get("status_code") and 400 <= r["status_code"] < 500
+            and r["status_code"] not in (401, 403, 404, 410, 429),
+    },
+    {
+        "icon": "🔒",
+        "title": "401 / 403 — Access Denied",
+        "severity": "medium",
+        "description": "Site exists but is blocking access — may be behind a login or blocking bots.",
+        "filter_fn": lambda r: r.get("status_code") in (401, 403),
+    },
+    {
+        "icon": "↪️",
+        "title": "3xx — Redirect",
+        "severity": "medium",
+        "description": "URL redirects elsewhere. Could be a domain change (fine) or a dead-end redirect.",
+        "filter_fn": lambda r: r.get("status_code") and 300 <= r["status_code"] < 400,
+    },
+    {
+        "icon": "🚦",
+        "title": "429 — Rate Limited",
+        "severity": "low",
+        "description": "Site is throttling requests. It almost certainly exists — just temporarily blocking us.",
+        "filter_fn": lambda r: r.get("status_code") == 429,
+    },
+    {
+        "icon": "🔥",
+        "title": "5xx — Server Error",
+        "severity": "low",
+        "description": "Server hiccup. The site likely exists but had a temporary issue at time of check.",
+        "filter_fn": lambda r: r.get("status_code") and 500 <= r["status_code"] < 600,
+    },
+]
+
+
+def _render_cull_item(result: dict) -> AnyComponent:
+    item_id = result.get("id")
+    title = result.get("title", "Unknown")
+    url = result.get("url", "")
+    status_code = result.get("status_code")
+    error = result.get("error")
+
+    if error:
+        badge_text = "timeout" if error == "timeout" else "unreachable"
+        badge_cls = "cull-badge cull-badge-error"
+    else:
+        badge_text = str(status_code)
+        badge_cls = f"cull-badge cull-badge-{status_code // 100}xx"
+
+    target_id = f"cull-item-{item_id}"
+
+    return Div(
+        Span(badge_text, cls=badge_cls),
+        Div(
+            A(title, href=url, target="_blank", cls="cull-item-title"),
+            Div(url, cls="cull-item-url"),
+            cls="cull-item-content",
+        ),
+        A(
+            "🗑️",
+            href="#",
+            hx_target=f"#{target_id}",
+            hx_swap="outerHTML",
+            **{"data-delete-url": f"/delete/{item_id}", "data-confirmed": "false"},
+            cls="btn delete-btn cull-item-delete",
+        ),
+        id=target_id,
+        cls="cull-item",
+    )
+
+
+def _render_cull_group(group: dict, items: list) -> AnyComponent:
+    from fasthtml.common import H3
+
+    return Div(
+        Div(
+            Span(group["icon"], cls="cull-group-icon"),
+            Div(
+                H3(f"{group['title']} ({len(items)})", cls="cull-group-title"),
+                P(group["description"], cls="cull-group-description"),
+                cls="cull-group-header-text",
+            ),
+            cls="cull-group-header",
+        ),
+        Div(*[_render_cull_item(r) for r in items], cls="cull-group-items"),
+        cls=f"cull-group severity-{group['severity']}",
+    )
+
+
+def CullResultsFragment(state: dict) -> AnyComponent:
+    """HTMX-pollable fragment showing cull progress and grouped results."""
+    status = state.get("status", "idle")
+    total = state.get("total", 0)
+    checked = state.get("checked", 0)
+    results = state.get("results", [])
+
+    children = []
+    poll_attrs: dict = {}
+
+    if status == "running":
+        poll_attrs = {
+            "hx_get": "/cull/progress",
+            "hx_trigger": "every 2s",
+            "hx_target": "#cull-results",
+            "hx_swap": "outerHTML",
+        }
+
+    if status in ("running", "done") and total > 0:
+        ok_count = sum(1 for r in results if r.get("status_code") == 200)
+        issue_count = checked - ok_count
+        pct = int((checked / total) * 100) if total > 0 else 0
+        progress_label = (
+            f"Checking {checked:,} of {total:,}…"
+            if status == "running"
+            else f"Done — {total:,} bookmarks checked"
+        )
+
+        children.append(
+            Div(
+                Div(
+                    Div(style=f"width: {pct}%", cls="cull-progress-fill"),
+                    cls="cull-progress-bar",
+                ),
+                Div(progress_label, cls="cull-progress-label"),
+                Div(
+                    f"✅ {ok_count:,} alive  •  ⚠️ {issue_count:,} need attention",
+                    cls="cull-progress-stats",
+                ),
+                cls="cull-progress-section",
+            )
+        )
+
+        non_ok = [r for r in results if r.get("status_code") != 200 or r.get("error")]
+        if non_ok:
+            for group in _CULL_GROUPS:
+                items = [r for r in non_ok if group["filter_fn"](r)]
+                if items:
+                    children.append(_render_cull_group(group, items))
+        elif status == "done":
+            children.append(
+                Div(
+                    "🎉 All bookmarks returned 200 OK — everything looks great!",
+                    cls="cull-all-ok",
+                )
+            )
+
+    return Div(*children, id="cull-results", cls="cull-results-container", **poll_attrs)
+
+
+def CullPage(state: dict) -> AnyComponent:
+    """Full cull page content (below nav/search)."""
+    from fasthtml.common import H1
+
+    status = state.get("status", "idle")
+    is_running = status == "running"
+
+    btn_attrs: dict = {
+        "hx_post": "/cull/start",
+        "hx_target": "#cull-results",
+        "hx_swap": "outerHTML",
+        "cls": "btn primary cull-start-btn",
+    }
+    if is_running:
+        btn_attrs["disabled"] = True
+
+    btn_text = "Culling in progress…" if is_running else "Start Cull"
+
+    return Div(
+        Div(
+            H1("Cull Bookerics", cls="cull-title"),
+            P(
+                "Run a live HTTP check on every bookmarked URL. "
+                "Anything that isn't a clean 200 OK is surfaced and ranked — "
+                "from probably busted to possible server hiccup.",
+                cls="cull-description",
+            ),
+            Button(btn_text, **btn_attrs),
+            cls="cull-header",
+        ),
+        CullResultsFragment(state=state),
+        cls="cull-page",
+    )
+
+
 def KeyboardShortcutsHelpModal(**attrs: Any) -> AnyComponent:
     """Modal showing all keyboard shortcuts"""
     return Div(
@@ -552,6 +759,11 @@ def KeyboardShortcutsHelpModal(**attrs: Any) -> AnyComponent:
                     ),
                     Div(
                         "Other",
+                        Div(
+                            Div("C", cls="shortcut-key"),
+                            Div("Open Cull page (URL health check)", cls="shortcut-desc"),
+                            cls="shortcut-row",
+                        ),
                         Div(
                             Div("Cmd+Shift+D", cls="shortcut-key"),
                             Div("Toggle dark/light theme", cls="shortcut-desc"),

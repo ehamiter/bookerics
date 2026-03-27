@@ -1,6 +1,11 @@
 import secrets
 import logging
 import json
+import threading
+import urllib.request
+import urllib.error
+import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Union
 
 from starlette.requests import Request
@@ -20,7 +25,94 @@ from .components import (
     _render_tags_html,
     PreviewImage,
     KeyboardShortcutsHelpModal,
+    CullPage,
+    CullResultsFragment,
 )
+
+# ---------------------------------------------------------------------------
+# Cull feature — concurrent URL health checking
+# ---------------------------------------------------------------------------
+
+_cull_job: Dict[str, Any] = {
+    "status": "idle",  # idle | running | done
+    "total": 0,
+    "checked": 0,
+    "results": [],
+}
+_cull_lock = threading.Lock()
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Suppress automatic redirect following so we can capture 3xx codes."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, msg, headers, fp)
+
+
+def _check_url_sync(bookmark: Dict[str, Any]) -> Dict[str, Any]:
+    """Check a single URL synchronously (called from ThreadPoolExecutor)."""
+    url = bookmark["url"]
+    result: Dict[str, Any] = {
+        "id": bookmark["id"],
+        "title": bookmark["title"],
+        "url": url,
+        "status_code": None,
+        "error": None,
+    }
+    try:
+        opener = urllib.request.build_opener(_NoRedirect)
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; bookerics-health-check/1.0)"},
+            method="HEAD",
+        )
+        with opener.open(req, timeout=10) as resp:
+            result["status_code"] = resp.status
+    except urllib.error.HTTPError as e:
+        result["status_code"] = e.code
+    except urllib.error.URLError as e:
+        reason = str(getattr(e, "reason", e)).lower()
+        result["error"] = "timeout" if "timed out" in reason or isinstance(getattr(e, "reason", None), socket.timeout) else "connection_error"
+    except socket.timeout:
+        result["error"] = "timeout"
+    except Exception:
+        result["error"] = "connection_error"
+    return result
+
+
+def _run_cull_job(bookmarks: List[Dict[str, Any]]) -> None:
+    """Run URL checks concurrently in a background daemon thread."""
+    with _cull_lock:
+        _cull_job["status"] = "running"
+        _cull_job["total"] = len(bookmarks)
+        _cull_job["checked"] = 0
+        _cull_job["results"] = []
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(_check_url_sync, bm): bm for bm in bookmarks}
+        for future in as_completed(futures):
+            try:
+                r = future.result()
+            except Exception:
+                bm = futures[future]
+                r = {"id": bm["id"], "title": bm["title"], "url": bm["url"], "status_code": None, "error": "connection_error"}
+            with _cull_lock:
+                _cull_job["results"].append(r)
+                _cull_job["checked"] += 1
+
+    with _cull_lock:
+        _cull_job["status"] = "done"
+
+
+def _snapshot_cull_state() -> Dict[str, Any]:
+    """Thread-safe snapshot of current cull state."""
+    with _cull_lock:
+        return {
+            "status": _cull_job["status"],
+            "total": _cull_job["total"],
+            "checked": _cull_job["checked"],
+            "results": list(_cull_job["results"]),
+        }
 from .database import (
     backup_bookerics_db,
     create_bookmark,
@@ -693,3 +785,39 @@ async def keyboard_shortcuts_help_modal():
 @main_fasthtml_router("/close-modal")
 async def close_modal():
     return HTMLResponse("", status_code=200)
+
+
+# ---------------------------------------------------------------------------
+# Cull routes
+# ---------------------------------------------------------------------------
+
+
+@main_fasthtml_router("/cull")
+async def cull_page_route():
+    bookmark_count = get_bookmark_count(kind="newest")
+    state = _snapshot_cull_state()
+    return Page(
+        NavMenu(bookmark_count=bookmark_count),
+        SearchBar(),
+        CullPage(state=state),
+    )
+
+
+@main_fasthtml_router("/cull/start", methods=["POST"])
+async def cull_start_route():
+    with _cull_lock:
+        already_running = _cull_job["status"] == "running"
+
+    if not already_running:
+        bookmarks = fetch_bookmarks_all(kind="newest")
+        thread = threading.Thread(target=_run_cull_job, args=(bookmarks,), daemon=True)
+        thread.start()
+
+    state = _snapshot_cull_state()
+    return HTMLResponse(to_xml(CullResultsFragment(state=state)))
+
+
+@main_fasthtml_router("/cull/progress")
+async def cull_progress_route():
+    state = _snapshot_cull_state()
+    return HTMLResponse(to_xml(CullResultsFragment(state=state)))
