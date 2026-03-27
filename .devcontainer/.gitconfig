@@ -1,0 +1,37 @@
+# Shared git configuration for the devcontainer.
+# User identity is set automatically by GitHub Codespaces / CLI auth.
+
+[alias]
+    co = checkout
+    br = branch
+    ci = commit
+    st = status
+    df = diff
+[rerere]
+    enabled = true
+    autoupdate = true
+[init]
+    defaultBranch = main
+[color]
+    ui = true
+[branch]
+    sort = -committerdate
+[column]
+    ui = auto
+[diff]
+    algorithm = histogram
+    colorMoved = plain
+    mnemonicPrefix = true
+    renames = true
+[push]
+    default = simple
+    autoSetupRemote = true
+    followTags = true
+[fetch]
+    prune = true
+    pruneTags = true
+    all = true
+[help]
+    autocorrect = prompt
+[rebase]
+    updateRefs = true
