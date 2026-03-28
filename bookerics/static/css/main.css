@@ -89,6 +89,7 @@ html[data-theme="dark"] {
 
 /* Light theme colors - manual override (overrides dark system preference) */
 html[data-theme="light"] {
+    background-image: url('../images/bg.png') !important;
     --bg-primary: #ffffff !important;
     --bg-secondary: #fafafa !important;
     --bg-tertiary: #f5f5f5 !important;

@@ -341,20 +341,17 @@ def fetch_bookmarks_by_tag(tag: str) -> List[Bookmark]:
 async def delete_bookmark_by_id(bookmark_id: int) -> None:
     await execute_query_async("DELETE FROM bookmarks WHERE id = ?", (bookmark_id,))
     cache.invalidate()
-    try:
-        # After deleting, we need to update feeds
-        # Fetch all bookmarks to regenerate the main feed
-        all_bookmarks = fetch_bookmarks_all(kind="newest")
 
-        if all_bookmarks:
-            # Update the main RSS feed
-            await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
+    async def _post_delete():
+        try:
+            all_bookmarks = fetch_bookmarks_all(kind="newest")
+            if all_bookmarks:
+                await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
+            await schedule_upload_to_hosting()
+        except Exception as e:
+            logger.error(f"Error during post-deletion tasks: {e}")
 
-        # Also upload feeds to server
-        await schedule_upload_to_hosting()
-
-    except Exception as e:
-        logger.error(f"Error during post-deletion tasks: {e}")
+    asyncio.create_task(_post_delete())
 
 
 def backup_bookerics_db():

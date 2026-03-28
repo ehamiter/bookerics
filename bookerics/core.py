@@ -11,31 +11,39 @@ def Page(*children: Any, title_str: str = "bookerics", theme: str = "light") -> 
     theme_prevention_script = """
     (function() {
         function getInitialColorMode() {
-            // Check if user has explicitly chosen a theme via cookie
+            // Only respect a saved theme cookie when the user manually chose it.
+            // Auto-detected themes (from system preference) do not set the manual flag,
+            // so stale cookies from a previous system-light visit don't override system-dark.
             const cookies = document.cookie.split(';');
+            let savedTheme = null;
+            let isManual = false;
             for (let cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
-                if (name === 'bookerics-theme') {
-                    return value;
-                }
+                const trimmed = cookie.trim();
+                const eqIdx = trimmed.indexOf('=');
+                if (eqIdx === -1) continue;
+                const name = trimmed.slice(0, eqIdx);
+                const value = trimmed.slice(eqIdx + 1);
+                if (name === 'bookerics-theme') savedTheme = value;
+                if (name === 'bookerics-theme-manual') isManual = (value === 'true');
             }
-            
-            // Check user's system preference
+            if (savedTheme && isManual) {
+                return savedTheme;
+            }
+
+            // No manual preference — always follow system
             const mql = window.matchMedia('(prefers-color-scheme: dark)');
-            const hasMediaQueryPreference = typeof mql.matches === 'boolean';
-            if (hasMediaQueryPreference) {
+            if (typeof mql.matches === 'boolean') {
                 return mql.matches ? 'dark' : 'light';
             }
-            
-            // Default to light theme
+
             return 'light';
         }
-        
+
         const colorMode = getInitialColorMode();
-        
+
         // Set the data-theme attribute immediately
         document.documentElement.setAttribute('data-theme', colorMode);
-        
+
         // Also set a flag so our JS knows the theme was already set
         window.__THEME_SET__ = true;
         window.__INITIAL_COLOR_MODE__ = colorMode;

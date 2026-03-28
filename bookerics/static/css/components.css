@@ -1196,3 +1196,51 @@ html[data-theme="dark"] .bookmark-box.keyboard-focused {
     .cull-item { flex-wrap: wrap; }
     .cull-badge { min-width: unset; }
 }
+
+/* System dark mode fallback — mirrors all [data-theme="dark"] component overrides so that system
+   dark mode looks identical to manually invoked dark mode even if data-theme is not yet set.
+   Uses :not([data-theme="light"]) so a manual light-mode override always wins. */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) .tag-cloud .btn.tag:hover,
+    html:not([data-theme="light"]) .bookmark-box .btn.tag:hover {
+        color: #000000 !important;
+    }
+
+    html:not([data-theme="light"]) .image-placeholder {
+        filter: brightness(50%);
+    }
+
+    html:not([data-theme="light"]) .shortcut-key {
+        background-color: var(--bg-primary);
+        border-color: var(--border-medium);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    html:not([data-theme="light"]) .bookmark-box.keyboard-focused {
+        outline-color: var(--accent-color-bright);
+        background-color: var(--bg-tertiary);
+    }
+
+    html:not([data-theme="light"]) .cull-progress-section {
+        background: var(--bg-tertiary, #1e293b);
+    }
+
+    html:not([data-theme="light"]) .cull-all-ok {
+        background: #052e16;
+        border-color: #166534;
+        color: #86efac;
+    }
+
+    html:not([data-theme="light"]) .cull-group-header {
+        background: var(--bg-tertiary, #1e293b);
+    }
+
+    html:not([data-theme="light"]) .cull-item:hover {
+        background: var(--bg-tertiary, #1e293b);
+    }
+
+    html:not([data-theme="light"]) .cull-badge-error { background: #450a0a; color: #fca5a5; }
+    html:not([data-theme="light"]) .cull-badge-3xx   { background: #422006; color: #fde68a; }
+    html:not([data-theme="light"]) .cull-badge-4xx   { background: #431407; color: #fdba74; }
+    html:not([data-theme="light"]) .cull-badge-5xx   { background: #2e1065; color: #c4b5fd; }
+}

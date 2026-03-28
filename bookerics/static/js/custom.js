@@ -446,15 +446,11 @@ function initializeTheme() {
     // Check if the blocking script already set the theme
     if (window.__THEME_SET__ && window.__INITIAL_COLOR_MODE__) {
         console.log('🎨 Theme already set by blocking script:', window.__INITIAL_COLOR_MODE__);
-        
-        // Just update the toggle button to match the theme that was already set
-        updateThemeToggleIcon(window.__INITIAL_COLOR_MODE__);
-        
-        // Store it in localStorage if it's not already there (in case it came from system preference)
-        if (!localStorage.getItem('bookerics-theme')) {
-            localStorage.setItem('bookerics-theme', window.__INITIAL_COLOR_MODE__);
-        }
-        
+
+        // Apply the full theme (sets data-theme, cookie, localStorage, and icon) so system dark mode
+        // is treated identically to manually invoking dark mode via keyboard shortcut.
+        applyTheme(window.__INITIAL_COLOR_MODE__);
+
         return;
     }
     
@@ -495,25 +491,27 @@ function setupKeyboardShortcut() {
     });
 }
 
-function applyTheme(theme) {
-    console.log('🎨 Applying theme:', theme);
-    
-    if (theme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-    }
-    
-    // Store the applied theme in localStorage
+function applyTheme(theme, { manual = false } = {}) {
+    console.log('🎨 Applying theme:', theme, manual ? '(manual)' : '(auto)');
+
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+
     localStorage.setItem('bookerics-theme', theme);
-    
-    // Also set a cookie so the server can detect the theme preference
+
+    // Always persist the theme value cookie so the blocking script can read it on the next load.
     document.cookie = `bookerics-theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
-    
-    // Update theme toggle button icon
+
+    // Only mark as manual when the user explicitly chose the theme (keyboard shortcut / button).
+    // Without this flag the blocking script ignores the saved cookie and follows system preference,
+    // preventing stale auto-detected cookies from overriding the OS dark/light setting.
+    if (manual) {
+        document.cookie = `bookerics-theme-manual=true; path=/; max-age=31536000; SameSite=Lax`;
+    } else {
+        // Clear any previous manual flag so system preference can take over again.
+        document.cookie = `bookerics-theme-manual=; path=/; max-age=0; SameSite=Lax`;
+    }
+
     updateThemeToggleIcon(theme);
-    
-    // Dispatch custom event for other components that might need to know
     document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
 }
 
@@ -547,7 +545,7 @@ function toggleTheme() {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     console.log('🎨 Toggling theme from', currentTheme, 'to', newTheme);
-    applyTheme(newTheme);
+    applyTheme(newTheme, { manual: true });
 }
 
 function getCurrentTheme() {
