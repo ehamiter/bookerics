@@ -131,6 +131,7 @@ from .database import (
     update_bookmark_description,
     update_bookmark_tags,
     update_bookmark_title,
+    update_main_rss_feed,
     verify_table_structure,
     Bookmark,
 )
@@ -403,7 +404,7 @@ async def search_route(request: Request):
 
 
 @main_fasthtml_router("/ai/{id}")
-async def get_ai_info_for_bookmark_by_id_route(id: str) -> HTMLResponse:
+async def get_ai_info_for_bookmark_by_id_route(id: str):
     bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(id=id)
     if not bookmark:
         return HTMLResponse("Bookmark not found for AI processing.", status_code=404)
@@ -411,9 +412,10 @@ async def get_ai_info_for_bookmark_by_id_route(id: str) -> HTMLResponse:
     try:
         ai_tags, ai_description = await get_tags_and_description_from_bookmark(bookmark)
         if ai_tags:
-            await update_bookmark_tags(id=id, tags=ai_tags)
+            await update_bookmark_tags(id=id, tags=ai_tags, update_feed=False)
         if ai_description:
-            await update_bookmark_description(id=id, description=ai_description)
+            await update_bookmark_description(id=id, description=ai_description, update_feed=False)
+        await update_main_rss_feed()
 
         updated_bookmark = await fetch_bookmark_by_id(id=id)
         if not updated_bookmark:
@@ -429,7 +431,7 @@ async def get_ai_info_for_bookmark_by_id_route(id: str) -> HTMLResponse:
 
 
 @main_fasthtml_router("/get_thumbnail/{id}")
-async def get_thumbnail_route(request: Request) -> HTMLResponse:
+async def get_thumbnail_route(request: Request):
     bookmark_id: str = request.path_params["id"]
     headers = {"HX-Trigger": "loadThumbnail"}
     bookmark: Optional[Bookmark] = await fetch_bookmark_by_id(bookmark_id)

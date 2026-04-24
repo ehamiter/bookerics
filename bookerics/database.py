@@ -205,7 +205,7 @@ def fetch_bookmarks(kind: str, page: int = 1, per_page: int = 25) -> List[Bookma
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC LIMIT {per_page} OFFSET {offset};",
         "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC LIMIT {per_page} OFFSET {offset};",
-        "untagged": f"{bq} WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC LIMIT {per_page} OFFSET {offset};",
+        "untagged": f"{bq} WHERE tags IS NULL OR tags = '[]' OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC LIMIT {per_page} OFFSET {offset};",
     }
     query = queries.get(kind, queries["newest"])
     return fetch_data(query)
@@ -217,7 +217,7 @@ def fetch_bookmarks_all(kind: str) -> List[Bookmark]:
     queries = {
         "newest": f"{bq} ORDER BY created_at DESC, updated_at DESC;",
         "oldest": f"{bq} ORDER BY created_at ASC, updated_at ASC;",
-        "untagged": f"{bq} WHERE tags IS NULL OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC;",
+        "untagged": f"{bq} WHERE tags IS NULL OR tags = '[]' OR tags = '[\"\"]' ORDER BY created_at DESC, updated_at DESC;",
     }
     query = queries.get(kind, queries["newest"])
     return fetch_data(query)
@@ -240,7 +240,7 @@ def get_bookmark_count(kind: str = "newest") -> int:
             return cached
         with get_db_connection() as conn:
             result = conn.execute(
-                "SELECT COUNT(*) FROM bookmarks WHERE tags IS NULL OR tags = '[\"\"]'"
+                "SELECT COUNT(*) FROM bookmarks WHERE tags IS NULL OR tags = '[]' OR tags = '[\"\"]'"
             ).fetchone()
             count = result[0] if result else 0
             cache.set_untagged_count(count)
@@ -569,7 +569,7 @@ async def update_bookmark_thumbnail_url(bookmark_id: int, img_url: str):
     logger.info(f"🖼️ Thumbnail URL updated for bookmark {bookmark_id}")
 
 
-async def update_bookmark_description(id: str, description: str):
+async def update_bookmark_description(id: str, description: str, update_feed: bool = True):
     query = """
     UPDATE bookmarks
     SET description = ?, updated_at = ?
@@ -579,8 +579,8 @@ async def update_bookmark_description(id: str, description: str):
     await execute_query_async(query, (description, updated_at, id))
     logger.info(f"📝 Description updated for bookmark {id}")
 
-    # Update the main RSS feed
-    await update_main_rss_feed()
+    if update_feed:
+        await update_main_rss_feed()
 
 
 async def update_bookmark_title(id: str, title: str):
@@ -597,7 +597,7 @@ async def update_bookmark_title(id: str, title: str):
     await update_main_rss_feed()
 
 
-async def update_bookmark_tags(id: str, tags: List[str]):
+async def update_bookmark_tags(id: str, tags: List[str], update_feed: bool = True):
     # Filter out empty tags
     tags = [tag for tag in tags if tag.strip()]
     tags_json = json.dumps(tags)
@@ -608,8 +608,8 @@ async def update_bookmark_tags(id: str, tags: List[str]):
     cache.invalidate()
     logger.info(f"🏷️ Tags updated for bookmark {id}")
 
-    # Update the main RSS feed
-    await update_main_rss_feed()
+    if update_feed:
+        await update_main_rss_feed()
 
 
 async def archive_url_for(target_url: str) -> Optional[str]:

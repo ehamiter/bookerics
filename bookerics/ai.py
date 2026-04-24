@@ -41,7 +41,11 @@ Only return the dictionary. Do not add any extra commentary."""
     tags_and_description = completion.choices[0].message.content
     if tags_and_description is None:
         raise ValueError("No content received from OpenRouter API")
-    tags_and_description_dict = json.loads(tags_and_description)
+    # Strip markdown code fences the model sometimes wraps around the JSON
+    stripped = tags_and_description.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+    tags_and_description_dict = json.loads(stripped)
 
     tags_list = tags_and_description_dict["tags"]
     formatted_tags_list = [tag.lower().replace(" ", "-") for tag in tags_list]
