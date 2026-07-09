@@ -12,7 +12,18 @@ import subprocess
 from xml.sax.saxutils import escape
 from contextlib import contextmanager
 import threading
+import encodings.idna  # noqa: F401 - eagerly register the "idna" codec (see below)
 import asyncssh
+
+# When asyncssh connects, asyncio resolves the hostname with socket.getaddrinfo,
+# which IDNA-encodes str hosts via "hostname".encode("idna"). asyncio runs that
+# resolution inside a thread-pool executor, so the first-ever, lazy import of the
+# stdlib "idna" codec happens off the main thread and can race with the import
+# lock, surfacing as "LookupError: unknown encoding: idna". Importing the codec
+# module here (on the main thread, at startup) registers it up front, and the
+# warmup call below forces it into the codec registry cache so the threaded
+# resolver never has to load it.
+"warmup".encode("idna")
 
 from .constants import (
     BOOKMARK_NAME,
