@@ -1,14 +1,16 @@
 import os
 import re
 import shutil
+import sys
+import tempfile
 import aiohttp
 import aiofiles
 from datetime import datetime, timezone
+from importlib.util import find_spec
 from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import json
 import sqlite3
-import subprocess
 from xml.sax.saxutils import escape
 from contextlib import contextmanager
 import threading
@@ -35,6 +37,7 @@ from .constants import (
     BOOKERICS_PASSWORD,
     BOOKERICS_BASE_URL,
     BOOKERICS_FEEDS_PATH,
+    BOOKERICS_INDEX_PATH,
     BOOKERICS_THUMBNAILS_PATH,
 )
 
@@ -74,11 +77,15 @@ def get_db_connection():
         raise e
 
 
-async def upload_file_via_sftp(local_path: str, remote_path: str) -> None:
-    """Upload a file to web hosting via SFTP."""
+async def upload_file_via_sftp(local_path: str, remote_path: str) -> bool:
+    """Upload a file to web hosting via SFTP. Returns True when the file landed."""
     if not all([BOOKERICS_SERVER, BOOKERICS_USERNAME, BOOKERICS_PASSWORD]):
         logger.error("💥 Web hosting credentials not configured")
-        return
+        return False
+
+    if not os.path.exists(local_path):
+        logger.error(f"💥 Nothing to upload; {local_path} does not exist")
+        return False
 
     try:
         async with asyncssh.connect(
@@ -90,8 +97,10 @@ async def upload_file_via_sftp(local_path: str, remote_path: str) -> None:
             async with conn.start_sftp_client() as sftp:
                 await sftp.put(local_path, remote_path)
                 logger.info(f"⬆️ Uploaded {local_path} to {remote_path}")
+                return True
     except Exception as e:
         logger.error(f"💥 Error uploading {local_path} via SFTP: {e}")
+        return False
 
 
 def _column_exists(table: str, column: str) -> bool:
@@ -353,16 +362,7 @@ async def delete_bookmark_by_id(bookmark_id: int) -> None:
     await execute_query_async("DELETE FROM bookmarks WHERE id = ?", (bookmark_id,))
     cache.invalidate()
 
-    async def _post_delete():
-        try:
-            all_bookmarks = fetch_bookmarks_all(kind="newest")
-            if all_bookmarks:
-                await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
-            await schedule_upload_to_hosting()
-        except Exception as e:
-            logger.error(f"Error during post-deletion tasks: {e}")
-
-    asyncio.create_task(_post_delete())
+    schedule_feed_publish()
 
 
 def backup_bookerics_db():
@@ -393,6 +393,7 @@ def backup_bookerics_db():
 
 
 async def schedule_upload_to_hosting():
+    """Full sync of every local feed file. Used by the manual update endpoint."""
     logger.info("🚀 Scheduling hosting upload...")
     try:
         if FEEDS_DIR and os.path.exists(FEEDS_DIR):
@@ -401,17 +402,67 @@ async def schedule_upload_to_hosting():
                     local_path = os.path.join(FEEDS_DIR, feed_file)
                     remote_path = f"{BOOKERICS_FEEDS_PATH}/{feed_file}"
                     await upload_file_via_sftp(local_path, remote_path)
+            await publish_index_page(force=True)
         logger.info("✅ Hosting upload complete.")
     except Exception as e:
         logger.error(f"💥 Hosting upload failed: {e}")
 
 
-async def schedule_thumbnail_fetch_and_save(
-    bookmark: Bookmark, schedule_hosting_upload: bool = True
-):
-    await get_bookmark_thumbnail_image(bookmark)
-    if schedule_hosting_upload:
-        await schedule_upload_to_hosting()
+# A single bookmark add fires several independent updates (thumbnail, AI tags, AI
+# description, archive URL), and each one used to regenerate and re-upload the feed
+# immediately. Requests are coalesced into one trailing publish instead.
+FEED_PUBLISH_DEBOUNCE_SECONDS = 5.0
+
+_feed_publish_task: Optional["asyncio.Task[None]"] = None
+_feed_publish_deadline: float = 0.0
+
+
+def schedule_feed_publish(delay: float = FEED_PUBLISH_DEBOUNCE_SECONDS) -> None:
+    """Publish the main feed once, `delay` seconds after the last request."""
+    global _feed_publish_task, _feed_publish_deadline
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.warning("🗓️ No running event loop; skipping feed publish")
+        return
+
+    _feed_publish_deadline = max(_feed_publish_deadline, loop.time() + delay)
+
+    if _feed_publish_task is None or _feed_publish_task.done():
+        _feed_publish_task = loop.create_task(_feed_publish_worker())
+        logger.info(f"🗓️ Feed publish scheduled in {delay:.0f}s")
+
+
+async def _feed_publish_worker() -> None:
+    global _feed_publish_task
+
+    loop = asyncio.get_running_loop()
+    try:
+        while True:
+            remaining = _feed_publish_deadline - loop.time()
+            if remaining > 0:
+                await asyncio.sleep(remaining)
+                continue
+
+            try:
+                await update_main_rss_feed()
+            except Exception as e:
+                logger.error(f"💥 Feed publish failed: {e}")
+
+            # Anything requested while we were publishing pushes the deadline out
+            # again, so loop around instead of dropping those changes.
+            if loop.time() >= _feed_publish_deadline:
+                return
+    finally:
+        _feed_publish_task = None
+
+
+async def schedule_thumbnail_fetch_and_save(bookmark: Bookmark) -> None:
+    img_url = await get_bookmark_thumbnail_image(bookmark)
+    if img_url:
+        # The thumbnail rides along in the feed as an <enclosure>.
+        schedule_feed_publish()
 
 
 def verify_table_structure(table_name: str = "bookmarks") -> List[Dict[str, Any]]:
@@ -441,26 +492,9 @@ async def update_main_rss_feed() -> None:
     await create_feed(tag=None, bookmarks=all_bookmarks, publish=True)
 
 
-async def create_feed(
-    tag: Optional[str], bookmarks: List[Bookmark], publish: bool = False
-) -> None:
-    logger.info("🗂️ Creating main RSS feed")
-    if FEEDS_DIR and not os.path.exists(FEEDS_DIR):
-        os.makedirs(FEEDS_DIR)
-    feed_content = create_rss_feed(bookmarks, tag)
-    feed_filename = f"rss-{tag}.xml" if tag else "rss.xml"
-    if FEEDS_DIR:
-        feed_path = os.path.join(FEEDS_DIR, feed_filename)
-        async with aiofiles.open(feed_path, "w") as f:
-            await f.write(feed_content)
-        logger.info(f"✅ Main RSS feed created at {feed_path}")
-
-        if publish:
-            remote_path = f"{BOOKERICS_FEEDS_PATH}/{feed_filename}"
-            await upload_file_via_sftp(feed_path, remote_path)
-
-            # Create index.html that displays RSS feed with XSL transformation
-            index_html = """<!DOCTYPE html>
+# index.html displays the RSS feed with an XSL transformation. It never changes
+# between publishes, so it is only uploaded when its content actually differs.
+INDEX_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -488,15 +522,50 @@ async def create_feed(
 </body>
 </html>"""
 
-            index_path = os.path.join(FEEDS_DIR, "index.html")
-            async with aiofiles.open(index_path, "w") as f:
-                await f.write(index_html)
+_index_html_uploaded = False
 
-            remote_index_path = (
-                "/media/sdc1/eddielomax/www/bookerics.com/public_html/index.html"
-            )
-            await upload_file_via_sftp(index_path, remote_index_path)
-            logger.info(f"✅ Index page uploaded to {remote_index_path}")
+
+async def publish_index_page(force: bool = False) -> None:
+    """Write feeds/index.html locally and upload it if it changed."""
+    global _index_html_uploaded
+
+    index_path = os.path.join(FEEDS_DIR, "index.html")
+    try:
+        async with aiofiles.open(index_path) as f:
+            unchanged = (await f.read()) == INDEX_HTML
+    except FileNotFoundError:
+        unchanged = False
+
+    if not unchanged:
+        async with aiofiles.open(index_path, "w") as f:
+            await f.write(INDEX_HTML)
+
+    if unchanged and _index_html_uploaded and not force:
+        return
+
+    if await upload_file_via_sftp(index_path, BOOKERICS_INDEX_PATH):
+        _index_html_uploaded = True
+        logger.info(f"✅ Index page uploaded to {BOOKERICS_INDEX_PATH}")
+
+
+async def create_feed(
+    tag: Optional[str], bookmarks: List[Bookmark], publish: bool = False
+) -> None:
+    logger.info("🗂️ Creating main RSS feed")
+    if FEEDS_DIR and not os.path.exists(FEEDS_DIR):
+        os.makedirs(FEEDS_DIR)
+    feed_content = create_rss_feed(bookmarks, tag)
+    feed_filename = f"rss-{tag}.xml" if tag else "rss.xml"
+    if FEEDS_DIR:
+        feed_path = os.path.join(FEEDS_DIR, feed_filename)
+        async with aiofiles.open(feed_path, "w") as f:
+            await f.write(feed_content)
+        logger.info(f"✅ Main RSS feed created at {feed_path}")
+
+        if publish:
+            remote_path = f"{BOOKERICS_FEEDS_PATH}/{feed_filename}"
+            await upload_file_via_sftp(feed_path, remote_path)
+            await publish_index_page()
     return
 
 
@@ -558,7 +627,7 @@ async def create_bookmark(
                 asyncio.create_task(archive_and_update(bookmark_id, url))
 
             # Update the main RSS feed with all bookmarks
-            await update_main_rss_feed()
+            schedule_feed_publish()
 
             return bookmark_id
         else:
@@ -591,7 +660,7 @@ async def update_bookmark_description(id: str, description: str, update_feed: bo
     logger.info(f"📝 Description updated for bookmark {id}")
 
     if update_feed:
-        await update_main_rss_feed()
+        schedule_feed_publish()
 
 
 async def update_bookmark_title(id: str, title: str):
@@ -605,7 +674,7 @@ async def update_bookmark_title(id: str, title: str):
     logger.info(f"✏️ Title updated for bookmark {id}")
 
     # Update the main RSS feed
-    await update_main_rss_feed()
+    schedule_feed_publish()
 
 
 async def update_bookmark_tags(id: str, tags: List[str], update_feed: bool = True):
@@ -620,7 +689,7 @@ async def update_bookmark_tags(id: str, tags: List[str], update_feed: bool = Tru
     logger.info(f"🏷️ Tags updated for bookmark {id}")
 
     if update_feed:
-        await update_main_rss_feed()
+        schedule_feed_publish()
 
 
 async def archive_url_for(target_url: str) -> Optional[str]:
@@ -690,13 +759,78 @@ async def archive_and_update(bookmark_id: int, url: str) -> None:
 
     archive_url = await archive_url_for(url)
     if archive_url:
+        # archive_url is not part of the feed, so there is nothing to re-publish.
         await update_bookmark_archive_url(bookmark_id, archive_url)
-        # Trigger hosting sync after updating
-        await schedule_upload_to_hosting()
     else:
         logger.info(
             f"🗄️ Skipping archive for bookmark {bookmark_id} due to rate limit or error"
         )
+
+
+def _resolve_executable(name: str) -> Optional[str]:
+    """Locate a console script, falling back to the running interpreter's bin dir.
+
+    Under launchd (see the README's plist) PATH is trimmed to the system dirs, so
+    the virtualenv's bin directory is not searchable and a bare
+    create_subprocess_exec("shot-scraper") dies with "[Errno 2] No such file or
+    directory". sys.executable always points into the venv we were started with,
+    so its sibling scripts are the reliable lookup.
+    """
+    found = shutil.which(name)
+    if found:
+        return found
+
+    candidate = os.path.join(os.path.dirname(sys.executable), name)
+    if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+        return candidate
+
+    return None
+
+
+def _module_command(module: str) -> Optional[List[str]]:
+    """Return a `python -m module` command if that module is runnable."""
+    try:
+        if find_spec(f"{module}.__main__") is None:
+            return None
+    except (ImportError, ValueError, ModuleNotFoundError):
+        return None
+    return [sys.executable, "-m", module]
+
+
+def _shot_scraper_command() -> Optional[List[str]]:
+    executable = _resolve_executable("shot-scraper")
+    if executable:
+        return [executable]
+    return _module_command("shot_scraper")
+
+
+def _playwright_install_command() -> Optional[List[str]]:
+    executable = _resolve_executable("playwright")
+    if executable:
+        return [executable, "install", "chromium"]
+    command = _module_command("playwright")
+    if command:
+        return command + ["install", "chromium"]
+    return None
+
+
+async def _run_shot_scraper(command: List[str], url: str, output_path: str) -> Tuple[int, str]:
+    """Run shot-scraper for a URL, returning (returncode, stderr)."""
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        "shot",
+        url,
+        "-o",
+        output_path,
+        "--width",
+        "1280",
+        "--height",
+        "720",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, stderr = await process.communicate()
+    return process.returncode or 0, stderr.decode(errors="replace").strip()
 
 
 async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
@@ -711,110 +845,112 @@ async def get_bookmark_thumbnail_image(bookmark: dict) -> str:
             f"🎉 Found existing thumbnail URL for bookmark id {bookmark['id']}."
         )
         return img_url
-    else:
-        logger.info(f"🐕 Generating thumbnail for bookmark id {bookmark['id']}... ")
 
-        thumbnail_filename = f"{bookmark['id']}.jpg"
-        local_path = f"/tmp/{thumbnail_filename}"
-        remote_path = f"{BOOKERICS_THUMBNAILS_PATH}/{thumbnail_filename}"
+    logger.info(f"🐕 Generating thumbnail for bookmark id {bookmark['id']}... ")
 
+    command = _shot_scraper_command()
+    if not command:
+        logger.error(
+            "💥 shot-scraper was not found; install it in the app's environment "
+            "(`uv sync`) so thumbnails can be generated"
+        )
+        return ""
+
+    thumbnail_filename = f"{bookmark['id']}.jpg"
+    local_path = os.path.join(tempfile.gettempdir(), thumbnail_filename)
+    remote_path = f"{BOOKERICS_THUMBNAILS_PATH}/{thumbnail_filename}"
+
+    try:
+        returncode, stderr = await _run_shot_scraper(
+            command, bookmark["url"], local_path
+        )
+
+        if returncode != 0 and "Executable doesn't exist" in stderr:
+            install_command = _playwright_install_command()
+            if install_command:
+                logger.info("🎭 Installing Playwright browsers...")
+                install_process = await asyncio.create_subprocess_exec(
+                    *install_command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await install_process.communicate()
+                returncode, stderr = await _run_shot_scraper(
+                    command, bookmark["url"], local_path
+                )
+            else:
+                logger.error("💥 Playwright was not found; cannot install browsers")
+
+        if returncode != 0:
+            logger.error(
+                f"💥 shot-scraper failed for bookmark {bookmark['id']} "
+                f"(exit {returncode}): {stderr or 'no output'}"
+            )
+            return ""
+
+        if not os.path.exists(local_path) or os.path.getsize(local_path) == 0:
+            logger.error(
+                f"💥 shot-scraper produced no screenshot at {local_path} "
+                f"for bookmark {bookmark['id']}"
+            )
+            return ""
+
+        if not await upload_file_via_sftp(local_path, remote_path):
+            logger.error(
+                f"💥 Thumbnail for bookmark {bookmark['id']} was not uploaded; "
+                "leaving thumbnail_url unset so it can be retried"
+            )
+            return ""
+
+        img_url = f"{BOOKERICS_BASE_URL}/thumbnails/{thumbnail_filename}"
+        await update_bookmark_thumbnail_url(bookmark["id"], img_url)
+        logger.info(
+            f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to hosting!"
+        )
+        return img_url
+    except Exception as e:
+        logger.error(f"💥 Error generating thumbnail for bookmark {bookmark['id']}: {e}")
+        return ""
+    finally:
         try:
-            # Attempt to run shot-scraper
-            process = await asyncio.create_subprocess_exec(
-                "shot-scraper",
-                bookmark["url"],
-                "-o",
-                local_path,
-                "--width",
-                "1280",
-                "--height",
-                "720",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await process.communicate()
-
-            if process.returncode != 0:
-                error_output = stderr.decode()
-                if (
-                    "Executable doesn't exist" in error_output
-                    and "Please run the following command to download new browsers"
-                    in error_output
-                ):
-                    logger.info("Installing Playwright browsers...")
-                    install_process = await asyncio.create_subprocess_exec(
-                        "playwright", "install"
-                    )
-                    await install_process.communicate()
-
-                    # Retry shot-scraper after installation
-                    process = await asyncio.create_subprocess_exec(
-                        "shot-scraper",
-                        bookmark["url"],
-                        "-o",
-                        local_path,
-                        "--width",
-                        "1280",
-                        "--height",
-                        "720",
-                    )
-                    await process.communicate()
-                else:
-                    if process.returncode is not None:
-                        raise subprocess.CalledProcessError(
-                            process.returncode, "shot-scraper", stderr=error_output
-                        )
-                    else:
-                        raise Exception(f"shot-scraper failed: {error_output}")
-
-            # Upload to hosting via SFTP
-            await upload_file_via_sftp(local_path, remote_path)
-
-            img_url = f"{BOOKERICS_BASE_URL}/thumbnails/{thumbnail_filename}"
-
-            await update_bookmark_thumbnail_url(bookmark["id"], img_url)
-            logger.info(
-                f"🥳 Thumbnail for bookmark id # {bookmark['id']} successfully uploaded to hosting!"
-            )
-
-            # Clean up local file
             os.remove(local_path)
-
-            return img_url
-        except subprocess.CalledProcessError as e:
-            logger.error(f"💥 Error generating thumbnail: {e}")
-            return ""
-        except Exception as e:
-            logger.error(f"💥 Error uploading thumbnail to hosting: {e}")
-            return ""
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            logger.warning(f"🧹 Could not remove {local_path}: {e}")
 
 
 async def update_bookmarks_with_thumbnails(bookmarks, schedule_hosting_upload=True):
-    tasks = []
-    for bookmark in bookmarks:
+    pending: List[Tuple[int, "asyncio.Task[str]"]] = []
+    for index, bookmark in enumerate(bookmarks):
         # Don't look up thumbnails for db entries we're just browsing
         source = bookmark.get("source")
         if source == "external":
             return bookmarks
 
-        img_url = bookmark.get("thumbnail_url")
-        if img_url in ("", None):
-            if isinstance(bookmark, dict):
-                task = asyncio.create_task(get_bookmark_thumbnail_image(bookmark))
-                tasks.append(task)
-            else:
-                logger.error(f"💥 Bookmark is not a dictionary: {bookmark}")
+        if not isinstance(bookmark, dict):
+            logger.error(f"💥 Bookmark is not a dictionary: {bookmark}")
+            continue
 
-    # Await all thumbnail fetching tasks
-    thumbnails = await asyncio.gather(*tasks)
+        if bookmark.get("thumbnail_url") in ("", None):
+            pending.append(
+                (index, asyncio.create_task(get_bookmark_thumbnail_image(bookmark)))
+            )
 
-    for i, thumbnail_url in enumerate(thumbnails):
+    if not pending:
+        return bookmarks
+
+    # Await all thumbnail fetching tasks, keeping each result with its bookmark
+    thumbnails = await asyncio.gather(*(task for _, task in pending))
+
+    generated = False
+    for (index, _), thumbnail_url in zip(pending, thumbnails):
         if thumbnail_url:
-            bookmarks[i]["thumbnail_url"] = thumbnail_url
+            bookmarks[index]["thumbnail_url"] = thumbnail_url
+            generated = True
 
-    # Properly await the hosting upload
-    if schedule_hosting_upload:
-        await schedule_upload_to_hosting()
+    if generated and schedule_hosting_upload:
+        schedule_feed_publish()
     return bookmarks
 
 

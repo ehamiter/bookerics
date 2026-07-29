@@ -33,6 +33,7 @@ BOOKERICS_FEEDS_PATH = "/media/sdc1/eddielomax/www/bookerics.com/public_html/fee
 BOOKERICS_THUMBNAILS_PATH = (
     "/media/sdc1/eddielomax/www/bookerics.com/public_html/thumbnails"
 )
+BOOKERICS_INDEX_PATH = "/media/sdc1/eddielomax/www/bookerics.com/public_html/index.html"
 
 ## Giphy API service
 GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
