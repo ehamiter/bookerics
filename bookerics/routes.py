@@ -131,7 +131,6 @@ from .database import (
     update_bookmark_description,
     update_bookmark_tags,
     update_bookmark_title,
-    update_main_rss_feed,
     verify_table_structure,
     Bookmark,
 )
@@ -412,10 +411,9 @@ async def get_ai_info_for_bookmark_by_id_route(id: str):
     try:
         ai_tags, ai_description = await get_tags_and_description_from_bookmark(bookmark)
         if ai_tags:
-            await update_bookmark_tags(id=id, tags=ai_tags, update_feed=False)
+            await update_bookmark_tags(id=id, tags=ai_tags)
         if ai_description:
-            await update_bookmark_description(id=id, description=ai_description, update_feed=False)
-        await update_main_rss_feed()
+            await update_bookmark_description(id=id, description=ai_description)
 
         updated_bookmark = await fetch_bookmark_by_id(id=id)
         if not updated_bookmark:

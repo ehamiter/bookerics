@@ -201,6 +201,12 @@ cargo build --release
 - **Manual Backup**: Click the bookmark count to trigger immediate backup and feed update
 - **Local Backups**: Optional local backup path configuration (keeps 10 most recent backups)
 
+Adding a bookmark kicks off several independent updates (thumbnail, AI tags, AI
+description, archive URL). Feed publishing is debounced, so those all collapse
+into a single feed regeneration and upload a few seconds after the last change
+instead of one round trip apiece. `index.html` is only re-uploaded when its
+content changes; clicking the bookmark count forces a full sync.
+
 ## 🚀 Deployment
 
 ### Development
@@ -243,6 +249,11 @@ Create `~/Library/LaunchAgents/com.bookerics.plist`:
 </dict>
 </plist>
 ```
+
+launchd starts the app with a trimmed `PATH` that does not include the project's
+virtualenv, so `shot-scraper` is looked up next to the running interpreter rather
+than on `PATH` — thumbnails work under launchd without adding `.venv/bin` to the
+plist's `PATH`.
 
 **Service Management**:
 ```bash
